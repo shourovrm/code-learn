@@ -157,11 +157,11 @@ describe('install what is missing', () => {
     expect(await within(docker).findByRole('alert')).toHaveTextContent('Windows asks for permission first. Try again, and choose Yes.');
     expect(within(docker).getByRole('button', { name: 'Try again' })).toBeInTheDocument();
     install = { phase: 'failed', problem: 'restart' };
-    expect(await within(docker).findByText('Restart Windows, then open Codemm again.')).toBeInTheDocument();
+    expect(await within(docker).findByText('Restart Windows, then open code-learn again.')).toBeInTheDocument();
   });
 });
 
-describe("Docker after Codemm's install", () => {
+describe("Docker after code-learn's install", () => {
   it('says Docker Desktop is not installed before anything starts, with its terms and no pricing', async () => {
     renderApp({ to: 'setup' }, mac('no-docker'));
     const docker = await screen.findByRole('listitem', { name: 'Docker Desktop' });
@@ -175,7 +175,7 @@ describe("Docker after Codemm's install", () => {
     renderApp({ to: 'setup' }, mac('docker-wont-start'));
     await user.click(await screen.findByRole('button', { name: "Install what's missing" }));
     const docker = await screen.findByRole('listitem', { name: 'Docker Desktop' });
-    // Installed, but Docker didn't answer within its start window: Codemm's install status is gone.
+    // Installed, but Docker didn't answer within its start window: code-learn's install status is gone.
     expect(await within(docker).findByRole('button', { name: 'Open Docker Desktop' }, { timeout: 4000 })).toBeInTheDocument();
     expect(within(docker).getByText('Open Docker Desktop, then wait until it says it is running.')).toBeInTheDocument();
     expect(within(docker).getByRole('button', { name: 'Check now' })).toBeInTheDocument();
@@ -192,15 +192,15 @@ describe('a look that fails after one worked', () => {
     const api = mac('no-docker');
     const computer = api.computer.bind(api);
     let failing = false;
-    api.computer = () => (failing ? Promise.reject(new Error('codemm:offline')) : computer());
+    api.computer = () => (failing ? Promise.reject(new Error('code-learn:offline')) : computer());
     renderApp({ to: 'setup' }, api);
     expect(await screen.findByRole('listitem', { name: 'Docker Desktop' })).toBeInTheDocument();
     failing = true;
     window.dispatchEvent(new Event('focus'));
-    expect(await screen.findByText(/Codemm couldn't refresh this/)).toHaveAttribute('role', 'status');
+    expect(await screen.findByText(/code-learn couldn't refresh this/)).toHaveAttribute('role', 'status');
     expect(screen.getByRole('listitem', { name: 'Docker Desktop' })).toBeInTheDocument();
     failing = false;
     await user.click(screen.getByRole('button', { name: 'Try again' }));
-    await waitFor(() => expect(screen.queryByText(/Codemm couldn't refresh this/)).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText(/code-learn couldn't refresh this/)).not.toBeInTheDocument());
   });
 });

@@ -17,9 +17,9 @@ export function problemOf(error: unknown): Problem {
 export const SAY: Record<Exclude<Problem, 'connect'>, string> = {
   'plan-limit': "Your agent's plan limit is reached. Try again later.",
   offline: "You're offline. Connect to the internet, then try again.",
-  repair: "Codemm's records need a repair.",
-  unstoppable: "Codemm couldn't stop your agent. Quit Codemm to stop it.",
-  agent: "Codemm couldn't finish that. Try again.",
+  repair: "code-learn's records need a repair.",
+  unstoppable: "code-learn couldn't stop your agent. Quit code-learn to stop it.",
+  agent: "code-learn couldn't finish that. Try again.",
   other: "That didn't work. Try again.",
 };
 
@@ -27,7 +27,7 @@ export const SAY: Record<Exclude<Problem, 'connect'>, string> = {
 const plain = (text: string) => /[.!?]$/.test(text) && !/[`/\\_]/.test(text);
 
 /**
- * What a failure says. Codemm's words for a known problem; for any other, the message main let through, if it is a
+ * What a failure says. code-learn's words for a known problem; for any other, the message main let through, if it is a
  * plain sentence (its first line only: a longer one can list exercises), else the generic one. An error made in the
  * window itself, a bug, never passed main's filter, so it is never shown.
  */

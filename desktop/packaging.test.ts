@@ -9,11 +9,11 @@ describe('packaging', () => {
     // Ad hoc, not none: an unsealed arm64 app is "damaged" to Gatekeeper, with no Open Anyway.
     expect(config.mac.identity).toBe('-');
     expect(config.win.azureSignOptions).toBeUndefined();
-    expect(config.extraMetadata).toEqual({ codemm: { signed: false } });
+    expect(config.extraMetadata).toEqual({ codeLearn: { signed: false } });
   });
 
   it('points auto-update at GitHub Releases, which the release workflow fills as a draft', () => {
-    expect(packaging({}).publish).toEqual({ provider: 'github', owner: 'iignaite', repo: 'Codemm' });
+    expect(packaging({}).publish).toEqual({ provider: 'github', owner: 'iignaite', repo: 'code-learn' });
     // Squirrel.Mac updates from a zip; the dmg is for first installs.
     expect(packaging({}).mac.target).toEqual([
       { target: 'dmg', arch: ['arm64', 'x64'] },
@@ -28,11 +28,11 @@ describe('packaging', () => {
   });
 
   it('marks a build signed only by its own platform\'s signing settings', () => {
-    const azure = { AZURE_SIGNING_ENDPOINT: 'https://e/', AZURE_SIGNING_ACCOUNT: 'a', AZURE_SIGNING_PROFILE: 'p', AZURE_SIGNING_PUBLISHER: 'Codemm' };
-    expect(packaging({ CSC_LINK: 'base64-p12' }, 'darwin').extraMetadata).toEqual({ codemm: { signed: true } });
-    expect(packaging(azure, 'darwin').extraMetadata).toEqual({ codemm: { signed: false } });
-    expect(packaging(azure, 'win32').extraMetadata).toEqual({ codemm: { signed: true } });
-    expect(packaging({ CSC_LINK: 'base64-p12' }, 'win32').extraMetadata).toEqual({ codemm: { signed: false } });
+    const azure = { AZURE_SIGNING_ENDPOINT: 'https://e/', AZURE_SIGNING_ACCOUNT: 'a', AZURE_SIGNING_PROFILE: 'p', AZURE_SIGNING_PUBLISHER: 'code-learn' };
+    expect(packaging({ CSC_LINK: 'base64-p12' }, 'darwin').extraMetadata).toEqual({ codeLearn: { signed: true } });
+    expect(packaging(azure, 'darwin').extraMetadata).toEqual({ codeLearn: { signed: false } });
+    expect(packaging(azure, 'win32').extraMetadata).toEqual({ codeLearn: { signed: true } });
+    expect(packaging({ CSC_LINK: 'base64-p12' }, 'win32').extraMetadata).toEqual({ codeLearn: { signed: false } });
   });
 
   it('signs on macOS only from a certificate in the environment', () => {
@@ -83,15 +83,15 @@ describe('packaging', () => {
   it('signs on Windows with Azure Trusted Signing when its settings are all present', () => {
     const env = {
       AZURE_SIGNING_ENDPOINT: 'https://eus.codesigning.azure.net/',
-      AZURE_SIGNING_ACCOUNT: 'codemm',
+      AZURE_SIGNING_ACCOUNT: 'code-learn',
       AZURE_SIGNING_PROFILE: 'public',
-      AZURE_SIGNING_PUBLISHER: 'Codemm',
+      AZURE_SIGNING_PUBLISHER: 'code-learn',
     };
     expect(packaging(env).win.azureSignOptions).toEqual({
       endpoint: env.AZURE_SIGNING_ENDPOINT,
-      codeSigningAccountName: 'codemm',
+      codeSigningAccountName: 'code-learn',
       certificateProfileName: 'public',
-      publisherName: 'Codemm',
+      publisherName: 'code-learn',
     });
     expect(packaging({ ...env, AZURE_SIGNING_PROFILE: '' }).win.azureSignOptions).toBeUndefined();
   });

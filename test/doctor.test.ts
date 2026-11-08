@@ -7,8 +7,8 @@ import { posix } from "./fake-docker.js";
 import { tempDir } from "./temp.js";
 
 /**
- * The self-test (`codemm doctor`, Check this computer) against a scripted container CLI. It must fail the way a
- * real check would: an engine that can't mount Codemm's folders fails it, and a pull that can't reach the network
+ * The self-test (`code-learn doctor`, Check this computer) against a scripted container CLI. It must fail the way a
+ * real check would: an engine that can't mount code-learn's folders fails it, and a pull that can't reach the network
  * says it's offline (`kind`, which a caller acts on without reading the words).
  */
 
@@ -51,14 +51,14 @@ let home: string;
 const calls = () => (existsSync(log) ? readFileSync(log, "utf8").trim().split("\n") : []);
 
 beforeEach(() => {
-  const dir = tempDir("codemm-fakecli-");
+  const dir = tempDir("code-learn-fakecli-");
   const cli = join(dir, "docker");
   writeFileSync(cli, SCRIPT);
   chmodSync(cli, 0o755);
   log = join(dir, "calls.log");
-  home = tempDir("codemm-home-");
-  vi.stubEnv("CODEMM_CONTAINER_CLI", cli);
-  vi.stubEnv("CODEMM_HOME", home);
+  home = tempDir("code-learn-home-");
+  vi.stubEnv("CODE_LEARN_CONTAINER_CLI", cli);
+  vi.stubEnv("CODE_LEARN_HOME", home);
   vi.stubEnv("FAKE_LOG", log);
   vi.stubEnv("HAVE_IMAGE", "1");
   vi.stubEnv("MOUNT", "ok");
@@ -79,7 +79,7 @@ describe.runIf(posix)("the self-test (network isolation)", () => {
     expect(readdirSync(join(realpathSync.native(home), "runs"))).toEqual([]);
   });
 
-  it("fails with the engine's reason and the folder to share when it won't mount Codemm's folders", async () => {
+  it("fails with the engine's reason and the folder to share when it won't mount code-learn's folders", async () => {
     vi.stubEnv("MOUNT", "refuse");
     const check = await networkIsolation();
     expect(check).toMatchObject({ ok: false, kind: "docker" });
@@ -110,10 +110,10 @@ describe.runIf(posix)("the self-test (network isolation)", () => {
     expect(check.detail).not.toContain("reached the network");
   });
 
-  it("fails the check, not the whole doctor, when Codemm's home can't hold a run folder", async () => {
-    const file = join(tempDir("codemm-notadir-"), "file");
+  it("fails the check, not the whole doctor, when code-learn's home can't hold a run folder", async () => {
+    const file = join(tempDir("code-learn-notadir-"), "file");
     writeFileSync(file, "x");
-    vi.stubEnv("CODEMM_HOME", join(file, "home"));
+    vi.stubEnv("CODE_LEARN_HOME", join(file, "home"));
     const check = await networkIsolation();
     expect(check).toMatchObject({ ok: false });
     expect(check.detail).toMatch(/couldn't make a folder/);
@@ -191,7 +191,7 @@ describe.runIf(posix)("the self-test (network isolation)", () => {
       expect(check.detail).toMatch(/^inconclusive: the container engine isn't answering/);
     });
 
-    it("doesn't call Codemm's own deadline offline: a slow connection and a stuck engine look alike", async () => {
+    it("doesn't call code-learn's own deadline offline: a slow connection and a stuck engine look alike", async () => {
       vi.stubEnv("HAVE_IMAGE", "0");
       vi.stubEnv("PULL_ERROR", "(timed out after 180000 ms)");
       const check = await networkIsolation();

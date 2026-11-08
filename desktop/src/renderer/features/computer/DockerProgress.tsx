@@ -6,7 +6,7 @@ import { INSTALL } from './fixes';
 const STAGES = { mac: ['downloading', 'checking', 'installing', 'starting'], windows: ['wsl', 'downloading', 'checking', 'installing', 'admin', 'starting'], linux: [] } as const;
 type Stage = Exclude<DockerInstall['phase'], 'failed'>;
 
-/** Codemm installing Docker Desktop (§6.1): Emm filling through WSL's setup, the download (its real fraction), the check, the install and Docker opening. */
+/** code-learn installing Docker Desktop (§6.1): Emm filling through WSL's setup, the download (its real fraction), the check, the install and Docker opening. */
 export function DockerProgress({ install, platform }: { install: DockerInstall & { phase: Stage }; platform: Platform }) {
   const stages: readonly Stage[] = STAGES[platform];
   const text = INSTALL.phase[install.phase];

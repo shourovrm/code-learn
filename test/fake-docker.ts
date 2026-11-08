@@ -13,12 +13,12 @@ export const posix = process.platform !== "win32";
  * `docker` there at all). Undo it with vi.unstubAllEnvs().
  */
 export function fakeDocker(scenario: Scenario): void {
-  const bin = tempDir("codemm-fake-docker-");
+  const bin = tempDir("code-learn-fake-docker-");
   if (scenario !== "missing") {
     copyFileSync(join(import.meta.dirname, "fixtures", "fake-docker"), join(bin, "docker"));
     chmodSync(join(bin, "docker"), 0o755);
   }
   vi.stubEnv("PATH", bin);
-  vi.stubEnv("CODEMM_CONTAINER_CLI", "");
+  vi.stubEnv("CODE_LEARN_CONTAINER_CLI", "");
   vi.stubEnv("FAKE_DOCKER", scenario);
 }

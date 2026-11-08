@@ -153,7 +153,7 @@ function Failing({ result, name, visibleTests }: { result: Extract<CheckResult, 
   return (
     <>
       <div className="rhead">
-        {/* Under the ways forward, Codemm is already there. */}
+        {/* Under the ways forward, code-learn is already there. */}
         {name && <Emm mood="think" width={56} name={name} />}
         <h2 className="h3">{result.passed} of {result.total} passed</h2>
         {!result.recorded && <span className="quiet-text">This is the starter code, so this check wasn't counted. Edit it, then check again.</span>}

@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { CodemmError } from "../errors.js";
+import { CodeLearnError } from "../errors.js";
 import { subMap } from "../files.js";
 import { assertRuntime, inspectImage } from "../sandbox.js";
 import { type CourseRecord, type TrackRecord } from "../schemas.js";
@@ -11,15 +11,15 @@ export const learnerDir = (course: string, slug: string) => `exercises/${course}
 
 export function activeCourse(ws: string, bound?: string): CourseRecord {
   const course = bound ?? store.readWorkspace(ws).course;
-  if (!course) throw new CodemmError("No course in this workspace yet. Ask your agent to plan a roadmap (save_roadmap).", "no-course");
+  if (!course) throw new CodeLearnError("No course in this workspace yet. Ask your agent to plan a roadmap (save_roadmap).", "no-course");
   const record = store.readCourse(course);
-  if (!record) throw new CodemmError(`Course "${course}" is missing from ${store.codemmHome()}.`, "no-course");
+  if (!record) throw new CodeLearnError(`Course "${course}" is missing from ${store.codeLearnHome()}.`, "no-course");
   return record;
 }
 
 export function installedTrack(ref: string): TrackRecord {
   const track = store.readTrack(ref);
-  if (!track) throw new CodemmError(`Track ${ref} is not installed. Install it first (save_track).`);
+  if (!track) throw new CodeLearnError(`Track ${ref} is not installed. Install it first (save_track).`);
   return track;
 }
 
@@ -29,14 +29,14 @@ export function installedTrack(ref: string): TrackRecord {
  */
 export async function ensureImage(track: TrackRecord): Promise<void> {
   const ref = `${track.id}@${track.version}`;
-  const rebuild = `Run \`codemm track rebuild ${ref}\`, then retry.`;
+  const rebuild = `Run \`code-learn track rebuild ${ref}\`, then retry.`;
   if (track.wasi) {
-    if (!existsSync(join(store.toolchainDir(track.wasi.sha256), track.wasi.module))) throw new CodemmError(`The toolchain for ${ref} is missing. ${rebuild}`, "image-missing");
+    if (!existsSync(join(store.toolchainDir(track.wasi.sha256), track.wasi.module))) throw new CodeLearnError(`The toolchain for ${ref} is missing. ${rebuild}`, "image-missing");
     return;
   }
   await assertRuntime();
   const info = await inspectImage(track.imageId);
-  if (!info) throw new CodemmError(`The image for ${ref} is missing or changed. ${rebuild}`, "image-missing");
+  if (!info) throw new CodeLearnError(`The image for ${ref} is missing or changed. ${rebuild}`, "image-missing");
 }
 
 /** A progress listener that throws is dropped; the work goes on. */

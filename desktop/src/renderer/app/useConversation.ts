@@ -6,8 +6,8 @@ import { useRouter } from './router';
 import { useJob } from './useJob';
 
 /**
- * The Codemm rail's conversation for one lesson or activity, kept per place while Codemm runs, so leaving and
- * coming back keeps it. One question at a time: `busy` is true while Codemm answers, and asking does nothing
+ * The code-learn rail's conversation for one lesson or activity, kept per place while code-learn runs, so leaving and
+ * coming back keeps it. One question at a time: `busy` is true while code-learn answers, and asking does nothing
  * until then; `answering` is its progress. `before` runs first, so an activity can save the learner's latest code.
  * `ask` resolves false when the question failed: it is taken back, for the learner to send again.
  */
@@ -16,11 +16,11 @@ export function useConversation(place: Place, opening: string) {
   const { fail } = useRouter();
   const saved = cacheFor<Message[]>(api, 'conversations');
   const key = 'lessonId' in place ? `lesson:${place.lessonId}` : `activity:${place.activityId}`;
-  const [messages, setMessages] = useState<Message[]>(() => saved.get(key) ?? [{ from: 'codemm', text: opening }]);
+  const [messages, setMessages] = useState<Message[]>(() => saved.get(key) ?? [{ from: 'code-learn', text: opening }]);
   useEffect(() => saved.set(key, messages, saved.version()), [messages]);
   const [busy, setBusy] = useState(false);
   const asking = useRef(false);
-  // The tutor turn's progress while Codemm answers (§4.11): only a turn that started after this question, since a turn
+  // The tutor turn's progress while code-learn answers (§4.11): only a turn that started after this question, since a turn
   // asked elsewhere may still run ahead of it.
   const askedAt = useRef(Infinity);
   const answering = useJob((p) => p.kind === 'tutor' && Date.now() - p.elapsedMs >= askedAt.current - 250, []);

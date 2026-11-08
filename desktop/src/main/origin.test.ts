@@ -6,20 +6,20 @@ import { CSP, fileFor, fromAppWindow } from './origin';
 const root = join('/app', 'out', 'renderer');
 
 describe('the app origin (§2.1, D2)', () => {
-  it('serves only files under the renderer folder on app://codemm', () => {
-    expect(fileFor('app://codemm/index.html', root)).toBe(join(root, 'index.html'));
-    expect(fileFor('app://codemm/', root)).toBe(join(root, 'index.html'));
-    expect(fileFor('app://codemm/assets/main-1.js?x=1#y', root)).toBe(join(root, 'assets', 'main-1.js'));
+  it('serves only files under the renderer folder on app://code-learn', () => {
+    expect(fileFor('app://code-learn/index.html', root)).toBe(join(root, 'index.html'));
+    expect(fileFor('app://code-learn/', root)).toBe(join(root, 'index.html'));
+    expect(fileFor('app://code-learn/assets/main-1.js?x=1#y', root)).toBe(join(root, 'assets', 'main-1.js'));
     // The URL parser resolves `..` first, so these stay inside the renderer folder.
-    expect(fileFor('app://codemm/../main/main.js', root)).toBe(join(root, 'main', 'main.js'));
-    expect(fileFor('app://codemm/%2e%2e/main/main.js', root)).toBe(join(root, 'main', 'main.js'));
+    expect(fileFor('app://code-learn/../main/main.js', root)).toBe(join(root, 'main', 'main.js'));
+    expect(fileFor('app://code-learn/%2e%2e/main/main.js', root)).toBe(join(root, 'main', 'main.js'));
     for (const url of [
-      'app://codemm/assets/..%2f..%2fmain.js',
-      'app://codemm/..%2f..%2fpreload/preload.js',
-      'app://codemm/%00.html',
+      'app://code-learn/assets/..%2f..%2fmain.js',
+      'app://code-learn/..%2f..%2fpreload/preload.js',
+      'app://code-learn/%00.html',
       'app://evil/index.html',
       'file:///app/out/renderer/index.html',
-      'https://codemm/index.html',
+      'https://code-learn/index.html',
       'not a url',
     ]) {
       expect([url, fileFor(url, root)]).toEqual([url, null]);
@@ -27,12 +27,12 @@ describe('the app origin (§2.1, D2)', () => {
   });
 
   it("answers IPC only from the app window's top frame on the app origin", () => {
-    const top = { url: 'app://codemm/index.html' };
+    const top = { url: 'app://code-learn/index.html' };
     const window = { mainFrame: top };
     const windows = new Set([window]);
     expect(fromAppWindow({ sender: window, senderFrame: top }, windows)).toBe(true);
-    expect(fromAppWindow({ sender: window, senderFrame: { url: 'app://codemm/index.html' } }, windows)).toBe(false);
-    const other = { mainFrame: { url: 'app://codemm/index.html' } };
+    expect(fromAppWindow({ sender: window, senderFrame: { url: 'app://code-learn/index.html' } }, windows)).toBe(false);
+    const other = { mainFrame: { url: 'app://code-learn/index.html' } };
     expect(fromAppWindow({ sender: other, senderFrame: other.mainFrame }, windows)).toBe(false);
     const navigated = { mainFrame: { url: 'https://example.com/' } };
     expect(fromAppWindow({ sender: navigated, senderFrame: navigated.mainFrame }, new Set([navigated]))).toBe(false);

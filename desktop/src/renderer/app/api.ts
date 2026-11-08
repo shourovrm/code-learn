@@ -1,17 +1,17 @@
 import { createContext, useContext } from 'react';
-import type { Bridge, CodemmApi } from '../../shared/api';
+import type { Bridge, CodeLearnApi } from '../../shared/api';
 
-export const ApiContext = createContext<CodemmApi | null>(null);
+export const ApiContext = createContext<CodeLearnApi | null>(null);
 
-export function useApi(): CodemmApi {
+export function useApi(): CodeLearnApi {
   const api = useContext(ApiContext);
-  if (!api) throw new Error('No CodemmApi provided');
+  if (!api) throw new Error('No CodeLearnApi provided');
   return api;
 }
 
-/** A typed CodemmApi whose every call goes through the preload bridge; check progress, job progress and Run's output are the bridge's events. */
-export function bridgeClient(bridge: Bridge): CodemmApi {
-  return new Proxy({} as CodemmApi, {
+/** A typed CodeLearnApi whose every call goes through the preload bridge; check progress, job progress and Run's output are the bridge's events. */
+export function bridgeClient(bridge: Bridge): CodeLearnApi {
+  return new Proxy({} as CodeLearnApi, {
     get: (_target, method) => {
       if (method === 'onCheckProgress') return bridge.onCheckProgress;
       if (method === 'onJobProgress') return bridge.onJobProgress;

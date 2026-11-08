@@ -9,13 +9,13 @@ import { Dialog } from '../../ui/Dialog';
 import { Emm } from '../../ui/Emm';
 import { Banner } from '../../ui/Banner';
 
-/** The one consent before setup: exactly the files Codemm will build (§4.1). */
+/** The one consent before setup: exactly the files code-learn will build (§4.1). */
 type Props = { track: string; proposal: Proposal; error?: string; busy?: boolean; onClose: () => void; onSetUp: () => void };
 
 export function SetupConsent({ track, proposal, error, busy = false, onClose, onSetUp }: Props) {
   return (
     <Dialog
-      title={proposal.retry ? `Codemm has another way to set up ${track}.` : `Set up ${track} on this computer?`}
+      title={proposal.retry ? `code-learn has another way to set up ${track}.` : `Set up ${track} on this computer?`}
       text={`${proposal.retry && proposal.why ? `${proposal.why} ` : ''}Setup runs code your agent wrote, with internet access. Graded runs are offline.`}
       art={<Emm mood="look" width={150} name={track} perch />}
       body={

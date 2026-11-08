@@ -1,4 +1,4 @@
-import { CodemmError } from "../errors.js";
+import { CodeLearnError } from "../errors.js";
 import { type LearnerEvent, replay } from "../learner.js";
 import { type CourseRecord, parseRoadmapYaml } from "../schemas.js";
 import * as store from "../store.js";
@@ -14,19 +14,19 @@ const eventConcepts = (e: LearnerEvent): string[] => (e.kind === "check" ? e.con
  */
 /** Saving makes the course active in `ws`, unless `activate` is false: the app re-saving one of the learner's courses mustn't replace a new course's draft. */
 export async function saveRoadmap(ws: string, course: string, yaml: string, bound?: string, activate = true): Promise<{ course: string; concepts: number }> {
-  if (bound && course !== bound) throw new CodemmError(`This job saves only course "${bound}".`);
+  if (bound && course !== bound) throw new CodeLearnError(`This job saves only course "${bound}".`);
   const roadmap = parseRoadmapYaml(yaml);
   const record: CourseRecord = { format_version: 1, course, ...roadmap };
   // Course lock, then the track's lock (as saveExercise does), so an install can't land between this check and the save.
   const save = async () => {
     const track = roadmap.track ? store.readTrack(roadmap.track) : undefined;
-    if (track && roadmap.style !== "none" && roadmap.style !== "quiz" && !track.styles.includes(roadmap.style)) throw new CodemmError(`Track ${roadmap.track} offers ${track.styles.join(", ")}, not style "${roadmap.style}".`);
+    if (track && roadmap.style !== "none" && roadmap.style !== "quiz" && !track.styles.includes(roadmap.style)) throw new CodeLearnError(`Track ${roadmap.track} offers ${track.styles.join(", ")}, not style "${roadmap.style}".`);
     let retries: string[] = [];
     const existing = store.readCourse(course);
     if (existing) {
       const exercises = store.listExercises(course);
       if (existing.track !== roadmap.track && exercises.length > 0) {
-        throw new CodemmError(`Course "${course}" has exercises for ${existing.track}, so it can't switch tracks. Start a new course instead.`);
+        throw new CodeLearnError(`Course "${course}" has exercises for ${existing.track}, so it can't switch tracks. Start a new course instead.`);
       }
       const events = store.readEvents(course);
       const kept = new Set(roadmap.concepts.map((c) => c.id));
@@ -36,7 +36,7 @@ export async function saveRoadmap(ws: string, course: string, yaml: string, boun
         ...store.listLessons(course).map((l) => l.concept),
       ]);
       const removed = [...used].filter((c) => !kept.has(c));
-      if (removed.length > 0) throw new CodemmError(`These concepts have exercises, lessons or progress and can't be removed: ${removed.join(", ")}.`);
+      if (removed.length > 0) throw new CodeLearnError(`These concepts have exercises, lessons or progress and can't be removed: ${removed.join(", ")}.`);
       const states = replay(events);
       const before = new Map(existing.concepts.map((c) => [c.id, c.requires]));
       retries = roadmap.concepts.filter((c) => {

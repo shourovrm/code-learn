@@ -108,7 +108,7 @@ export interface CoreApp {
   rebuildTrack(ref: string): Promise<unknown>;
   saveRoadmap(ws: string, course: string, yaml: string, bound?: string, activate?: boolean): Promise<{ course: string }>;
   progress(ws: string, bound?: string): CoreProgress;
-  /** Containers whose owning Codemm process is gone are removed (doctor --fix's rule). Added by scripts/core-entry.ts. */
+  /** Containers whose owning code-learn process is gone are removed (doctor --fix's rule). Added by scripts/core-entry.ts. */
   cleanupLeftovers(): Promise<void>;
   getExercise(ws: string, slug?: string, bound?: string): Promise<CoreExercise>;
   testExercise(ws: string, slug?: string, bound?: string, onProgress?: (p: CheckProgress) => void): Promise<CoreCheckView>;

@@ -18,8 +18,8 @@ describe.runIf(dockerUp)("run folders (Docker)", () => {
     unitTrack = { ...fixtureTrack("shell-unit").spec, wasi: undefined, image: await buildFixture("shell-unit") };
   });
   beforeEach(() => {
-    home = tempDir("codemm-home-");
-    vi.stubEnv("CODEMM_HOME", home);
+    home = tempDir("code-learn-home-");
+    vi.stubEnv("CODE_LEARN_HOME", home);
     recorder = recordMounts();
   });
   afterEach(() => {
@@ -29,7 +29,7 @@ describe.runIf(dockerUp)("run folders (Docker)", () => {
 
   const runsIn = () => join(realpathSync.native(home), "runs");
 
-  it("a check mounts folders under CODEMM_HOME, not the OS temp folder, and removes them", async () => {
+  it("a check mounts folders under CODE_LEARN_HOME, not the OS temp folder, and removes them", async () => {
     const io = await runIo(ioTrack, "visible", { "main.sh": "read x\necho \"got $x\"\n" }, { "01.in": "a\n" });
     expect(io.cases[0]?.stdout).toBe("got a\n");
     const mounted = recorder.mounts();

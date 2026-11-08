@@ -7,7 +7,7 @@ import { tempDir } from '../testing/temp';
 
 /** A Cursor install root (%LOCALAPPDATA%\cursor-agent) with these version folders; `false` leaves out node.exe. */
 function install(versions: Record<string, boolean>) {
-  const root = tempDir('codemm-cursor-');
+  const root = tempDir('code-learn-cursor-');
   writeFileSync(join(root, 'cursor-agent.cmd'), '@echo off\r\npowershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0cursor-agent.ps1" %*\r\n');
   for (const [name, complete] of Object.entries(versions)) {
     mkdirSync(join(root, 'versions', name), { recursive: true });
@@ -60,8 +60,8 @@ describe("Cursor's own Node and script on Windows (§3.1)", () => {
 
   it('fails closed: no usable version, or no versions folder, is not installed', () => {
     expect(cursorEntry(install({ '2026.10.22-27dcf5f': false, '2026.10.23-1234567.new': true }).root)).toBeNull();
-    expect(cursorEntry(tempDir('codemm-cursor-'))).toBeNull();
-    expect(cursorEntry(join(tempDir('codemm-cursor-'), 'gone'))).toBeNull();
+    expect(cursorEntry(tempDir('code-learn-cursor-'))).toBeNull();
+    expect(cursorEntry(join(tempDir('code-learn-cursor-'), 'gone'))).toBeNull();
   });
 
   it('a node.exe beside the launcher runs there, as the launcher does', () => {
@@ -83,6 +83,6 @@ describe("Cursor's own Node and script on Windows (§3.1)", () => {
     });
     // The launcher keeps a compile cache the learner set.
     expect(cursorExecutable(root, { LOCALAPPDATA: local, NODE_COMPILE_CACHE: 'D:\\cache' })?.env).toEqual({ CURSOR_INVOKED_AS: 'cursor-agent.cmd' });
-    expect(cursorExecutable(tempDir('codemm-cursor-'), {})).toBeNull();
+    expect(cursorExecutable(tempDir('code-learn-cursor-'), {})).toBeNull();
   });
 });

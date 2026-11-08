@@ -1,4 +1,4 @@
-# Codemm beta plan
+# code-learn beta plan
 
 A private beta with 5 to 10 learners, one course each, runs before the public 1.0 (DESIGN §1, D20). It checks whether real learners can go from installing the app to passing activities on their own, with their own agent.
 
@@ -26,12 +26,12 @@ A private beta with 5 to 10 learners, one course each, runs before the public 1.
 
 Each participant agrees in writing to a plain-language form before installing. The form says:
 
-- **Codemm collects nothing automatically.** It has no telemetry. We learn only from what you tell us and from what you choose to share.
+- **code-learn collects nothing automatically.** It has no telemetry. We learn only from what you tell us and from what you choose to share.
 - **What you may share:** your survey answers; notes from our calls; and, if you choose, your course progress. You can review anything before sending it.
 - **Recordings** of calls need a separate yes, and you can withdraw that yes at any time.
-- **Costs.** Codemm uses your own agent and your own account. Lessons and activities use some of it.
+- **Costs.** code-learn uses your own agent and your own account. Lessons and activities use some of it.
 - **The builds are unsigned test builds.** Opening them needs an extra step on macOS and Windows, which we show you.
-- **Who sees it.** Only the owner and the people building Codemm. Write to the owner's contact address on this form to see or delete what you shared.
+- **Who sees it.** Only the owner and the people building code-learn. Write to the owner's contact address on this form to see or delete what you shared.
 - **What gets published.** Only totals across all participants, with no names and nothing that could identify one of so few people. A quotation or a screenshot of yours is published only with a separate yes for that item.
 - **You can stop at any time without giving a reason.** We delete what you shared within 30 days after the beta ends, or sooner if you ask. Published totals can't be taken back, because nothing in them is yours alone.
 
@@ -48,7 +48,7 @@ We send a one-page guide covering:
 
 | # | Task | Done when |
 |---|---|---|
-| T1 | Install Codemm and pass "Check this computer" | every row passes |
+| T1 | Install code-learn and pass "Check this computer" | every row passes |
 | T2 | Connect your agent | the app turns to color |
 | T3 | Start learning something new: pick a goal, change one topic in the roadmap, and approve the setup | the first lesson opens |
 | T4 | Finish one topic: read its lessons and pass its activity | the topic shows as mastered, or the activity passes |
@@ -69,7 +69,7 @@ We send a one-page guide covering:
 - **Whether a check was ever counted wrongly**: an infrastructure problem recorded as an attempt, or the reverse.
 - **Whether the agent ever showed** a solution, a hidden test or anything held back by the reply filter. Any case is a blocker.
 - **Lost work**: edits that disappeared, or files overwritten.
-- **How much of their agent plan** a topic seemed to use, and whether that felt acceptable (they tell us; Codemm doesn't measure it).
+- **How much of their agent plan** a topic seemed to use, and whether that felt acceptable (they tell us; code-learn doesn't measure it).
 - **Accessibility**: keyboard use, reduced motion, readability.
 
 ## Exit criteria (D20)
@@ -91,6 +91,6 @@ Five questions, answered on a 1 to 5 scale plus an optional comment:
 2. How much did the lessons help you solve the activities?
 3. When a check failed, did you understand what to fix?
 4. Did you trust that passing meant you had learned it?
-5. How likely are you to keep using Codemm?
+5. How likely are you to keep using code-learn?
 
 One open question: what one change would have helped you most?

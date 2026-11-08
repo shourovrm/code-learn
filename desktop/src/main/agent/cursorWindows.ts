@@ -1,6 +1,6 @@
 // Cursor's CLI on Windows (DESIGN §3.1). Its cursor-agent.cmd runs Windows PowerShell 5.1 on cursor-agent.ps1, which
-// runs versions\<v>\node.exe on versions\<v>\index.js. Codemm never runs a shell, and a brief through cmd and PowerShell
-// would arrive cut or mangled, so Codemm starts that node.exe on that index.js itself, as Cursor's staff advise.
+// runs versions\<v>\node.exe on versions\<v>\index.js. code-learn never runs a shell, and a brief through cmd and PowerShell
+// would arrive cut or mangled, so code-learn starts that node.exe on that index.js itself, as Cursor's staff advise.
 // The version is chosen as cursor-agent.ps1 (2026.10.22-27dcf5f, read on a GitHub Windows runner) chooses it.
 import { readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';

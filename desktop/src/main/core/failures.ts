@@ -4,7 +4,7 @@
 /**
  * What the learner is told: Docker isn't there or isn't running, is busy and not answering, or answers but failed;
  * Docker's disk is full, or this computer's; the network failed; or for a WASI track (core §4.5), wasmtime didn't
- * start, or Codemm couldn't make its files read-only on this drive.
+ * start, or code-learn couldn't make its files read-only on this drive.
  */
 export type Infra = 'docker' | 'docker-busy' | 'docker-failed' | 'docker-disk' | 'disk' | 'offline' | 'wasi' | 'wasi-seal';
 
@@ -46,11 +46,11 @@ export interface Failure {
   cause: Cause;
 }
 
-/** core src/errors.ts ErrorKind: what kind of failure a CodemmError is. */
+/** core src/errors.ts ErrorKind: what kind of failure a CodeLearnError is. */
 export type CoreErrorKind = 'no-course' | 'image-missing' | 'damaged' | 'changed' | 'docker' | 'disk' | 'offline';
 
 const fromCore = (e: unknown): (Error & { kind?: CoreErrorKind; code?: unknown }) | undefined =>
-  e instanceof Error && e.name === 'CodemmError' ? e : undefined;
+  e instanceof Error && e.name === 'CodeLearnError' ? e : undefined;
 
 /** The kind core gave an error it threw in this process, if any. */
 export const kindOf = (e: unknown): CoreErrorKind | undefined => fromCore(e)?.kind;
@@ -58,10 +58,10 @@ export const kindOf = (e: unknown): CoreErrorKind | undefined => fromCore(e)?.ki
 const failureOf = (code: unknown): Failure | null => (typeof code === 'string' && Object.hasOwn(CODES, code) ? { cause: code as keyof typeof CODES, infra: CODES[code as keyof typeof CODES] } : null);
 
 /**
- * The code a tool result starts with: core's MCP server writes `codemm:<code or kind>` as the first line of a failure
+ * The code a tool result starts with: core's MCP server writes `code-learn:<code or kind>` as the first line of a failure
  * (src/mcp.ts), and nothing else can write there. An agent may put its own words before it on that line.
  */
-const tagOf = (text: string) => /^[^\n]*?\bcodemm:([a-z][a-z-]*)(?:\n|$)/.exec(text)?.[1];
+const tagOf = (text: string) => /^[^\n]*?\bcode-learn:([a-z][a-z-]*)(?:\n|$)/.exec(text)?.[1];
 
 /** This computer's problem, from a tool result's code: what an agent relays back over MCP carries no error object. */
 export const infra = (text: string): Failure | null => failureOf(tagOf(text));

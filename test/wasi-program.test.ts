@@ -18,7 +18,7 @@ describe("Run on a WASI track without wasmtime", () => {
   afterEach(() => vi.unstubAllEnvs());
 
   it("is an infrastructure error", () => {
-    vi.stubEnv("CODEMM_WASMTIME", `${tempDir()}/no-wasmtime`);
+    vi.stubEnv("CODE_LEARN_WASMTIME", `${tempDir()}/no-wasmtime`);
     expect(() => run("cat")).toThrow(expect.objectContaining({ code: "no-wasmtime" }));
   });
 });

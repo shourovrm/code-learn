@@ -20,12 +20,12 @@ describe.runIf(dockerUp)("app (Docker, end to end)", () => {
   // A label gives this file's track image its own ID, so deleting it can't affect other test files.
   const appTrack = (): Record<string, string> => {
     const t = fixtureTrack("shell-io").files;
-    return { ...t, Dockerfile: `${t.Dockerfile}LABEL codemm.test=app\n` };
+    return { ...t, Dockerfile: `${t.Dockerfile}LABEL code-learn.test=app\n` };
   };
 
   beforeAll(() => {
-    process.env.CODEMM_HOME = tempDir("codemm-home-");
-    ws = tempDir("codemm-ws-");
+    process.env.CODE_LEARN_HOME = tempDir("code-learn-home-");
+    ws = tempDir("code-learn-ws-");
   });
 
   it("installs a track once and refuses a different track under the same version", async () => {
@@ -54,7 +54,7 @@ describe.runIf(dockerUp)("app (Docker, end to end)", () => {
   it("enforces roadmap rules", async () => {
     await expect(app.saveRoadmap(ws, "shell", roadmap("shell-io").replace("style: io", "style: unit"))).rejects.toThrow(/style/);
     expect(await app.saveRoadmap(ws, "shell", roadmap("shell-io"))).toEqual({ course: "shell", concepts: 2 });
-    expect(JSON.parse(readFileSync(join(ws, "codemm.json"), "utf8"))).toMatchObject({ course: "shell" });
+    expect(JSON.parse(readFileSync(join(ws, "code-learn.json"), "utf8"))).toMatchObject({ course: "shell" });
   });
 
   it("asks for a first exercise", () => {
@@ -150,7 +150,7 @@ describe.runIf(dockerUp)("app (Docker, end to end)", () => {
   });
 
   it("keeps the installed image when a rebuild is rejected", async () => {
-    const exJson = join(process.env.CODEMM_HOME!, "courses", "shell", "exercises", "max-of-line", "exercise.json");
+    const exJson = join(process.env.CODE_LEARN_HOME!, "courses", "shell", "exercises", "max-of-line", "exercise.json");
     const original = readFileSync(exJson, "utf8");
     writeFileSync(exJson, original.replace('"visible/01": "3\\n"', '"visible/01": "4\\n"'));
     await expect(app.rebuildTrack("shell-io@1")).rejects.toThrow(/behaves differently/);
@@ -162,8 +162,8 @@ describe.runIf(dockerUp)("app (Docker, end to end)", () => {
     const pending = app.checkExercise(ws);
     await app.saveRoadmap(ws, "shell-two", roadmap("shell-io"));
     await pending;
-    expect(JSON.parse(readFileSync(join(ws, "codemm.json"), "utf8"))).toMatchObject({ course: "shell-two" });
-    expect(JSON.parse(readFileSync(join(ws, "codemm.json"), "utf8")).current).toBeUndefined();
+    expect(JSON.parse(readFileSync(join(ws, "code-learn.json"), "utf8"))).toMatchObject({ course: "shell-two" });
+    expect(JSON.parse(readFileSync(join(ws, "code-learn.json"), "utf8")).current).toBeUndefined();
     await app.saveRoadmap(ws, "shell", roadmap("shell-io"));
   });
 
@@ -182,12 +182,12 @@ describe.runIf(dockerUp)("app (Docker, end to end)", () => {
     expect(r.recorded).toBe(false);
     expect(readEvents("shell").filter((e) => e.kind === "check" && e.exercise === "many-cases")).toEqual([]);
     expect(readEvents("shell")).toContainEqual(expect.objectContaining({ kind: "assist", exercise: "many-cases" }));
-    expect(JSON.parse(readFileSync(join(ws, "codemm.json"), "utf8")).current).toBe("many-cases");
+    expect(JSON.parse(readFileSync(join(ws, "code-learn.json"), "utf8")).current).toBe("many-cases");
   });
 
   it("records nothing when the track image is gone, and rebuild re-validates every exercise", async () => {
     const before = readEvents("shell").length;
-    const id = JSON.parse(readFileSync(join(process.env.CODEMM_HOME!, "tracks", "shell-io@1", "track.json"), "utf8")).imageId;
+    const id = JSON.parse(readFileSync(join(process.env.CODE_LEARN_HOME!, "tracks", "shell-io@1", "track.json"), "utf8")).imageId;
     await cli(["image", "rm", "-f", id]);
     await expect(app.checkExercise(ws, "max-of-line")).rejects.toThrow(/track rebuild/);
     expect(readEvents("shell")).toHaveLength(before);
@@ -198,7 +198,7 @@ describe.runIf(dockerUp)("app (Docker, end to end)", () => {
 
   it("installs a consented proposal, exactly once, and drops it", async () => {
     const t = appTrack();
-    const files = { ...t, "track.yaml": t["track.yaml"]!.replace("id: shell-io", "id: shell-consent"), Dockerfile: `${t.Dockerfile}LABEL codemm.test=consent\n` };
+    const files = { ...t, "track.yaml": t["track.yaml"]!.replace("id: shell-io", "id: shell-consent"), Dockerfile: `${t.Dockerfile}LABEL code-learn.test=consent\n` };
     expect(await app.proposeTrack(files)).toMatchObject({ proposed: "shell-consent@1" });
     expect(app.listTracks().map((x) => x.track)).not.toContain("shell-consent@1");
     const { digest } = app.listProposals().find((p) => p.track === "shell-consent@1")!;
@@ -216,7 +216,7 @@ describe.runIf(dockerUp)("app (Docker, end to end)", () => {
     expect(app.listExercises(ws, "shell").map((e) => e.exercise)).toContain("bound-save");
     expect(app.listExercises(ws)).toEqual([]);
     expect(existsSync(join(ws, "exercises", "shell", "bound-save", "main.sh"))).toBe(true);
-    expect(JSON.parse(readFileSync(join(ws, "codemm.json"), "utf8")).course).toBe("shell-other");
+    expect(JSON.parse(readFileSync(join(ws, "code-learn.json"), "utf8")).course).toBe("shell-other");
   });
 
   it("runs a lesson's examples in the sandbox before saving it, and runs one again on request without recording", async () => {
@@ -228,7 +228,7 @@ describe.runIf(dockerUp)("app (Docker, end to end)", () => {
     expect(await app.runExample(ws, "echo", 1, "shell")).toEqual({ exit: 0, output: "hello\n", errors: "" });
     await expect(app.runExample(ws, "echo", 2, "shell")).rejects.toThrow(/no example 2/);
     // The example runs as it was checked: with that track and style, even if the roadmap's style changes later.
-    expect(JSON.parse(readFileSync(join(process.env.CODEMM_HOME!, "courses", "shell", "lessons", "echo", "lesson.json"), "utf8"))).toMatchObject({ examples: 1, track: "shell-io@1", style: "io" });
+    expect(JSON.parse(readFileSync(join(process.env.CODE_LEARN_HOME!, "courses", "shell", "lessons", "echo", "lesson.json"), "utf8"))).toMatchObject({ examples: 1, track: "shell-io@1", style: "io" });
     expect(readEvents("shell")).toHaveLength(before);
   });
 });

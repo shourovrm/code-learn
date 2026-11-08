@@ -29,7 +29,7 @@ describe('Terminal', () => {
       ref.current!.write('oops\n', 'stderr');
       ref.current!.line('Time is up.', 'fail');
     });
-    // The pane keeps colors; the mirror keeps the plain text, each Codemm line on its own line.
+    // The pane keeps colors; the mirror keeps the plain text, each code-learn line on its own line.
     expect(xterm.written).toContain('\x1b[32m');
     expect(mirror().textContent).toBe("$ python3 main.py\nWhat's your name? oops\nTime is up.\n");
   });

@@ -1,11 +1,11 @@
 import { createHash, randomBytes } from "node:crypto";
 import { accessSync, constants, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { CodemmError } from "./errors.js";
+import type { CodeLearnError } from "./errors.js";
 import { writeFileMap } from "./files.js";
 import { type RunFolder, runsDir, stageRunFolder } from "./runs.js";
 import { assertRuntime, cli, containerCli, infraKind, inspectRecord, ownedContainers, OWNER_LABEL, ownerGone, removeAbandoned, runSandboxed, runtimeKind } from "./sandbox.js";
-import { codemmHome } from "./store.js";
+import { codeLearnHome } from "./store.js";
 import { prepareWasi, removeSealed, sealReadOnly, startWasi, wasmtime } from "./wasi.js";
 
 /** A small, pinned utility image used only for the network self-test. */
@@ -31,7 +31,7 @@ function pullFailure(name: string, output: string): Check {
   const lines = output.split("\n").map((l) => l.trim()).filter(Boolean);
   const line = (lines.find((l) => PULL_NETWORK.test(l)) ?? lines.at(-1) ?? "").slice(0, 300);
   if (kind === "disk") return { name, ok: false, kind, detail: `Docker ran out of disk space downloading the test image (${line})` };
-  // Codemm's own deadline (the cli's timeout text): a slow connection or a stuck engine, which the words can't tell apart.
+  // code-learn's own deadline (the cli's timeout text): a slow connection or a stuck engine, which the words can't tell apart.
   if (/\(timed out after \d+ ms\)/.test(output)) {
     return { name, ok: false, kind: "docker", detail: "inconclusive: Docker took more than 3 minutes to download the test image. Check the connection and that Docker is responding, then try again." };
   }
@@ -67,7 +67,7 @@ async function pullProbeImage(name: string): Promise<Check | undefined> {
 
 /**
  * Starts a container the way a check does (the full sandbox, a staged run folder mounted read-only) and reads a file
- * back from it, so an engine that can't mount Codemm's folders fails here, not on every check. Undefined when it works.
+ * back from it, so an engine that can't mount code-learn's folders fails here, not on every check. Undefined when it works.
  */
 async function mountProblem(name: string): Promise<Check | undefined> {
   let folder: RunFolder;
@@ -76,7 +76,7 @@ async function mountProblem(name: string): Promise<Check | undefined> {
   } catch (e) {
     // The home isn't writable (or the disk is full): its own row says so, and the rest of doctor still runs.
     const full = (e as NodeJS.ErrnoException).code === "ENOSPC";
-    return { name, ok: false, ...(full ? { kind: "disk" as const } : {}), detail: `Codemm couldn't make a folder for the test in ${codemmHome()} (${(e as Error).message.slice(0, 200)}). Check that it is writable and has free space.` };
+    return { name, ok: false, ...(full ? { kind: "disk" as const } : {}), detail: `code-learn couldn't make a folder for the test in ${codeLearnHome()} (${(e as Error).message.slice(0, 200)}). Check that it is writable and has free space.` };
   }
   try {
     const token = randomBytes(8).toString("hex");
@@ -87,14 +87,14 @@ async function mountProblem(name: string): Promise<Check | undefined> {
     });
     if (r.exit === 0 && r.stdout.toString() === token) return undefined;
     const share =
-      `Codemm keeps what a check mounts in ${runsDir()}. If the engine says it can't see that folder, share it with the engine ` +
+      `code-learn keeps what a check mounts in ${runsDir()}. If the engine says it can't see that folder, share it with the engine ` +
       "(Colima and Rancher Desktop share only your home folder by default), then try again.";
     const reason = r.timedOut ? "it didn't finish in 30 seconds" : firstLine(r.stderr).slice(0, 300);
     // 125 is the engine refusing to start the container, -1 the CLI not starting; anything else ran, and didn't read the file.
     const started = !r.timedOut && r.exit !== 125 && r.exit !== -1;
     const detail = started
-      ? `Docker mounted Codemm's folder into a container, but it couldn't read the test file there (${reason || "the folder was empty"}). ${share}`
-      : `Docker couldn't start a test container with Codemm's folder mounted (${reason || `exit ${r.exit}`}). ${share}`;
+      ? `Docker mounted code-learn's folder into a container, but it couldn't read the test file there (${reason || "the folder was empty"}). ${share}`
+      : `Docker couldn't start a test container with code-learn's folder mounted (${reason || `exit ${r.exit}`}). ${share}`;
     return { name, ok: false, kind: "docker", detail };
   } finally {
     folder.remove();
@@ -113,16 +113,16 @@ function bridgeIp(output: string): string | undefined {
  * The server runs in an ordinary container, not on the host, so the host's firewall never decides the result.
  * If the ordinary container can't reach it either, nothing is proven, and that's reported as a failure.
  * Before that, it fails the way a real check would: the test image can't be downloaded (offline), or the engine
- * can't mount the folders a check stages under Codemm's home.
+ * can't mount the folders a check stages under code-learn's home.
  */
 export async function networkIsolation(): Promise<Check> {
   const name = "network isolation";
   const unusable = (await pullProbeImage(name)) ?? (await mountProblem(name));
   if (unusable) return unusable;
   // Named, so it's removed even when `run` times out before printing its id.
-  const server = `codemm-probe-${process.pid}-${randomBytes(4).toString("hex")}`;
+  const server = `code-learn-probe-${process.pid}-${randomBytes(4).toString("hex")}`;
   try {
-    const started = await cli(["run", "-d", "--rm", "--name", server, "--label", OWNER_LABEL, "--label", `codemm.pid=${process.pid}`, PROBE_IMAGE, "sh", "-c", PROBE_SERVER], 120_000);
+    const started = await cli(["run", "-d", "--rm", "--name", server, "--label", OWNER_LABEL, "--label", `code-learn.pid=${process.pid}`, PROBE_IMAGE, "sh", "-c", PROBE_SERVER], 120_000);
     if (started.exit !== 0) return { name, ok: false, detail: `inconclusive: the test server's container failed (${firstLine(started.output)})` };
     // The whole record as JSON, read here: a template that names a key one Docker version leaves out fails.
     const inspected = await cli(["inspect", "--format", "{{json .}}", server]);
@@ -208,7 +208,7 @@ export async function wasiEngine(): Promise<Check> {
     if (out.endsWith("created")) return { name, ok: false, detail: WASI_UNSAFE };
     return { name, ok: false, detail: `wasmtime couldn't run the test program (${r.timedOut ? "it didn't finish in 30 seconds" : `exit ${r.exit}`})` };
   } catch (e) {
-    return { name, ok: false, ...((e as CodemmError).kind === "disk" ? { kind: "disk" as const } : {}), detail: (e as Error).message };
+    return { name, ok: false, ...((e as CodeLearnError).kind === "disk" ? { kind: "disk" as const } : {}), detail: (e as Error).message };
   } finally {
     removeSealed(folder);
   }
@@ -226,7 +226,7 @@ export function bothEngines(runtime: Check, wasi: Check, noCli: boolean): [Check
   return [runtime, wasi];
 }
 
-/** Abandoned containers are ones whose owning Codemm process is gone; live checks are never touched. */
+/** Abandoned containers are ones whose owning code-learn process is gone; live checks are never touched. */
 async function leftovers(fix: boolean): Promise<Check> {
   const name = "leftover containers";
   let owned: { id: string; pid: number }[];
@@ -237,7 +237,7 @@ async function leftovers(fix: boolean): Promise<Check> {
   }
   const abandoned = owned.filter((c) => ownerGone(c.pid));
   if (abandoned.length === 0) return { name, ok: true, detail: owned.length ? `none abandoned (${owned.length} in use by running checks)` : "none" };
-  if (!fix) return { name, ok: false, detail: `${abandoned.length} abandoned; run codemm doctor --fix` };
+  if (!fix) return { name, ok: false, detail: `${abandoned.length} abandoned; run code-learn doctor --fix` };
   const removed = await removeAbandoned();
   return removed.left === 0
     ? { name, ok: true, detail: `removed ${removed.abandoned}` }
@@ -254,17 +254,17 @@ export async function doctor(fix: boolean): Promise<Check[]> {
     runtime = { name: "container runtime", ok: true, detail: "running" };
   } catch (e) {
     // No CLI, or a configured one that isn't there; any other failure is a Docker that is installed.
-    noCli = (e as CodemmError).code === "no-runtime";
+    noCli = (e as CodeLearnError).code === "no-runtime";
     runtime = { name: "container runtime", ok: false, detail: (e as Error).message };
   }
   const running = runtime.ok;
   checks.push(...bothEngines(runtime, await wasiEngine(), noCli));
   try {
-    mkdirSync(codemmHome(), { recursive: true });
-    accessSync(codemmHome(), constants.W_OK);
-    checks.push({ name: "Codemm home", ok: true, detail: codemmHome() });
+    mkdirSync(codeLearnHome(), { recursive: true });
+    accessSync(codeLearnHome(), constants.W_OK);
+    checks.push({ name: "code-learn home", ok: true, detail: codeLearnHome() });
   } catch {
-    checks.push({ name: "Codemm home", ok: false, detail: `${codemmHome()} isn't writable` });
+    checks.push({ name: "code-learn home", ok: false, detail: `${codeLearnHome()} isn't writable` });
   }
   if (!running) return checks;
   checks.push(await networkIsolation());

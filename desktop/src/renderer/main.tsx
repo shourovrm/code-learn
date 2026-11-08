@@ -9,12 +9,12 @@ import { bridgeClient } from './app/api';
 
 declare global {
   interface Window {
-    codemm: Bridge;
+    codeLearn: Bridge;
   }
 }
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App api={bridgeClient(window.codemm)} />
+    <App api={bridgeClient(window.codeLearn)} />
   </StrictMode>,
 );

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parse, stringify } from 'yaml';
-import { CHANGED, NO_AGENT, PLAN_LIMIT, REBUILD, SIGNED_OUT, type CodemmApi, type CourseView, type JobProgress } from '../shared/api';
+import { CHANGED, NO_AGENT, PLAN_LIMIT, REBUILD, SIGNED_OUT, type CodeLearnApi, type CourseView, type JobProgress } from '../shared/api';
 import { isSafeLink } from './links';
 import { AGENT_INFO } from './connect';
 import { createMock, scenario, SCENARIOS, type MockOptions } from './mock';
@@ -39,7 +39,7 @@ describe('mock naming', () => {
   });
 });
 
-async function settled(api: CodemmApi, until: (c: CourseView) => boolean): Promise<CourseView> {
+async function settled(api: CodeLearnApi, until: (c: CourseView) => boolean): Promise<CourseView> {
   for (let i = 0; i < 10; i++) {
     const c = (await api.course())!;
     if (until(c)) return c;

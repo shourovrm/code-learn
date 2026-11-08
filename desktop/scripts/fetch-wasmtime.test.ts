@@ -10,7 +10,7 @@ import { ASSETS, fetchWasmtime, systemTar, targets } from './fetch-wasmtime.mjs'
 const sha = (b: Buffer) => createHash('sha256').update(b).digest('hex');
 const dirs: string[] = [];
 const temp = () => {
-  const d = mkdtempSync(join(tmpdir(), 'codemm-wasmtime-'));
+  const d = mkdtempSync(join(tmpdir(), 'code-learn-wasmtime-'));
   dirs.push(d);
   return d;
 };

@@ -5,9 +5,9 @@ import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { readGate, watchGates } from './gateFile';
 
-const file = () => join(mkdtempSync(join(tmpdir(), 'codemm-gates-')), 'job.json');
+const file = () => join(mkdtempSync(join(tmpdir(), 'code-learn-gates-')), 'job.json');
 
-describe("core's gate file (codemm mcp --progress)", () => {
+describe("core's gate file (code-learn mcp --progress)", () => {
   it('reads the gate by name, and nothing else', () => {
     const path = file();
     expect(readGate(path)).toBeUndefined();
@@ -20,7 +20,7 @@ describe("core's gate file (codemm mcp --progress)", () => {
   });
 
   it('never throws when the file cannot be removed', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'codemm-gates-'));
+    const dir = mkdtempSync(join(tmpdir(), 'code-learn-gates-'));
     // A folder in the file's place: removing it as a file fails.
     mkdirSync(join(dir, 'job.json', 'inside'), { recursive: true });
     const watch = watchGates(join(dir, 'job.json'), () => undefined, 10);

@@ -25,7 +25,7 @@ function gate() {
 const ran = (t: Test, kind: string) => t.jobs.ran.filter((j) => j.kind === kind).map(boundOf);
 const pause = (ms = 30) => new Promise((r) => setTimeout(r, ms));
 
-describe('live CodemmApi: several courses (§4.13)', () => {
+describe('live CodeLearnApi: several courses (§4.13)', () => {
   it('keeps every approved course and binds learner calls to the one on screen', async () => {
     const t = live();
     const react = await approved(t, 'React');
@@ -257,7 +257,7 @@ describe('live CodemmApi: several courses (§4.13)', () => {
     held = gate();
     const waiting = t.api.ask({ lessonId: 'values-1' }, 'Still there?');
     await t.api.switchCourse(python);
-    expect(await t.api.ask({ lessonId: 'python-values-1' }, 'Quick one?')).toEqual([{ from: 'codemm', text: 'Think about it.' }]);
+    expect(await t.api.ask({ lessonId: 'python-values-1' }, 'Quick one?')).toEqual([{ from: 'code-learn', text: 'Think about it.' }]);
     expect(t.jobs.ran.filter((j) => j.kind === 'tutor').at(-1)!.resume).toBe(`session-${python}`);
     held.open();
     await waiting;

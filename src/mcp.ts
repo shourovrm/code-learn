@@ -3,7 +3,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import * as app from "./app.js";
-import { CodemmError, infraError } from "./errors.js";
+import { CodeLearnError, infraError } from "./errors.js";
 import { assertId, type FileMap, validateFileMap } from "./files.js";
 import { containerCli } from "./sandbox.js";
 import { wasmtimePath } from "./wasi.js";
@@ -11,11 +11,11 @@ import { wasmtimePath } from "./wasi.js";
 type Result = { content: { type: "text"; text: string }[]; isError?: boolean };
 
 /**
- * A failure's tool output. Its first line is always Codemm's own, `codemm:<code, kind or "error">`, so no text the
+ * A failure's tool output. Its first line is always code-learn's own, `code-learn:<code, kind or "error">`, so no text the
  * message quotes (a build log, a runner, the agent's own files) can stand there: callers (the desktop) act on it,
  * never on the wording.
  */
-const failed = (e: CodemmError): Result => ({ isError: true, content: [{ type: "text", text: `codemm:${e.code ?? e.kind ?? "error"}\n${e.message}` }] });
+const failed = (e: CodeLearnError): Result => ({ isError: true, content: [{ type: "text", text: `code-learn:${e.code ?? e.kind ?? "error"}\n${e.message}` }] });
 
 /** Runs a use case and turns its result, or any error, into tool output the agent may see. */
 async function respond(work: () => unknown): Promise<Result> {
@@ -23,19 +23,19 @@ async function respond(work: () => unknown): Promise<Result> {
     const value = await work();
     return { content: [{ type: "text", text: JSON.stringify(value ?? { ok: true }, null, 2) }] };
   } catch (e) {
-    if (e instanceof CodemmError) return failed(e);
+    if (e instanceof CodeLearnError) return failed(e);
     // A write that ran out of space here is this computer's problem, not the agent's.
     if ((e as NodeJS.ErrnoException).code === "ENOSPC") return failed(infraError("This computer ran out of disk space, so nothing was saved. Free some space, then retry.", "host-disk"));
     // Unexpected errors may carry internal data (paths, record contents); never pass their text to the agent.
-    if (process.env.CODEMM_DEBUG === "1") process.stderr.write(`${(e as Error).stack ?? String(e)}\n`);
-    return failed(new CodemmError("Codemm hit an unexpected error. Run `codemm doctor`; set CODEMM_DEBUG=1 for details."));
+    if (process.env.CODE_LEARN_DEBUG === "1") process.stderr.write(`${(e as Error).stack ?? String(e)}\n`);
+    return failed(new CodeLearnError("code-learn hit an unexpected error. Run `code-learn doctor`; set CODE_LEARN_DEBUG=1 for details."));
   }
 }
 
 // Values are checked in the handler, not by the schema: the SDK's own validation error names the offending key, which
 // can be a hidden test or a mutant. validateFileMap reports it through describePath instead.
 const files = z.record(z.string(), z.unknown()).describe('File map: { "relative/path": "file contents as text" }');
-/** A file map from the agent, checked with Codemm's own (redacted) diagnostics. */
+/** A file map from the agent, checked with code-learn's own (redacted) diagnostics. */
 const fileMap = (f: Record<string, unknown>): FileMap => {
   validateFileMap(f as FileMap);
   return f as FileMap;
@@ -51,9 +51,9 @@ export const TOOL_NAMES = [
 /** `--tools a,b`: the only tools this server registers. */
 export function parseToolList(text: string): string[] {
   const names = text.split(",").map((t) => t.trim()).filter((t) => t !== "");
-  if (names.length === 0) throw new CodemmError("--tools needs at least one tool name.");
+  if (names.length === 0) throw new CodeLearnError("--tools needs at least one tool name.");
   for (const name of names) {
-    if (!(TOOL_NAMES as readonly string[]).includes(name)) throw new CodemmError(`Unknown tool "${name}". Use: ${TOOL_NAMES.join(", ")}.`);
+    if (!(TOOL_NAMES as readonly string[]).includes(name)) throw new CodeLearnError(`Unknown tool "${name}". Use: ${TOOL_NAMES.join(", ")}.`);
   }
   return names;
 }
@@ -92,9 +92,9 @@ export type ServerOptions = { course?: string; tools?: string[]; desktop?: boole
 
 export function createServer(ws: string, version: string, { course, tools, desktop, progress, engines }: ServerOptions = {}): McpServer {
   if (course !== undefined) assertId("course", course);
-  if (progress !== undefined && !isAbsolute(progress)) throw new CodemmError("--progress needs an absolute path.");
+  if (progress !== undefined && !isAbsolute(progress)) throw new CodeLearnError("--progress needs an absolute path.");
   const instructions = engineInstructions(engines);
-  const server = new McpServer({ name: "codemm", version }, instructions ? { instructions } : undefined);
+  const server = new McpServer({ name: "code-learn", version }, instructions ? { instructions } : undefined);
   const want = (name: (typeof TOOL_NAMES)[number]) => !tools || tools.includes(name);
 
   if (want("list_tracks")) server.registerTool("list_tracks", { description: "List installed tracks (language or framework environments) with their versions and test styles." }, () =>
@@ -106,7 +106,7 @@ export function createServer(ws: string, version: string, { course, tools, deskt
     desktop
       ? {
           description:
-            "Propose a track: track.yaml, a Dockerfile (a WASI track has none) and probe/ files. Codemm checks the files and asks the learner before building anything. " +
+            "Propose a track: track.yaml, a Dockerfile (a WASI track has none) and probe/ files. code-learn checks the files and asks the learner before building anything. " +
             "It returns the proposed id@version; then end your turn.",
           inputSchema: { files },
         }
@@ -114,7 +114,7 @@ export function createServer(ws: string, version: string, { course, tools, deskt
           description:
             "Install a track: track.yaml, a Dockerfile (a WASI track has none) and probe/ files. Building the image runs the Dockerfile WITH network access " +
             "(a WASI track downloads its toolchain instead), so only install tracks the learner agrees to. " +
-            "Codemm then runs the probes with the network off and installs the track only if every gate passes; otherwise it returns what failed.",
+            "code-learn then runs the probes with the network off and installs the track only if every gate passes; otherwise it returns what failed.",
           inputSchema: { files },
         },
     ({ files: f }) => respond(() => (desktop ? app.proposeTrack(fileMap(f)) : app.saveTrack(fileMap(f)))),
@@ -154,7 +154,7 @@ export function createServer(ws: string, version: string, { course, tools, deskt
     {
       description:
         "Author tool. Save an exercise (exercise.yaml, README.md, starter/, solution/, mutants/<name>/, tests/visible/, tests/hidden/; a quiz: exercise.yaml, README.md, quiz.yaml). " +
-        "Codemm runs every gate and stores it only if all pass. Returns only the exercise id; report nothing else to the tutor.",
+        "code-learn runs every gate and stores it only if all pass. Returns only the exercise id; report nothing else to the tutor.",
       inputSchema: { files },
     },
     ({ files: f }) => respond(() => app.saveExercise(ws, fileMap(f), course, progress ? app.gateProgressTo(progress) : undefined)),
@@ -177,7 +177,7 @@ export function createServer(ws: string, version: string, { course, tools, deskt
     {
       description:
         "Save a lesson for one roadmap concept: Markdown (at most 64 KB) the learner reads before the activity, and up to 5 runnable examples. " +
-        "Each example is a file map with exactly the track's learner files (for unit, plus tests/ files); Codemm runs each in the sandbox with no input and it must exit 0. " +
+        "Each example is a file map with exactly the track's learner files (for unit, plus tests/ files); code-learn runs each in the sandbox with no input and it must exit 0. " +
         "Place example N in the Markdown as a fenced block with info string example whose only line is N. An example that needs input goes in a plain code block. " +
         "Diagrams and charts go in fenced blocks with info string mermaid (flowchart, sequenceDiagram, stateDiagram-v2, classDiagram, pie, xychart), only when a picture teaches better than words; give each an accTitle and accDescr for screen readers. " +
         "The id must be new in the course.",

@@ -1,4 +1,4 @@
-import { CodemmError, infraError } from "../errors.js";
+import { CodeLearnError, infraError } from "../errors.js";
 import { assertPortablePaths, type FileMap, validateFileMap } from "../files.js";
 import { checkTrackFiles, type TrackProgress, verifyExercise, verifyTrack } from "../gates.js";
 import { type Expected, expectedDigest } from "../grading.js";
@@ -29,7 +29,7 @@ function readTrackSpec(files: FileMap) {
 function alreadyInstalled(ref: string, version: number, files: FileMap): boolean {
   if (!store.readTrack(ref)) return false;
   if (JSON.stringify(sorted(store.readTrackFiles(ref))) === JSON.stringify(sorted(files))) return true;
-  throw new CodemmError(`${ref} is already installed with different files. Save your changes as version ${version + 1}.`);
+  throw new CodeLearnError(`${ref} is already installed with different files. Save your changes as version ${version + 1}.`);
 }
 
 /** Gates 2 to 5, then an atomic install. Call while holding the track lock. */
@@ -53,7 +53,7 @@ async function install(ref: string, files: FileMap, onProgress?: (p: TrackProgre
  */
 function assertEngineHere(spec: TrackSpec): void {
   if (spec.wasi || hasContainerCli() || !wasmtimePath()) return;
-  throw new CodemmError(
+  throw new CodeLearnError(
     "This computer has no container runtime, so a Docker track can't run here, but it has wasmtime. Write a WASI track " +
       "instead: a wasi block in track.yaml naming a WASI build of the language's interpreter, and no Dockerfile (see the track rules).",
   );
@@ -76,7 +76,7 @@ function assertCoursesFit(ref: string, styles: string[]): void {
   for (const id of store.listCourses()) {
     const course = store.readCourse(id);
     if (course?.track === ref && course.style !== "none" && !styles.includes(course.style)) {
-      throw new CodemmError(`Course "${id}" needs style "${course.style}", but ${ref} offers ${styles.join(", ")}. Add ${course.style} to the track's styles, with its probes.`);
+      throw new CodeLearnError(`Course "${id}" needs style "${course.style}", but ${ref} offers ${styles.join(", ")}. Add ${course.style} to the track's styles, with its probes.`);
     }
   }
 }
@@ -98,7 +98,7 @@ const sorted = (map: FileMap) => Object.fromEntries(Object.entries(map).sort(([a
 
 // ---------- setup proposals (desktop) ----------
 //
-// In the desktop app, save_track only proposes. The learner consents in Codemm, and installProposal
+// In the desktop app, save_track only proposes. The learner consents in code-learn, and installProposal
 // builds exactly the files they were shown, identified by digest.
 
 export async function proposeTrack(files: FileMap): Promise<{ installed: string; unchanged: true } | { proposed: string; note: string }> {
@@ -110,18 +110,18 @@ export async function proposeTrack(files: FileMap): Promise<{ installed: string;
   // A WASI track's toolchain is asked for its headers only: one the server says isn't there is refused at once.
   if (spec.wasi) {
     if (await toolchainMissing(spec.wasi.url)) {
-      throw new CodemmError(`wasi.url (${spec.wasi.url}) isn't there: the server answered that it has no such file. Use a link to a file that exists (check its release page), then call save_track again.`);
+      throw new CodeLearnError(`wasi.url (${spec.wasi.url}) isn't there: the server answered that it has no such file. Use a link to a file that exists (check its release page), then call save_track again.`);
     }
   } else {
     const missing = await missingBaseImages(files.Dockerfile ?? "");
     if (missing.length) {
-      throw new CodemmError(`The Dockerfile builds from ${missing.join(" and ")}, which the registry doesn't have. Use an image and tag that exist (check its page on the registry), then call save_track again.`);
+      throw new CodeLearnError(`The Dockerfile builds from ${missing.join(" and ")}, which the registry doesn't have. Use an image and tag that exist (check its page on the registry), then call save_track again.`);
     }
   }
   return store.withLock(store.trackLockPath(spec.id), async () => {
     if (alreadyInstalled(ref, spec.version, files)) return { installed: ref, unchanged: true as const };
     store.writeProposal(ref, files);
-    return { proposed: ref, note: "The learner decides in Codemm. End your turn." };
+    return { proposed: ref, note: "The learner decides in code-learn. End your turn." };
   });
 }
 
@@ -148,14 +148,14 @@ export async function installProposal(ref: string, digest: string, onProgress?: 
     const files = store.readProposal(ref, digest);
     const read = files && store.fileMapDigest(files) === digest ? readTrackSpec(files) : undefined;
     if (!files || read?.ref !== ref) {
-      throw new CodemmError(`The proposal for ${ref} changed or is gone, so it needs the learner's consent again.`);
+      throw new CodeLearnError(`The proposal for ${ref} changed or is gone, so it needs the learner's consent again.`);
     }
     if (alreadyInstalled(ref, version, files)) {
       store.dropProposals(ref);
       return { installed: ref, unchanged: true as const };
     }
     // An image needs this room; a WASI toolchain checks its own, smaller, need as it downloads.
-    if (!read.spec.wasi) store.assertFreeSpace(store.codemmHome());
+    if (!read.spec.wasi) store.assertFreeSpace(store.codeLearnHome());
     const result = await install(ref, files, quietly(onProgress));
     store.dropProposals(ref);
     return result;
@@ -181,7 +181,7 @@ export async function rebuildTrack(ref: string): Promise<{ rebuilt: string; exer
     // Build under a candidate tag; the installed tag and ID stay untouched unless every gate passes.
     const candidate = `${old.image}-candidate`;
     const verified = await verifyTrack(store.readTrackFiles(ref), candidate, undefined, { rebuild: true });
-    if (!("imageId" in verified)) throw new CodemmError(`${ref} is installed as a Docker track, but its files now describe a WASI track.`);
+    if (!("imageId" in verified)) throw new CodeLearnError(`${ref} is installed as a Docker track, but its files now describe a WASI track.`);
     const track: TrackRecord = { ...old, imageId: verified.imageId };
     let count: number;
     try {
@@ -226,7 +226,7 @@ async function recheckExercises(ref: string, track: TrackRecord, what: "image" |
         }
       } catch (e) {
         // This computer's Docker, disk or network failing isn't the track behaving differently.
-        if (e instanceof CodemmError && (e.kind === "docker" || e.kind === "disk" || e.kind === "offline")) throw e;
+        if (e instanceof CodeLearnError && (e.kind === "docker" || e.kind === "disk" || e.kind === "offline")) throw e;
         changed.push(`${courseId}/${ex.slug}: ${(e as Error).message.split("\n")[0]}`);
       }
     }
@@ -234,7 +234,7 @@ async function recheckExercises(ref: string, track: TrackRecord, what: "image" |
   if (changed.length > 0) {
     // A toolchain is its digest, so only this computer's wasmtime can have changed: there is nothing else to fall back to.
     const outcome = what === "image" ? "so it wasn't accepted" : "on this computer's wasmtime";
-    throw new CodemmError(`The rebuilt ${what} behaves differently, ${outcome}:\n${changed.join("\n")}`);
+    throw new CodeLearnError(`The rebuilt ${what} behaves differently, ${outcome}:\n${changed.join("\n")}`);
   }
   return count;
 }

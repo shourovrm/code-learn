@@ -184,7 +184,7 @@ describe("verifyExercise's io test files", () => {
   const fixtures = join(import.meta.dirname, "fixtures");
   const track: TrackRecord = {
     format_version: 1, id: "shell-io", version: 1, styles: ["io"], files: ["main.sh"], run: "sh main.sh",
-    limits: { time_ms: 2000, memory_mb: 128 }, image: "codemm-track-shell-io:1", imageId: "sha256:none", installedAt: "now",
+    limits: { time_ms: 2000, memory_mb: 128 }, image: "code-learn-track-shell-io:1", imageId: "sha256:none", installedAt: "now",
   };
   const course: CourseRecord = { format_version: 1, course: "demo", ...parseRoadmapYaml(readFileSync(join(fixtures, "roadmaps", "shell-io.yaml"), "utf8")) };
   const files = () => readFileMap(join(fixtures, "exercises", "io-max"));

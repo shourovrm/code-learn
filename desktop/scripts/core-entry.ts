@@ -11,11 +11,11 @@ export { RUNTIME_INFO, runtimeState } from '../../src/sandbox';
 export { readWorkspace } from '../../src/store';
 export { JOB_BRIEFS } from '../../src/templates';
 
-/** A runtime that runs none of Codemm's containers: missing, not running, or on Windows containers. */
+/** A runtime that runs none of code-learn's containers: missing, not running, or on Windows containers. */
 const NONE_RUNNING = new Set(['no-runtime', 'runtime-down', 'runtime-paused', 'socket-permission', 'runtime-context', 'windows-containers']);
 
 /**
- * Removes only containers whose owning Codemm process is gone, and fails if any of them is still there. Listing them
+ * Removes only containers whose owning code-learn process is gone, and fails if any of them is still there. Listing them
  * already asked the runtime when it failed, so its code says whether it runs none (no failure); any other failure (a
  * timeout under load, a busy runtime) is one.
  */

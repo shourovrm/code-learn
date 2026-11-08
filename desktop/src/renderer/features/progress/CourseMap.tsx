@@ -91,7 +91,7 @@ const dollars = (n: number) => (n < 0.01 ? 'under $0.01' : `$${n.toFixed(2)}`);
 
 /**
  * What the agent estimated the course has cost so far, once it reported a cost (§4.12). Only the estimate: token
- * counts are the agent's bookkeeping, agent names stay on the connect screen, and Codemm can't tell a plan from an
+ * counts are the agent's bookkeeping, agent names stay on the connect screen, and code-learn can't tell a plan from an
  * API key, so it says nothing about billing.
  */
 function UsageCard({ cost }: { cost: number }) {

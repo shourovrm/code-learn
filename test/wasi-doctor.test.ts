@@ -4,11 +4,11 @@ import { bothEngines, type Check, doctor, WASI_UNSAFE, wasiEngine } from "../src
 import { tempDir } from "./temp.js";
 import { wasmtimeUp } from "./wasi-engine.js";
 
-/** `codemm doctor` shows both engines (DESIGN §4.5): a missing one fails only when the other can't run checks either. */
+/** `code-learn doctor` shows both engines (DESIGN §4.5): a missing one fails only when the other can't run checks either. */
 
 afterEach(() => vi.unstubAllEnvs());
-const noWasmtime = () => vi.stubEnv("CODEMM_WASMTIME", join(tempDir(), "no-wasmtime"));
-const noRuntime = () => vi.stubEnv("CODEMM_CONTAINER_CLI", join(tempDir(), "no-docker"));
+const noWasmtime = () => vi.stubEnv("CODE_LEARN_WASMTIME", join(tempDir(), "no-wasmtime"));
+const noRuntime = () => vi.stubEnv("CODE_LEARN_CONTAINER_CLI", join(tempDir(), "no-docker"));
 const row = (checks: Check[], name: string) => checks.find((c) => c.name === name);
 
 describe("the WASI engine's row", () => {

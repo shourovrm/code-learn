@@ -21,12 +21,12 @@ const DEPTHS: [Depth, string][] = [
   ['in-depth', 'In depth'],
 ];
 
-/** Any language or framework. Codemm asks what the learner already knows, and how deep to go. */
+/** Any language or framework. code-learn asks what the learner already knows, and how deep to go. */
 export function Goal() {
   const { go } = useRouter();
   const api = useApi();
   const { data: tracks } = useLoad(() => api.tracks(), []);
-  // A roadmap not approved yet: the learner left it, or Codemm was closed (§4.2).
+  // A roadmap not approved yet: the learner left it, or code-learn was closed (§4.2).
   const { data: draft } = useLoad(() => api.draft(), []);
   const [topic, setTopic] = useState('');
   const [known, setKnown] = useState('');
@@ -81,7 +81,7 @@ export function Goal() {
           </Banner>
         )}
         {isNew && practice === 'code' && (
-          <Banner art={<Emm mood="look" width={56} />}><b>{shown} isn't set up yet.</b> Codemm will set it up.</Banner>
+          <Banner art={<Emm mood="look" width={56} />}><b>{shown} isn't set up yet.</b> code-learn will set it up.</Banner>
         )}
       </form>
     </main>

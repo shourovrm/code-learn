@@ -6,7 +6,7 @@ const windows = process.platform === 'win32';
 
 /** A fake Claude Code written in JavaScript, installed the way npm installs one. */
 export function fakeAgent(): string {
-  const dir = tempDir('codemm-agent-');
+  const dir = tempDir('code-learn-agent-');
   const script = `#!/usr/bin/env node
 const args = process.argv.slice(2).join(' ');
 if (args === '--version') console.log('2.1.283 (Claude Code)');

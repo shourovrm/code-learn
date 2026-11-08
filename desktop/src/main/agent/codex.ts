@@ -1,4 +1,4 @@
-// Codex: launching a headless turn with Codemm's MCP server, and reading its JSON stream (DESIGN §3.1).
+// Codex: launching a headless turn with code-learn's MCP server, and reading its JSON stream (DESIGN §3.1).
 import type { AgentCli, AgentEvent } from './agents';
 import { count, json, obj, plain, progress, readOf, searchOf, stepOf, str, textOf, versionRead } from './stream';
 
@@ -20,16 +20,16 @@ export const codex: AgentCli = {
       'sandbox_mode="read-only"',
       // Only research, review and setup may search the web (§3.2): setup finds a WASI build's release file. Codex 0.156 accepts disabled, cached, indexed or live.
       ...(web ? [] : ['web_search="disabled"']),
-      `mcp_servers.codemm.command=${toml(server.command)}`,
-      `mcp_servers.codemm.args=${toml(server.args)}`,
-      `mcp_servers.codemm.env=${toml(server.env ?? {})}`,
-      `mcp_servers.codemm.enabled_tools=${toml(tools)}`,
+      `mcp_servers.code-learn.command=${toml(server.command)}`,
+      `mcp_servers.code-learn.args=${toml(server.args)}`,
+      `mcp_servers.code-learn.env=${toml(server.env ?? {})}`,
+      `mcp_servers.code-learn.enabled_tools=${toml(tools)}`,
       // Safe only because enabled_tools limits approval to the job's tools.
-      'mcp_servers.codemm.default_tools_approval_mode="approve"',
+      'mcp_servers.code-learn.default_tools_approval_mode="approve"',
       // Without it, Codex runs on without tools when the server can't start.
-      'mcp_servers.codemm.required=true',
+      'mcp_servers.code-learn.required=true',
       // Codex's default is 60 s, shorter than a build or the gates.
-      ...(toolTimeoutSec ? [`mcp_servers.codemm.tool_timeout_sec=${toolTimeoutSec}`] : []),
+      ...(toolTimeoutSec ? [`mcp_servers.code-learn.tool_timeout_sec=${toolTimeoutSec}`] : []),
     ]) {
       args.push('-c', c);
     }
@@ -56,7 +56,7 @@ export const codex: AgentCli = {
       return progress(queries.flatMap(searchOf));
     }
     if (item?.type === 'mcp_tool_call' && str(item.id) && str(item.server) && str(item.tool)) {
-      if (e.type === 'item.started') return [{ type: 'tool_call', id: item.id, name: `${item.server}.${item.tool}` }, ...(item.server === 'codemm' ? progress(stepOf(item.tool)) : [])];
+      if (e.type === 'item.started') return [{ type: 'tool_call', id: item.id, name: `${item.server}.${item.tool}` }, ...(item.server === 'code-learn' ? progress(stepOf(item.tool)) : [])];
       if (e.type === 'item.completed') {
         const error = item.status !== 'completed' || item.error != null;
         const failure = (item.error as { message?: unknown } | null)?.message ?? (item.result as { content?: unknown } | null)?.content;

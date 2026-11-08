@@ -3,7 +3,7 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { StringDecoder } from "node:string_decoder";
-import { CodemmError, infraError } from "./errors.js";
+import { CodeLearnError, infraError } from "./errors.js";
 import { type FileMap, writeFileMap } from "./files.js";
 import { learnerPaths } from "./grading.js";
 import { BUILD_SECONDS, type JudgeTrack, seconds, type WasiToolchain } from "./judge.js";
@@ -23,21 +23,21 @@ export const RUN_LIMIT_MS = 120_000;
 // mislabels the program's own unrecorded run. If `sleep` fails, the watchdog stays quiet and the host deadline stops
 // the run instead; grading checks for `sleep`, so an installed track has it. A shell reports a killed command
 // ("Killed") on the stderr that command was given, so the program takes the real stderr back itself (from fd 3) while
-// the driver's goes to /dev/null as it waits: Codemm's own "time's up" is the only word on it.
-const PROGRAM_DRIVER = `mark() { printf '\\n@@codemm-run %s\\n' "$*" >&2; }
+// the driver's goes to /dev/null as it waits: code-learn's own "time's up" is the only word on it.
+const PROGRAM_DRIVER = `mark() { printf '\\n@@code-learn-run %s\\n' "$*" >&2; }
 limited() {
   ( sleep "$2" 2>/dev/null && { mark timeout "$1"; kill -9 -1 2>/dev/null; } ) &
   w=$!
   { sh -c "exec 2>&3 3>&-; $3"; c=$?; } 3>&2 2>/dev/null
   kill -9 "$w" 2>/dev/null; kill -9 -1 2>/dev/null
 }
-if [ -n "\${CODEMM_BUILD:-}" ]; then
+if [ -n "\${CODE_LEARN_BUILD:-}" ]; then
   mark start build
-  limited build "$CODEMM_BUILD_S" "$CODEMM_BUILD"
+  limited build "$CODE_LEARN_BUILD_S" "$CODE_LEARN_BUILD"
   if [ "$c" != 0 ]; then mark end build "$c"; exit 0; fi
 fi
 mark start run
-limited run "$CODEMM_TIME_S" "$CODEMM_RUN"
+limited run "$CODE_LEARN_TIME_S" "$CODE_LEARN_RUN"
 mark end run "$c"
 exit 0`;
 
@@ -56,7 +56,7 @@ export type ProgramOptions = { limitMs?: number; buildLimitMs?: number; onStart?
  * files are mounted, never tests. The build, then the run command, in the full sandbox, time-limited. Not graded.
  */
 export function runProgram(track: JudgeTrack, src: FileMap, output: (text: string, stream: "stdout" | "stderr") => void, limits: ProgramOptions = {}): ProgramRun {
-  if (!track.run) throw new CodemmError("This track has no run command, so Run isn't available.");
+  if (!track.run) throw new CodeLearnError("This track has no run command, so Run isn't available.");
   const limitMs = limits.limitMs ?? RUN_LIMIT_MS;
   if (track.wasi) return runWasiProgram(track, track.wasi, src, output, limitMs, limits.onStart);
   const buildLimitMs = limits.buildLimitMs ?? BUILD_SECONDS * 1000;
@@ -92,8 +92,8 @@ export function runProgram(track: JudgeTrack, src: FileMap, output: (text: strin
   let started: ReturnType<typeof startSandboxed>;
   try {
     writeFileMap(join(dir, "src"), src);
-    const env: Record<string, string> = { CODEMM_RUN: track.run, CODEMM_TIME_S: seconds(limitMs), CODEMM_BUILD_S: seconds(buildLimitMs) };
-    if (track.build) env.CODEMM_BUILD = track.build;
+    const env: Record<string, string> = { CODE_LEARN_RUN: track.run, CODE_LEARN_TIME_S: seconds(limitMs), CODE_LEARN_BUILD_S: seconds(buildLimitMs) };
+    if (track.build) env.CODE_LEARN_BUILD = track.build;
     started = startSandboxed(
       {
         image: track.image,
@@ -116,10 +116,10 @@ export function runProgram(track: JudgeTrack, src: FileMap, output: (text: strin
       markers.write(decoders.stderr.end());
       markers.end();
       errors.end();
-      // What Codemm stopped first: the learner, the host deadline or the output cap. It's the program's doing, even when
+      // What code-learn stopped first: the learner, the host deadline or the output cap. It's the program's doing, even when
       // removing its container was slow.
       if (stopped || r.timedOut || r.flooded) return { exit: r.exit, timedOut: r.timedOut, flooded: r.flooded, ...(stopped ? { stopped } : {}) };
-      if (r.cleanupFailed) throw infraError("A run container couldn't be removed. Run `codemm doctor --fix`, then retry.", "container-remove");
+      if (r.cleanupFailed) throw infraError("A run container couldn't be removed. Run `code-learn doctor --fix`, then retry.", "container-remove");
       if (ended) {
         // The watchdog's marker says the stage timed out. Otherwise a 137 may be the memory limit killing the program while the driver went on.
         const timedOut = timedOutIn === ended.stage;
@@ -152,7 +152,7 @@ export function runProgram(track: JudgeTrack, src: FileMap, output: (text: strin
 
 /**
  * Run on the WASI engine (DESIGN §4.5): the checks a set gets, then the run command alone (a WASI track has no build),
- * with typed stdin, the same flags as a check and the learner's files sealed read-only. Here Codemm's own kill is the
+ * with typed stdin, the same flags as a check and the learner's files sealed read-only. Here code-learn's own kill is the
  * time limit and the engine's timer backs it up a second later, so a stop at the limit never puts wasmtime's report
  * of it on the learner's screen. When this wasmtime has no compiled module yet, it is compiled first, and typing
  * before the program starts waits for it (at most 1 MB, as unread input does).
@@ -252,10 +252,10 @@ export function learnerPathStream(out: (text: string) => void) {
   };
 }
 
-const MARK = "\n@@codemm-run ";
+const MARK = "\n@@code-learn-run ";
 
 /**
- * Splits the driver's markers ("\n@@codemm-run <fields>\n") out of Run's stderr as it streams. The program's own
+ * Splits the driver's markers ("\n@@code-learn-run <fields>\n") out of Run's stderr as it streams. The program's own
  * text passes through at once, except a tail that could still become a marker, which waits for the next chunk.
  */
 export function runMarkers(onText: (text: string) => void, onMarker: (fields: string[]) => void) {

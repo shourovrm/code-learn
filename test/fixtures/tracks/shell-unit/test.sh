@@ -1,5 +1,5 @@
 #!/bin/sh
-# Runs every $TESTS/*.sh against /work/src/lib.sh and writes a Codemm report to $OUT.
+# Runs every $TESTS/*.sh against /work/src/lib.sh and writes a code-learn report to $OUT.
 first=1
 printf '{"tests":[' > "$OUT"
 for t in "$TESTS"/*.sh; do

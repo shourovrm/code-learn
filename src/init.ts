@@ -1,13 +1,13 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parse as parseToml } from "smol-toml";
-import { CodemmError } from "./errors.js";
+import { CodeLearnError } from "./errors.js";
 import { refuseSymlinks, withWorkspaceLock, writeTextAtomic } from "./store.js";
 import { AGENTS_END, AGENTS_SECTION, AGENTS_START, AUTHOR_AGENT } from "./templates.js";
 
 export const HOSTS = ["claude", "codex", "cursor"] as const;
 export type Host = (typeof HOSTS)[number];
-/** How a host should start Codemm: an absolute command plus leading args (e.g. node + cli.js). */
+/** How a host should start code-learn: an absolute command plus leading args (e.g. node + cli.js). */
 export type Launcher = { command: string; args: string[] };
 
 const HOOK_MATCHER = "Edit|Write|MultiEdit|NotebookEdit";
@@ -26,7 +26,7 @@ function readJson(ws: string, rel: string): Record<string, any> {
   } catch {
     // fall through
   }
-  throw new CodemmError(`Can't update ${rel}: it isn't a valid JSON object. Fix it, then run codemm init again.`);
+  throw new CodeLearnError(`Can't update ${rel}: it isn't a valid JSON object. Fix it, then run code-learn init again.`);
 }
 
 function withSection(existing: string): string {
@@ -36,8 +36,8 @@ function withSection(existing: string): string {
   return existing ? `${existing.replace(/\n*$/, "\n\n")}${AGENTS_SECTION}` : AGENTS_SECTION;
 }
 
-// A table header for the codemm server: [mcp_servers.codemm], with optional spaces, quotes and a trailing comment.
-const CODEMM_TABLE = /^\s*\[\s*mcp_servers\s*\.\s*(?:codemm|"codemm"|'codemm')\s*\]\s*(?:#.*)?$/;
+// A table header for the code-learn server: [mcp_servers.code-learn], with optional spaces, quotes and a trailing comment.
+const CODE_LEARN_TABLE = /^\s*\[\s*mcp_servers\s*\.\s*(?:code-learn|"code-learn"|'code-learn')\s*\]\s*(?:#.*)?$/;
 const ANY_TABLE = /^\s*\[/;
 
 /**
@@ -52,15 +52,15 @@ function withCodexServer(existing: string, launcher: Launcher, ws: string): stri
   try {
     before = parseToml(existing) as Record<string, any>;
   } catch (e) {
-    throw new CodemmError(`Can't update .codex/config.toml: it isn't valid TOML (${(e as Error).message.split("\n")[0]}). Fix it, then run codemm init again.`);
+    throw new CodeLearnError(`Can't update .codex/config.toml: it isn't valid TOML (${(e as Error).message.split("\n")[0]}). Fix it, then run code-learn init again.`);
   }
-  const block = `[mcp_servers.codemm]\ncommand = ${JSON.stringify(launcher.command)}\nargs = [${[...launcher.args, "mcp", "--workspace", ws].map((a) => JSON.stringify(a)).join(", ")}]\ntool_timeout_sec = ${CODEX_TOOL_TIMEOUT_SEC}\n`;
+  const block = `[mcp_servers.code-learn]\ncommand = ${JSON.stringify(launcher.command)}\nargs = [${[...launcher.args, "mcp", "--workspace", ws].map((a) => JSON.stringify(a)).join(", ")}]\ntool_timeout_sec = ${CODEX_TOOL_TIMEOUT_SEC}\n`;
   const lines = existing.split("\n");
-  const start = lines.findIndex((l) => CODEMM_TABLE.test(l));
+  const start = lines.findIndex((l) => CODE_LEARN_TABLE.test(l));
   let next: string;
   if (start < 0) {
-    if (before.mcp_servers?.codemm !== undefined) {
-      throw new CodemmError("Can't update .codex/config.toml: mcp_servers.codemm is defined in a form codemm init can't edit. Remove it, then run codemm init again.");
+    if (before.mcp_servers?.["code-learn"] !== undefined) {
+      throw new CodeLearnError("Can't update .codex/config.toml: mcp_servers.code-learn is defined in a form code-learn init can't edit. Remove it, then run code-learn init again.");
     }
     next = existing ? `${existing.replace(/\n*$/, "\n\n")}${block}` : block;
   } else {
@@ -72,7 +72,7 @@ function withCodexServer(existing: string, launcher: Launcher, ws: string): stri
   }
   // Never write TOML we can't read back.
   const after = parseToml(next) as Record<string, any>;
-  if (after.mcp_servers?.codemm?.command !== launcher.command) throw new CodemmError("Couldn't update .codex/config.toml safely. Add the codemm server by hand.");
+  if (after.mcp_servers?.["code-learn"]?.command !== launcher.command) throw new CodeLearnError("Couldn't update .codex/config.toml safely. Add the code-learn server by hand.");
   return next;
 }
 
@@ -88,12 +88,12 @@ const hookArgs = (ws: string) => ["hook", "claude", "--workspace", ws];
 
 function withHook(settings: Record<string, any>, entry: Record<string, unknown>, ws: string): Record<string, any> {
   const hooks = settings.hooks ?? {};
-  if (!isObject(hooks)) throw new CodemmError("Can't update .claude/settings.json: hooks must be an object.");
+  if (!isObject(hooks)) throw new CodeLearnError("Can't update .claude/settings.json: hooks must be an object.");
   const groups = hooks.PreToolUse ?? [];
   if (!Array.isArray(groups) || !groups.every((g) => isObject(g) && Array.isArray(g.hooks ?? []))) {
-    throw new CodemmError("Can't update .claude/settings.json: hooks.PreToolUse must be a list of hook groups.");
+    throw new CodeLearnError("Can't update .claude/settings.json: hooks.PreToolUse must be a list of hook groups.");
   }
-  // Remove only Codemm's own entries for this workspace; keep every other hook and the group around it.
+  // Remove only code-learn's own entries for this workspace; keep every other hook and the group around it.
   const ours = (h: any) =>
     (typeof h?.command === "string" && h.command.endsWith(` hook claude --workspace ${shellQuote(ws)}`)) ||
     (Array.isArray(h?.args) && JSON.stringify(h.args.slice(-4)) === JSON.stringify(hookArgs(ws)));
@@ -105,8 +105,8 @@ function withHook(settings: Record<string, any>, entry: Record<string, unknown>,
 
 function withServer(config: Record<string, any>, rel: string, server: Record<string, unknown>): Record<string, any> {
   const servers = config.mcpServers ?? {};
-  if (!isObject(servers)) throw new CodemmError(`Can't update ${rel}: mcpServers must be an object.`);
-  return { ...config, mcpServers: { ...servers, codemm: server } };
+  if (!isObject(servers)) throw new CodeLearnError(`Can't update ${rel}: mcpServers must be an object.`);
+  return { ...config, mcpServers: { ...servers, "code-learn": server } };
 }
 
 /**
@@ -123,7 +123,7 @@ function prepareAndWrite(ws: string, hosts: Host[], launcher: Launcher, platform
   const mcpArgs = [...launcher.args, "mcp", "--workspace", ws];
   const files: [string, string][] = [
     ["AGENTS.md", withSection(readText(ws, "AGENTS.md"))],
-    [".claude/agents/codemm-author.md", AUTHOR_AGENT],
+    [".claude/agents/code-learn-author.md", AUTHOR_AGENT],
   ];
 
   if (chosen.has("claude")) {

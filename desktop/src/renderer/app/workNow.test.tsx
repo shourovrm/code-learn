@@ -7,7 +7,7 @@ import { jobAt, jobBus, mockWithCourse, mockWithRoadmap, renderApp } from '../te
 const TOPIC = 'javascript-basics';
 const GOAL = { topic: 'React', known: '', depth: 'standard' as const, practice: 'code' as const };
 const sidebar = () => screen.getByRole('navigation', { name: 'Main' });
-const working = () => within(sidebar()).queryByRole('list', { name: 'Codemm is working' });
+const working = () => within(sidebar()).queryByRole('list', { name: 'code-learn is working' });
 /** What each listed job says, in order: what it is, then its stage. */
 const names = () => within(working()!).getAllByRole('button').map((b) => b.getAttribute('aria-label'));
 const goTo = (user: ReturnType<typeof userEvent.setup>, place: 'Learn' | 'Tracks') => user.click(within(sidebar()).getByRole('button', { name: place }));
@@ -120,7 +120,7 @@ describe('running jobs in the sidebar (§4.11)', () => {
     const tell = jobBus(api);
     renderApp({ to: 'tracks' }, api);
     await screen.findByRole('heading', { name: 'Tracks' });
-    // A proposing agent ends its turn while Codemm's install runs.
+    // A proposing agent ends its turn while code-learn's install runs.
     act(() => tell(jobAt('proposal', 'setup', { stage: 0 })));
     act(() => tell(jobAt('install', 'setup', { stage: 1, part: { done: 3, total: 7 }, thinking: false })));
     act(() => tell(jobAt('turn', 'tutor', { stage: 0 })));

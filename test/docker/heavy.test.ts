@@ -11,8 +11,8 @@ import { dockerUp, FIXTURES, fixtureTrack } from "./helpers.js";
 
 // Heavy tests (DESIGN §4.3): a million numbers in and out, seconds of CPU per test, and a JVM build tool run offline.
 // Each logs how long it took. The JVM track's image is about 600 MB with its Maven cache, so it runs only when asked
-// (CODEMM_BIG_IMAGES=1, as CI does) and is removed afterwards.
-const bigImages = process.env.CODEMM_BIG_IMAGES === "1";
+// (CODE_LEARN_BIG_IMAGES=1, as CI does) and is removed afterwards.
+const bigImages = process.env.CODE_LEARN_BIG_IMAGES === "1";
 
 const course = (name: string): CourseRecord => ({ format_version: 1, course: "demo", ...parseRoadmapYaml(readFileSync(join(FIXTURES, "roadmaps", `${name}.yaml`), "utf8")) });
 const exercise = (name: string): FileMap => readFileMap(join(FIXTURES, "exercises", name));
@@ -36,7 +36,7 @@ describe.runIf(dockerUp)("heavy tests (Docker)", () => {
   describe("io: big inputs and outputs, slow cases", () => {
     let heavy: DockerTrack;
     beforeAll(async () => {
-      heavy = record(await timed("heavy-io: track install", () => verifyTrack(fixtureTrack("heavy-io").files, "codemm-test-heavy-io:1")));
+      heavy = record(await timed("heavy-io: track install", () => verifyTrack(fixtureTrack("heavy-io").files, "code-learn-test-heavy-io:1")));
     }, LONG);
 
     it("gates an exercise with a million generated numbers in and out, recording the long output by its digest", async () => {
@@ -91,10 +91,10 @@ describe.runIf(dockerUp)("heavy tests (Docker)", () => {
   describe.runIf(bigImages)("unit: a Maven and JUnit track, offline", () => {
     let java: DockerTrack;
     beforeAll(async () => {
-      java = record(await timed("java-maven: track install (build and probes)", () => verifyTrack(fixtureTrack("java-maven").files, "codemm-test-java-maven:1")));
+      java = record(await timed("java-maven: track install (build and probes)", () => verifyTrack(fixtureTrack("java-maven").files, "code-learn-test-java-maven:1")));
     }, LONG);
     afterAll(async () => {
-      await cli(["image", "rm", "codemm-test-java-maven:1"]);
+      await cli(["image", "rm", "code-learn-test-java-maven:1"]);
     });
 
     it("gates a unit exercise, every test run offline in the sandbox", async () => {

@@ -29,8 +29,8 @@ describe('views (§2.2, D4)', () => {
     expect(setupWhy('Gate "build" failed: the image didn\'t build.\nIt printed:\nCANARY-BUILD-LOG')).toBe("The last try didn't build.");
     expect(setupWhy('Gate "probe pass" failed: the io pass probe should pass every test:\n  01: fail')).toBe("The last try built, but its tests didn't work.");
     expect(setupWhy('Gate "valid" failed: track.yaml must name a test command.')).toBe("The last try's files weren't valid.");
-    expect(setupWhy('The track image is missing a tool Codemm needs: sh, timeout.')).toBe("The last try didn't pass Codemm's checks.");
-    expect(setupWhy('Gate "CANARY" failed: x')).toBe("The last try didn't pass Codemm's checks.");
+    expect(setupWhy('The track image is missing a tool code-learn needs: sh, timeout.')).toBe("The last try didn't pass code-learn's checks.");
+    expect(setupWhy('Gate "CANARY" failed: x')).toBe("The last try didn't pass code-learn's checks.");
     expect(setupWhy(undefined)).toBeUndefined();
   });
 
@@ -79,7 +79,7 @@ describe('views (§2.2, D4)', () => {
 
   it('an activity drops paths and ids, and takes its title from the statement', () => {
     const view = activityView(
-      { course: 'react', exercise: 'state-easy-1', path: '/Users/me/Codemm/exercises/react/state-easy-1', style: 'io', concepts: ['state'], difficulty: 1, files: ['main.c'], statement: '# Click Counter\n\nMake it count.', visibleTests: [{ name: 'one', input: '1', expected: '2' }] },
+      { course: 'react', exercise: 'state-easy-1', path: '/Users/me/code-learn/exercises/react/state-easy-1', style: 'io', concepts: ['state'], difficulty: 1, files: ['main.c'], statement: '# Click Counter\n\nMake it count.', visibleTests: [{ name: 'one', input: '1', expected: '2' }] },
       { 'main.c': { text: 'int main(){}', digest: 'a'.repeat(64) } },
       'state',
     );

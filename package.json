@@ -1,11 +1,11 @@
 {
-  "name": "codemm",
+  "name": "code-learn",
   "version": "1.0.0-beta.10",
-  "description": "Open-source harness for graded coding practice: your coding agent writes the tracks and exercises, Codemm verifies, grades and tracks mastery.",
+  "description": "Open-source harness for graded coding practice: your coding agent writes the tracks and exercises, code-learn verifies, grades and tracks mastery.",
   "license": "MIT",
   "type": "module",
   "bin": {
-    "codemm": "dist/cli.js"
+    "code-learn": "dist/cli.js"
   },
   "files": [
     "dist",

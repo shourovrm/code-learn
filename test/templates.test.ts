@@ -23,7 +23,7 @@ describe("tutor instructions (AGENTS.md section)", () => {
   });
 
   it("says which tools the tutor calls itself and which go through the author subagent", () => {
-    expect(AGENTS_SECTION).toMatch(/Only `save_track` and `save_exercise` go through the `codemm-author` subagent/);
+    expect(AGENTS_SECTION).toMatch(/Only `save_track` and `save_exercise` go through the `code-learn-author` subagent/);
   });
 
   it("tells a track author its pass probe must pass within a sixth of time_ms", () => {
@@ -80,7 +80,7 @@ describe("tutor instructions (AGENTS.md section)", () => {
   });
 });
 
-describe("author instructions (codemm-author subagent)", () => {
+describe("author instructions (code-learn-author subagent)", () => {
   it("tells a unit track to find its tests in $TESTS and never hide its runner's failure, without naming a language", () => {
     for (const text of [AUTHOR_AGENT, JOB_BRIEFS.setup]) {
       expect(text).toMatch(/find the test files in `\$TESTS`/);
@@ -307,7 +307,7 @@ describe("lesson examples and learner-facing text (learner walkthrough W-2)", ()
 describe("WASI tracks (DESIGN §4.5)", () => {
   it("tells a track author when to write a WASI track instead of a Docker one", () => {
     for (const text of [AUTHOR_AGENT, JOB_BRIEFS.setup]) {
-      expect(text).toMatch(/Write a Docker track unless Codemm's instructions say this computer has no container runtime installed; then write a WASI track/);
+      expect(text).toMatch(/Write a Docker track unless code-learn's instructions say this computer has no container runtime installed; then write a WASI track/);
     }
   });
 

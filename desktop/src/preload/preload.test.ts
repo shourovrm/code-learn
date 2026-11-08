@@ -21,7 +21,7 @@ async function heardFrom(...sent: Record<string, unknown>[]): Promise<JobProgres
   await import('./preload');
   const heard: JobProgress[] = [];
   (door.bridge as Bridge).onJobProgress((p) => heard.push(p));
-  for (const p of sent) door.handlers.get('codemm:job-progress')!({}, p);
+  for (const p of sent) door.handlers.get('code-learn:job-progress')!({}, p);
   return heard;
 }
 

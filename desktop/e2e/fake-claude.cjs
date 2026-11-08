@@ -1,29 +1,29 @@
 #!/usr/bin/env node
 // A stand-in for Claude Code in the journey's failure states (journey.spec.ts, JOURNEY_PART=fakes).
-// It runs the real CLI (CODEMM_REAL_CLAUDE) unless the file CODEMM_FAKE_FILE names a failure:
+// It runs the real CLI (CODE_LEARN_REAL_CLAUDE) unless the file CODE_LEARN_FAKE_FILE names a failure:
 //   signed-out          `auth status` says signed out
 //   offline-research    the research turn fails on the network
 //   plan-limit          every turn ends at a usage limit
 //   infra-author        the author's save fails because Docker can't be reached; the agent keeps running
 //   unstoppable-author  the author's saves fail, and a detached child keeps the output pipe open, so a
-//                       cancel can't be confirmed (its pid goes to <CODEMM_FAKE_FILE>.pid for clean-up)
+//                       cancel can't be confirmed (its pid goes to <CODE_LEARN_FAKE_FILE>.pid for clean-up)
 // Deleting the file is the learner fixing the problem.
 const { spawn } = require('node:child_process');
 const { existsSync, readFileSync, writeFileSync } = require('node:fs');
 
 const args = process.argv.slice(2);
-const file = process.env.CODEMM_FAKE_FILE;
+const file = process.env.CODE_LEARN_FAKE_FILE;
 const mode = file && existsSync(file) ? readFileSync(file, 'utf8').trim() : '';
 const prompt = args.includes('-p') ? args[args.indexOf('-p') + 1] : '';
-const author = prompt.startsWith('You write one Codemm exercise');
+const author = prompt.startsWith('You write one code-learn exercise');
 const line = (o) => process.stdout.write(`${JSON.stringify(o)}\n`);
-const init = { type: 'system', subtype: 'init', session_id: 'fake-session', mcp_servers: [{ name: 'codemm', status: 'connected' }] };
-const save = (id) => ({ type: 'assistant', message: { content: [{ type: 'tool_use', id, name: 'mcp__codemm__save_exercise' }] } });
+const init = { type: 'system', subtype: 'init', session_id: 'fake-session', mcp_servers: [{ name: 'code-learn', status: 'connected' }] };
+const save = (id) => ({ type: 'assistant', message: { content: [{ type: 'tool_use', id, name: 'mcp__code-learn__save_exercise' }] } });
 const failed = (id, text) => ({ type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: id, is_error: true, content: text }] } });
 
 if (mode === 'signed-out' && args[0] === 'auth') {
   console.log(JSON.stringify({ loggedIn: false }));
-} else if (mode === 'offline-research' && prompt.startsWith('You plan a Codemm course')) {
+} else if (mode === 'offline-research' && prompt.startsWith('You plan a code-learn course')) {
   line(init);
   line({ type: 'result', subtype: 'error_during_execution', is_error: true, result: 'API Error: Connection error. (getaddrinfo ENOTFOUND api.anthropic.com)' });
   process.exit(1);
@@ -47,7 +47,7 @@ if (mode === 'signed-out' && args[0] === 'auth') {
   }
   setInterval(() => {}, 1000);
 } else {
-  const real = spawn(process.env.CODEMM_REAL_CLAUDE, args, { stdio: 'inherit' });
+  const real = spawn(process.env.CODE_LEARN_REAL_CLAUDE, args, { stdio: 'inherit' });
   real.on('exit', (code, signal) => (signal ? process.kill(process.pid, signal) : process.exit(code ?? 1)));
   for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => real.kill(sig));
 }

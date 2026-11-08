@@ -30,7 +30,7 @@ describe("a WASI check without wasmtime", () => {
   afterEach(() => vi.unstubAllEnvs());
 
   it("is an infrastructure error, so nothing is graded or recorded", async () => {
-    vi.stubEnv("CODEMM_WASMTIME", `${tempDir()}/no-wasmtime`);
+    vi.stubEnv("CODE_LEARN_WASMTIME", `${tempDir()}/no-wasmtime`);
     await expect(runIo(wasiTrack("cat"), "visible", src, inputs)).rejects.toMatchObject({ code: "no-wasmtime" });
   });
 });

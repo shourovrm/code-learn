@@ -6,5 +6,5 @@ dist/
 .env
 .env.*
 
-# Codemm v1 workspace data, in case a clone was used as a v1 workspace
-**/.codemm/
+# code-learn v1 workspace data, in case a clone was used as a v1 workspace
+**/.code-learn/

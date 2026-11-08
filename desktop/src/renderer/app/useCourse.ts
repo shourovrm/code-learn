@@ -4,7 +4,7 @@ import { settled } from './course';
 import { useLoad } from './useLoad';
 
 /**
- * The course, re-read while Codemm is still working on it and whenever the window regains focus, as a course screen
+ * The course, re-read while code-learn is still working on it and whenever the window regains focus, as a course screen
  * needs: time alone can make a review due (core §7).
  */
 export function useCourse(deps: unknown[] = []) {

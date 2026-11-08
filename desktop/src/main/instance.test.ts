@@ -2,8 +2,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { bringBack, secondLaunch, startOnce } from './instance';
 
-describe('one Codemm per learner (§2)', () => {
-  it('starts Codemm in the first instance', () => {
+describe('one code-learn per learner (§2)', () => {
+  it('starts code-learn in the first instance', () => {
     const app = { requestSingleInstanceLock: () => true, quit: vi.fn() };
     const start = vi.fn();
     startOnce(app, start);
@@ -30,7 +30,7 @@ describe('one Codemm per learner (§2)', () => {
     expect(relaunch).not.toHaveBeenCalled();
   });
 
-  it("opens Codemm again once it has stopped, for a launch while it quits; an update's installer opens it itself", () => {
+  it("opens code-learn again once it has stopped, for a launch while it quits; an update's installer opens it itself", () => {
     const win = { isMinimized: () => false, restore: vi.fn(), show: vi.fn(), focus: vi.fn() };
     const open = vi.fn();
     const relaunch = vi.fn();

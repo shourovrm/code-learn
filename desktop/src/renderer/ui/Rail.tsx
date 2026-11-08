@@ -15,7 +15,7 @@ function Entry({ m }: { m: Message }) {
 }
 
 /**
- * The Codemm tutor beside a lesson or activity. While it answers, `answering` is that turn's progress (§4.11).
+ * The code-learn tutor beside a lesson or activity. While it answers, `answering` is that turn's progress (§4.11).
  * `onAsk` may resolve false when the question failed: it goes back in the field, unless the learner typed again.
  */
 export function Rail({ messages, onAsk, busy = false, answering, name, children }: {
@@ -35,21 +35,21 @@ export function Rail({ messages, onAsk, busy = false, answering, name, children 
     if ((await onAsk(q)) === false) setText((now) => now || q);
   }
   return (
-    <aside className="coach" aria-label="Codemm">
-      <div className="chead"><Emm width={40} name={name} />Codemm</div>
+    <aside className="coach" aria-label="code-learn">
+      <div className="chead"><Emm width={40} name={name} />code-learn</div>
       <div className="cbody" role="log" aria-busy={busy} ref={log}>
         {messages.map((m, i) => <Entry key={i} m={m} />)}
         {busy && (
           <div className="note thinking a-up">
-            <span role="status">Codemm is thinking…</span>
-            {answering && <JobBar job={answering} label="Codemm's answer" compact />}
+            <span role="status">code-learn is thinking…</span>
+            {answering && <JobBar job={answering} label="code-learn's answer" compact />}
           </div>
         )}
       </div>
       <div className="cfoot">
         {children}
         <form className="composer" onSubmit={submit}>
-          <Field aria-label="Ask Codemm" placeholder="Ask Codemm" value={text} maxLength={LIMITS.words} onChange={(e) => setText(e.target.value)} />
+          <Field aria-label="Ask code-learn" placeholder="Ask code-learn" value={text} maxLength={LIMITS.words} onChange={(e) => setText(e.target.value)} />
           <Button type="submit" disabled={busy}>Send</Button>
         </form>
         <Limit value={text} max={LIMITS.words} />

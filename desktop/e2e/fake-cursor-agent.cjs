@@ -2,7 +2,7 @@
 // A fake cursor-agent for the journey, for when Cursor's own plan is used up: it speaks Cursor's
 // stream-json (as recorded from cursor-agent 2026.10.16) and has real Claude Code do the work.
 // It reads the job folder's .cursor/mcp.json and .cursor/cli.json exactly as cursor-agent does,
-// so Codemm's Cursor adapter, job folder and parser run end to end. CODEMM_REAL_CLAUDE names Claude Code.
+// so code-learn's Cursor adapter, job folder and parser run end to end. CODE_LEARN_REAL_CLAUDE names Claude Code.
 const { spawn } = require('node:child_process');
 const { readFileSync } = require('node:fs');
 const { join } = require('node:path');
@@ -30,8 +30,8 @@ const web = args.includes('--force');
 const { mcpServers } = JSON.parse(readFileSync(join(process.cwd(), '.cursor', 'mcp.json'), 'utf8'));
 const { permissions } = JSON.parse(readFileSync(join(process.cwd(), '.cursor', 'cli.json'), 'utf8'));
 const tools = permissions.allow.flatMap((p) => {
-  const m = /^Mcp\(codemm:(.+)\)$/.exec(p);
-  return m ? [`mcp__codemm__${m[1]}`] : [];
+  const m = /^Mcp\(code-learn:(.+)\)$/.exec(p);
+  return m ? [`mcp__code-learn__${m[1]}`] : [];
 });
 
 const claudeArgs = ['-p', prompt, '--output-format', 'stream-json', '--verbose', '--model', 'sonnet'];
@@ -39,7 +39,7 @@ claudeArgs.push('--tools', web ? 'WebSearch,WebFetch' : '', '--mcp-config', JSON
 if (tools.length) claudeArgs.push('--allowedTools', tools.join(','));
 if (resume) claudeArgs.push('--resume', resume);
 
-const child = spawn(process.env.CODEMM_REAL_CLAUDE || 'claude', claudeArgs, { stdio: ['ignore', 'pipe', 'inherit'] });
+const child = spawn(process.env.CODE_LEARN_REAL_CLAUDE || 'claude', claudeArgs, { stdio: ['ignore', 'pipe', 'inherit'] });
 const calls = new Map();
 let session = '';
 let buffer = '';

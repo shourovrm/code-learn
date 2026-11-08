@@ -14,8 +14,8 @@ import { tempDir } from "./temp.js";
 
 let ws: string;
 beforeEach(() => {
-  vi.stubEnv("CODEMM_HOME", tempDir("codemm-home-"));
-  ws = tempDir("codemm-ws-");
+  vi.stubEnv("CODE_LEARN_HOME", tempDir("code-learn-home-"));
+  ws = tempDir("code-learn-ws-");
 });
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -25,7 +25,7 @@ function installFake(ref = "shell-io@1", styles: ("io" | "unit")[] = ["io"]): vo
   const { id, version } = store.parseTrackRef(ref);
   store.writeTrackRecord(ref, {
     format_version: 1, id, version, styles, files: ["main.sh"], run: "sh main.sh",
-    limits: { time_ms: 2000, memory_mb: 256 }, image: `codemm-track-${id}:${version}`, imageId: "sha256:fake", installedAt: new Date().toISOString(),
+    limits: { time_ms: 2000, memory_mb: 256 }, image: `code-learn-track-${id}:${version}`, imageId: "sha256:fake", installedAt: new Date().toISOString(),
   });
 }
 
@@ -139,7 +139,7 @@ describe("roadmap draft", () => {
     await app.saveRoadmap(ws, "shell", roadmap());
     for (let i = 0; i < 2; i++) store.appendEvent("shell", event({ kind: "check", exercise: "e1", concepts: ["sh.loops"], difficulty: 1, passed: 0, total: 1, assisted: false }));
     const withPrereq = "  - { id: sh.basics, title: Basics, requires: [] }\n  - { id: sh.vars, title: Variables, requires: [] }\n  - { id: sh.loops, title: Loops, requires: [sh.basics, sh.vars] }\n";
-    const events = join(process.env.CODEMM_HOME!, "courses", "shell", "events.jsonl");
+    const events = join(process.env.CODE_LEARN_HOME!, "courses", "shell", "events.jsonl");
     chmodSync(events, 0o444);
     try {
       await expect(app.saveRoadmap(ws, "shell", roadmap(withPrereq))).rejects.toThrow();
@@ -164,7 +164,7 @@ describe("the author step", () => {
     const files = readFileMap(join(import.meta.dirname, "fixtures", "tracks", "custom-unit"));
     const spec = parseTrackYaml(files["track.yaml"]!);
     store.commitFolder(store.trackDir("custom-unit@1"), files, {
-      "track.json": { format_version: 1, ...spec, image: "codemm-track-custom-unit:1", imageId: "sha256:fake", installedAt: new Date().toISOString() },
+      "track.json": { format_version: 1, ...spec, image: "code-learn-track-custom-unit:1", imageId: "sha256:fake", installedAt: new Date().toISOString() },
     });
     await app.saveRoadmap(ws, "calc", "goal: Calculator\ntrack: custom-unit@1\nstyle: unit\nconcepts:\n  - { id: calc.add, title: Adding numbers, requires: [] }\n");
     expect(app.nextStep(ws)).toEqual({
@@ -304,7 +304,7 @@ describe("lessons", () => {
     expect(app.getLesson(ws, "intro")).toEqual({ id: "intro", concept: "sh.basics", title: "About intro", markdown: "# intro\n\nText.", notes: "", examples: [] });
     await app.saveNotes(ws, "intro", "remember $1");
     expect(app.getLesson(ws, "intro").notes).toBe("remember $1");
-    const record = JSON.parse(readFileSync(join(process.env.CODEMM_HOME!, "courses", "shell", "lessons", "intro", "lesson.json"), "utf8"));
+    const record = JSON.parse(readFileSync(join(process.env.CODE_LEARN_HOME!, "courses", "shell", "lessons", "intro", "lesson.json"), "utf8"));
     expect(record).toMatchObject({ format_version: 1, id: "intro", concept: "sh.basics" });
   });
 
@@ -423,7 +423,7 @@ describe("learner files", () => {
     const { digest } = app.readLearnerFiles(ws, "e1")["main.sh"]!;
     expect(await app.writeLearnerFile(ws, "e1", "main.sh", "echo 3\n", digest)).toEqual({ digest: sha("echo 3\n") });
     expect(readFileSync(file(), "utf8")).toBe("echo 3\n");
-    await expect(app.writeLearnerFile(ws, "e1", "main.sh", "echo 4\n", digest)).rejects.toMatchObject({ kind: "changed", message: expect.stringMatching(/Changed outside Codemm/) });
+    await expect(app.writeLearnerFile(ws, "e1", "main.sh", "echo 4\n", digest)).rejects.toMatchObject({ kind: "changed", message: expect.stringMatching(/Changed outside code-learn/) });
     expect(readFileSync(file(), "utf8")).toBe("echo 3\n");
   });
 
@@ -435,7 +435,7 @@ describe("learner files", () => {
 
   it.runIf(process.platform !== "win32")("refuses to write through a symlink", async () => {
     app.readLearnerFiles(ws, "e1");
-    const outside = join(tempDir("codemm-outside-"), "target.sh");
+    const outside = join(tempDir("code-learn-outside-"), "target.sh");
     writeFileSync(outside, "echo todo\n");
     rmSync(file());
     symlinkSync(outside, file());
@@ -446,7 +446,7 @@ describe("learner files", () => {
 
 describe("setup proposals", () => {
   const track = () => readFileMap(join(import.meta.dirname, "fixtures", "tracks", "shell-io"));
-  const proposed = { proposed: "shell-io@1", note: "The learner decides in Codemm. End your turn." };
+  const proposed = { proposed: "shell-io@1", note: "The learner decides in code-learn. End your turn." };
 
   // With no docker on PATH, anything that tried to build would fail differently.
   beforeEach(() => fakeDocker("missing"));
@@ -471,7 +471,7 @@ describe("setup proposals", () => {
   it("refuses to install files that changed after the learner saw them", async () => {
     await app.proposeTrack(track());
     const { digest } = app.listProposals()[0]!;
-    writeFileSync(join(process.env.CODEMM_HOME!, "proposals", "shell-io@1", digest, "files", "Dockerfile"), "FROM evil\n");
+    writeFileSync(join(process.env.CODE_LEARN_HOME!, "proposals", "shell-io@1", digest, "files", "Dockerfile"), "FROM evil\n");
     await expect(app.installProposal("shell-io@1", digest)).rejects.toThrow(/changed or is gone/);
     await expect(app.installProposal("shell-io@1", "0".repeat(64))).rejects.toThrow(/changed or is gone/);
   });
@@ -479,14 +479,14 @@ describe("setup proposals", () => {
   it("reports an identical installed track, and refuses a different one under the same version", async () => {
     const spec = parseTrackYaml(track()["track.yaml"]!);
     store.commitFolder(store.trackDir("shell-io@1"), track(), {
-      "track.json": { format_version: 1, ...spec, image: "codemm-track-shell-io:1", imageId: "sha256:fake", installedAt: new Date().toISOString() },
+      "track.json": { format_version: 1, ...spec, image: "code-learn-track-shell-io:1", imageId: "sha256:fake", installedAt: new Date().toISOString() },
     });
     expect(await app.proposeTrack(track())).toEqual({ installed: "shell-io@1", unchanged: true });
     await expect(app.proposeTrack({ ...track(), Dockerfile: "FROM other\n" })).rejects.toThrow(/already installed/);
     expect(app.listProposals()).toEqual([]);
   });
 
-  it("keeps a track file named like Codemm's own record intact", async () => {
+  it("keeps a track file named like code-learn's own record intact", async () => {
     await app.proposeTrack({ ...track(), "proposal.json": "{}" });
     const [p] = app.listProposals();
     expect(p!.files["proposal.json"]).toBe("{}");

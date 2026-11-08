@@ -1,5 +1,5 @@
-// An in-memory CodemmApi, for tests and for clicking through screens in
-// development (CODEMM_MOCK). Code is graded by whether the learner replaced
+// An in-memory CodeLearnApi, for tests and for clicking through screens in
+// development (CODE_LEARN_MOCK). Code is graded by whether the learner replaced
 // the starter's placeholder; quizzes use a private key. Hidden code results
 // are reported as statuses only.
 import { parse, stringify } from 'yaml';
@@ -17,7 +17,7 @@ import { type CheckProgress, type JobKind, type JobProgress, type JobStep, type 
   type AgentInstall,
   type ComputerCheck,
   type CheckResult,
-  type CodemmApi,
+  type CodeLearnApi,
   type Concept,
   type CourseView,
   type Lesson,
@@ -81,7 +81,7 @@ export interface MockOptions {
   later?: { after: 'approve' | 'check' | 'look'; set: Partial<MockOptions> };
 }
 
-/** Named environment states (D13), for tests and for `CODEMM_MOCK` in development. */
+/** Named environment states (D13), for tests and for `CODE_LEARN_MOCK` in development. */
 export const SCENARIOS: Record<string, MockOptions> = {
   'no-docker': { docker: 'missing' },
   'no-docker-wasi': { docker: 'missing', wasi: true },
@@ -102,7 +102,7 @@ export const SCENARIOS: Record<string, MockOptions> = {
   'nothing-installed-offline': { docker: 'missing', agents: { claude: 'missing', codex: 'missing', cursor: 'missing' }, agentInstallProblem: 'offline' },
   'agent-install-offline': { agents: { claude: 'missing', codex: 'missing', cursor: 'missing' }, agentInstallProblem: 'offline' },
   'one-agent': { agents: { codex: 'missing', cursor: 'missing' } },
-  // Installed in a terminal while Codemm is open: Welcome and Connect see it within seconds.
+  // Installed in a terminal while code-learn is open: Welcome and Connect see it within seconds.
   'agent-found-later': { agents: { claude: 'missing', codex: 'missing', cursor: 'missing' }, later: { after: 'look', set: { agents: { codex: 'missing', cursor: 'missing' } } } },
   relaunch: { connected: 'claude' },
   'signed-out': { agents: { claude: 'signed-out', codex: 'signed-out', cursor: 'missing' } },
@@ -120,25 +120,25 @@ export const SCENARIOS: Record<string, MockOptions> = {
 };
 
 const step = (label: string): JobStep => ({ kind: 'step', label });
-/** What each mock job reports, beat by beat, as a real one would (§4.11). `codemm`: Codemm's own tool is running. */
-type Beat = { stage: number; step?: JobStep; codemm?: true; retry?: JobProgress['retry']; part?: JobProgress['part'] };
-const CHECKING = step('Codemm is checking the exercise');
-const gate = (n: number, label: string, retry?: JobProgress['retry']): Beat => ({ stage: 2, step: step(label), codemm: true, part: { done: n, total: 3 }, ...(retry ? { retry } : {}) });
+/** What each mock job reports, beat by beat, as a real one would (§4.11). `code-learn`: code-learn's own tool is running. */
+type Beat = { stage: number; step?: JobStep; codeLearn?: true; retry?: JobProgress['retry']; part?: JobProgress['part'] };
+const CHECKING = step('code-learn is checking the exercise');
+const gate = (n: number, label: string, retry?: JobProgress['retry']): Beat => ({ stage: 2, step: step(label), codeLearn: true, part: { done: n, total: 3 }, ...(retry ? { retry } : {}) });
 const BEATS: Record<Exclude<JobKind, 'research' | 'rebuild'> | 'install', Beat[]> = {
-  review: [{ stage: 0 }, { stage: 1, step: step('Reading the roadmap') }, { stage: 2, step: step('Saving the roadmap'), codemm: true }],
-  roadmap: [{ stage: 0 }, { stage: 1, step: step('Reading the roadmap') }, { stage: 2, step: step('Saving the roadmap'), codemm: true }],
-  setup: [{ stage: 0 }, { stage: 0, step: step('Checking the installed tracks') }, { stage: 0, step: step('Proposing the setup'), codemm: true }],
-  install: [1, 2, 3, 4, 5].map((done): Beat => ({ stage: 1, codemm: true, part: { done, total: 5 } })).concat([{ stage: 2, codemm: true }]),
-  lesson: [{ stage: 0 }, { stage: 1, step: step('Reading the roadmap') }, { stage: 2, step: step('Saving the lesson'), codemm: true }],
+  review: [{ stage: 0 }, { stage: 1, step: step('Reading the roadmap') }, { stage: 2, step: step('Saving the roadmap'), codeLearn: true }],
+  roadmap: [{ stage: 0 }, { stage: 1, step: step('Reading the roadmap') }, { stage: 2, step: step('Saving the roadmap'), codeLearn: true }],
+  setup: [{ stage: 0 }, { stage: 0, step: step('Checking the installed tracks') }, { stage: 0, step: step('Proposing the setup'), codeLearn: true }],
+  install: [1, 2, 3, 4, 5].map((done): Beat => ({ stage: 1, codeLearn: true, part: { done, total: 5 } })).concat([{ stage: 2, codeLearn: true }]),
+  lesson: [{ stage: 0 }, { stage: 1, step: step('Reading the roadmap') }, { stage: 2, step: step('Saving the lesson'), codeLearn: true }],
   author: [
     { stage: 0 },
     { stage: 1, step: step('Writing the exercise') },
-    { stage: 2, step: CHECKING, codemm: true },
-    gate(1, 'Codemm is checking that the exercise can be solved'),
-    gate(2, "Codemm is checking that the exercise isn't solved yet"),
+    { stage: 2, step: CHECKING, codeLearn: true },
+    gate(1, 'code-learn is checking that the exercise can be solved'),
+    gate(2, "code-learn is checking that the exercise isn't solved yet"),
     { stage: 1, step: step('Writing the exercise'), retry: { attempt: 2, of: 3 } },
-    { stage: 2, step: CHECKING, codemm: true, retry: { attempt: 2, of: 3 } },
-    gate(3, 'Codemm is checking that the tests catch mistakes', { attempt: 2, of: 3 }),
+    { stage: 2, step: CHECKING, codeLearn: true, retry: { attempt: 2, of: 3 } },
+    gate(3, 'code-learn is checking that the tests catch mistakes', { attempt: 2, of: 3 }),
   ],
   tutor: [{ stage: 0 }, { stage: 0, step: step('Reading the activity') }],
 };
@@ -158,10 +158,10 @@ const DOCKER_DOWN: Record<Exclude<Docker, 'ready'>, string> = {
   'wsl-old': "Docker isn't running.",
   virtualization: "Docker isn't running.",
   'wsl-restart': "Docker isn't running.",
-  'no-sandbox': "Codemm couldn't confirm the sandbox.",
-  'sandbox-checking': "Codemm couldn't confirm the sandbox.",
-  'sandbox-offline': "Codemm couldn't confirm the sandbox.",
-  'sandbox-folder': "Codemm couldn't confirm the sandbox.",
+  'no-sandbox': "code-learn couldn't confirm the sandbox.",
+  'sandbox-checking': "code-learn couldn't confirm the sandbox.",
+  'sandbox-offline': "code-learn couldn't confirm the sandbox.",
+  'sandbox-folder': "code-learn couldn't confirm the sandbox.",
 };
 
 /** The sandbox self-test's own words for a known cause, as core gives them (core §4.3). */
@@ -172,11 +172,11 @@ const SANDBOX_REASON: Partial<Record<Docker, NonNullable<ComputerCheck['reason']
   },
   'sandbox-folder': {
     kind: 'docker',
-    text: "Docker couldn't start a test container with Codemm's folder mounted (mounts denied). Codemm keeps what a check mounts in ~/.codemm/runs. If the engine says it can't see that folder, share it with the engine (Colima and Rancher Desktop share only your home folder by default), then try again.",
+    text: "Docker couldn't start a test container with code-learn's folder mounted (mounts denied). code-learn keeps what a check mounts in ~/.code-learn/runs. If the engine says it can't see that folder, share it with the engine (Colima and Rancher Desktop share only your home folder by default), then try again.",
   },
 };
 
-/** The connect screen's agents, as the connector describes them; Codemm installs each of them. */
+/** The connect screen's agents, as the connector describes them; code-learn installs each of them. */
 const AGENTS: Omit<Agent, 'state' | 'untested'>[] = (Object.keys(AGENT_INFO) as AgentId[]).map((id) => ({
   id, ...AGENT_INFO[id], canInstall: true, models: modelChoices(id), model: modelFor(id),
 }));
@@ -278,7 +278,7 @@ function hostPlatform(): Platform {
 
 const slugOf = (title: string) => title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
-export function createMock(options: MockOptions = {}): CodemmApi {
+export function createMock(options: MockOptions = {}): CodeLearnApi {
   const agents = AGENTS.map((a) => ({ ...a, state: (options.agents?.[a.id] === 'missing' ? 'missing' : options.connected === a.id ? 'connected' : 'not-connected') as Agent['state'] }));
   const tracks: Track[] = [];
   // The course on screen: its lessons, activities, roadmap and view. Switching swaps them for another course's (§4.13).
@@ -467,7 +467,7 @@ export function createMock(options: MockOptions = {}): CodemmApi {
     const steps = beats.flatMap((b) => (b.step ? [b.step] : [])).reverse().slice(0, 8);
     return {
       job, kind, ...(concept ? { concept } : {}), stage: beat.stage, steps, count: steps.length, ...(beat.retry ? { retry: beat.retry } : {}), ...(beat.part ? { part: beat.part } : {}),
-      thinking: !beat.codemm, elapsedMs: Date.now() - started + quietMs(), idleMs: quietMs(),
+      thinking: !beat.codeLearn, elapsedMs: Date.now() - started + quietMs(), idleMs: quietMs(),
     };
   }
   /** Background jobs, by key: each moves one beat per `slow` course reads. */
@@ -552,7 +552,7 @@ export function createMock(options: MockOptions = {}): CodemmApi {
 
   /** The agent the learner last tried to connect: once it's signed in, it connects. */
   let tried: AgentId | undefined;
-  /** Installs Codemm started, one step further on each look. */
+  /** Installs code-learn started, one step further on each look. */
   const installs = new Map<AgentId, AgentInstall>();
   const AGENT_STEPS: AgentInstall[] = [{ phase: 'downloading', progress: 0.4 }, { phase: 'checking' }, { phase: 'installing' }];
   const desktopHost = () => (options.platform ?? hostPlatform()) !== 'linux';
@@ -571,7 +571,7 @@ export function createMock(options: MockOptions = {}): CodemmApi {
     },
 
     async agents() {
-      // Installed or removed meanwhile, as in a terminal: an agent Codemm is installing follows its install instead.
+      // Installed or removed meanwhile, as in a terminal: an agent code-learn is installing follows its install instead.
       for (const a of agents.filter((x) => !installs.has(x.id))) {
         if (options.agents?.[a.id] === 'missing') a.state = 'missing';
         else if (a.state === 'missing') a.state = 'not-connected';
@@ -951,11 +951,11 @@ export function createMock(options: MockOptions = {}): CodemmApi {
       await playThrough('tutor');
       if ('lessonId' in place) {
         find(lessons, place.lessonId);
-        return [{ from: 'codemm', text: 'Good question. Try it in the activity next.' }];
+        return [{ from: 'code-learn', text: 'Good question. Try it in the activity next.' }];
       }
       find(activities, place.activityId);
       const declined = /\b(fix|solve|answer|write)\b/i.test(text) ? 'In practice mode, you write the code. ' : '';
-      return [{ from: 'codemm', text: `${declined}Look at what you pass to setCount.` }];
+      return [{ from: 'code-learn', text: `${declined}Look at what you pass to setCount.` }];
     },
 
     async skip(concept) {

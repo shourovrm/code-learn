@@ -8,7 +8,7 @@ const SAVE_MS = 400;
 /**
  * The learner's files, saved by digest shortly after typing stops, before Try
  * it or Check, and when the learner leaves (§4.5). A file changed outside
- * Codemm is reloaded, and `onReloaded` says so.
+ * code-learn is reloaded, and `onReloaded` says so.
  */
 export function useLearnerFiles(activity: Activity, onReloaded: () => void) {
   const api = useApi();
@@ -32,7 +32,7 @@ export function useLearnerFiles(activity: Activity, onReloaded: () => void) {
             s.dirty.add(path); // kept for the next save
             throw e;
           }
-          // Only this file changed outside Codemm: take its new contents, keep every other edit.
+          // Only this file changed outside code-learn: take its new contents, keep every other edit.
           const fresh = (await api.activity(activity.concept)).files.find((f) => f.path === path);
           if (fresh) s.files = s.files.map((f) => (f.path === path ? fresh : f));
           setFiles(s.files);

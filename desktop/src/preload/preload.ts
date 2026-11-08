@@ -1,16 +1,16 @@
 // The renderer's only door to the main process: one invoke call on one
-// channel. The typed CodemmApi client is built on top of it in the renderer.
+// channel. The typed CodeLearnApi client is built on top of it in the renderer.
 import { contextBridge, ipcRenderer } from 'electron';
 import type { Bridge, FinishedTest, JobProgress, JobStep } from '../shared/api';
 
-// Electron rejects a failed invoke as "Error invoking remote method 'codemm': Error: <message>".
-// The renderer gets <message> alone, so Codemm's codes (codemm:repair and the rest) match as sent.
+// Electron rejects a failed invoke as "Error invoking remote method 'code-learn': Error: <message>".
+// The renderer gets <message> alone, so code-learn's codes (code-learn:repair and the rest) match as sent.
 // Kept here, inline: a sandboxed preload can't load other modules.
-const ENVELOPE = /^Error invoking remote method 'codemm': (?:\w*Error: )?/;
+const ENVELOPE = /^Error invoking remote method 'code-learn': (?:\w*Error: )?/;
 
 const bridge: Bridge = {
   invoke: (method, args) =>
-    ipcRenderer.invoke('codemm', method, args).catch((e: unknown) => {
+    ipcRenderer.invoke('code-learn', method, args).catch((e: unknown) => {
       throw new Error((e instanceof Error ? e.message : String(e)).replace(ENVELOPE, ''));
     }),
   // One-way: main sends check progress to the app window: the phase and counts, and a visible test's result.
@@ -26,8 +26,8 @@ const bridge: Bridge = {
       const test = p.phase === 'visible' ? finished(p.test) : undefined;
       listener({ ...(typeof p.run === 'string' ? { run: p.run } : {}), phase: p.phase, done: p.done, total: p.total, ...(test ? { test } : {}) });
     };
-    ipcRenderer.on('codemm:check-progress', forward);
-    return () => void ipcRenderer.removeListener('codemm:check-progress', forward);
+    ipcRenderer.on('code-learn:check-progress', forward);
+    return () => void ipcRenderer.removeListener('code-learn:check-progress', forward);
   },
   // One-way: main sends each agent job's progress. Only its kind, stage, counts, times, and capped steps:
   // a query, a host and path, or a step label.
@@ -59,8 +59,8 @@ const bridge: Bridge = {
         ...(p.ended === true ? { ended: true as const } : {}),
       });
     };
-    ipcRenderer.on('codemm:job-progress', forward);
-    return () => void ipcRenderer.removeListener('codemm:job-progress', forward);
+    ipcRenderer.on('code-learn:job-progress', forward);
+    return () => void ipcRenderer.removeListener('code-learn:job-progress', forward);
   },
   // One-way: main sends what a Run's program printed, only to the window that started it, or a stage starting.
   onRunOutput: (listener) => {
@@ -69,9 +69,9 @@ const bridge: Bridge = {
       if ((o.stream === 'stdout' || o.stream === 'stderr') && typeof o.text === 'string') listener({ run: o.run, stream: o.stream, text: o.text });
       else if ((o.started === 'build' || o.started === 'run') && typeof o.limitMs === 'number') listener({ run: o.run, started: o.started, limitMs: o.limitMs });
     };
-    ipcRenderer.on('codemm:run-output', forward);
-    return () => void ipcRenderer.removeListener('codemm:run-output', forward);
+    ipcRenderer.on('code-learn:run-output', forward);
+    return () => void ipcRenderer.removeListener('code-learn:run-output', forward);
   },
 };
 
-contextBridge.exposeInMainWorld('codemm', bridge);
+contextBridge.exposeInMainWorld('codeLearn', bridge);

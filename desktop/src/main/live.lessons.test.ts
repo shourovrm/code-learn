@@ -147,7 +147,7 @@ it("keeps setup progress working when another course's record is damaged", async
   desktopState(t.dir).update((s) => ({ ...s, courses: [...(s.courses ?? []), 'broken'] }));
   const getRoadmap = t.app.getRoadmap;
   t.app.getRoadmap = (ws, course, ...rest) => {
-    if (course === 'broken') throw coreError("Codemm's record /h/courses/broken/course.json is damaged.", 'damaged');
+    if (course === 'broken') throw coreError("code-learn's record /h/courses/broken/course.json is damaged.", 'damaged');
     return getRoadmap(ws, course, ...rest);
   };
   expect((await t.api.jobProgress()).some((j) => j.kind === 'setup')).toBe(true);

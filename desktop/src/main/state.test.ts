@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { coursesOf, desktopState, workspaceOf } from './state';
 import { tempDir } from './testing/temp';
 
-const dir = () => tempDir('codemm-state-');
+const dir = () => tempDir('code-learn-state-');
 
 describe('desktop.json (§2)', () => {
   it('starts empty, then remembers the agent and tutor sessions', () => {
@@ -16,9 +16,9 @@ describe('desktop.json (§2)', () => {
     expect(desktopState(d).read()).toEqual({ format_version: 1, agent: 'codex', sessions: { 'react|codex': 'thread-1' } });
   });
 
-  it('keeps the workspace in ~/Codemm unless desktop.json names another folder (O5)', () => {
-    expect(workspaceOf({ format_version: 1, sessions: {} }, '/Users/me')).toBe(join('/Users/me', 'Codemm'));
-    expect(workspaceOf({ format_version: 1, sessions: {}, workspace: '/Volumes/School/Codemm' }, '/Users/me')).toBe('/Volumes/School/Codemm');
+  it('keeps the workspace in ~/code-learn unless desktop.json names another folder (O5)', () => {
+    expect(workspaceOf({ format_version: 1, sessions: {} }, '/Users/me')).toBe(join('/Users/me', 'code-learn'));
+    expect(workspaceOf({ format_version: 1, sessions: {}, workspace: '/Volumes/School/code-learn' }, '/Users/me')).toBe('/Volumes/School/code-learn');
   });
 
   it('lists the approved courses, oldest first; a file from before several courses lists its approved one (§4.13)', () => {

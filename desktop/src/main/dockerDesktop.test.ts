@@ -7,8 +7,8 @@ import { fetchGet, OfflineError } from './download';
 
 const GiB = 1024 ** 3;
 const DOCKER_TEAM = 'TeamIdentifier=9BNSXJN65R';
-const WIN_TMP = 'C:\\Temp\\codemm-docker';
-const WIN_EXE = 'C:\\Temp\\codemm-docker\\DockerDesktopInstaller.exe';
+const WIN_TMP = 'C:\\Temp\\code-learn-docker';
+const WIN_EXE = 'C:\\Temp\\code-learn-docker\\DockerDesktopInstaller.exe';
 const POWERSHELL = 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe';
 const REG = 'C:\\Windows\\System32\\reg.exe';
 /** Windows' own record of its version, as `reg query` prints it. */
@@ -41,7 +41,7 @@ function fake(
   const deps: DesktopDeps = {
     platform,
     arch: 'arm64',
-    tempDir: () => '/tmp/codemm-docker',
+    tempDir: () => '/tmp/code-learn-docker',
     freeBytes: async () => 50 * GiB,
     download: async (url, file, progress) => {
       downloads.push({ url, file });
@@ -87,21 +87,21 @@ describe('installing Docker Desktop for the learner (§6.1)', () => {
     f.desktop.install();
     expect(f.desktop.status()?.phase).toBeDefined();
     await f.desktop.done();
-    expect(f.downloads).toEqual([{ url: 'https://desktop.docker.com/mac/main/arm64/Docker.dmg', file: '/tmp/codemm-docker/Docker.dmg' }]);
+    expect(f.downloads).toEqual([{ url: 'https://desktop.docker.com/mac/main/arm64/Docker.dmg', file: '/tmp/code-learn-docker/Docker.dmg' }]);
     expect(commands(f.calls)).toEqual([
       // Docker Desktop runs on this macOS: checked before anything downloads.
       '/usr/bin/sw_vers -productVersion',
-      '/usr/bin/hdiutil attach -nobrowse -readonly -noautoopen -mountpoint /tmp/codemm-docker/mnt /tmp/codemm-docker/Docker.dmg',
+      '/usr/bin/hdiutil attach -nobrowse -readonly -noautoopen -mountpoint /tmp/code-learn-docker/mnt /tmp/code-learn-docker/Docker.dmg',
       // Apple's own tools by absolute path: one earlier on PATH can't stand in for them.
-      '/usr/bin/codesign --verify --deep --strict /tmp/codemm-docker/mnt/Docker.app',
-      '/usr/bin/codesign -dv --verbose=2 /tmp/codemm-docker/mnt/Docker.app',
-      '/usr/sbin/spctl --assess --type execute /tmp/codemm-docker/mnt/Docker.app',
-      expect.stringMatching(/^\/usr\/bin\/ditto \/tmp\/codemm-docker\/mnt\/Docker\.app \/Applications\/\.codemm-docker-\w+\/Docker\.app$/),
-      expect.stringMatching(/^\/bin\/mv \/Applications\/\.codemm-docker-\w+\/Docker\.app \/Applications\/Docker\.app$/),
-      '/usr/bin/hdiutil detach /tmp/codemm-docker/mnt -quiet',
+      '/usr/bin/codesign --verify --deep --strict /tmp/code-learn-docker/mnt/Docker.app',
+      '/usr/bin/codesign -dv --verbose=2 /tmp/code-learn-docker/mnt/Docker.app',
+      '/usr/sbin/spctl --assess --type execute /tmp/code-learn-docker/mnt/Docker.app',
+      expect.stringMatching(/^\/usr\/bin\/ditto \/tmp\/code-learn-docker\/mnt\/Docker\.app \/Applications\/\.code-learn-docker-\w+\/Docker\.app$/),
+      expect.stringMatching(/^\/bin\/mv \/Applications\/\.code-learn-docker-\w+\/Docker\.app \/Applications\/Docker\.app$/),
+      '/usr/bin/hdiutil detach /tmp/code-learn-docker/mnt -quiet',
       '/usr/bin/open -a /Applications/Docker.app',
     ]);
-    expect(f.removed).toEqual([expect.stringMatching(/^\/Applications\/\.codemm-docker-\w+$/), '/tmp/codemm-docker']);
+    expect(f.removed).toEqual([expect.stringMatching(/^\/Applications\/\.code-learn-docker-\w+$/), '/tmp/code-learn-docker']);
     expect(f.desktop.status()).toEqual({ phase: 'starting' });
     expect(f.desktop.startedAt()).toBe(1_000);
   });
@@ -118,8 +118,8 @@ describe('installing Docker Desktop for the learner (§6.1)', () => {
     f.desktop.install();
     await f.desktop.done();
     expect(commands(f.calls).some((c) => c.startsWith('/usr/bin/ditto'))).toBe(false);
-    expect(commands(f.calls)).toContain('/usr/bin/hdiutil detach /tmp/codemm-docker/mnt -quiet');
-    expect(f.removed).toEqual(['/tmp/codemm-docker']);
+    expect(commands(f.calls)).toContain('/usr/bin/hdiutil detach /tmp/code-learn-docker/mnt -quiet');
+    expect(f.removed).toEqual(['/tmp/code-learn-docker']);
     expect(f.desktop.status()).toEqual({ phase: 'failed', problem: 'unverified' });
   });
 
@@ -137,9 +137,9 @@ describe('installing Docker Desktop for the learner (§6.1)', () => {
     const f = fake('darwin', { answers: { '/usr/bin/ditto': { code: 1, output: 'Permission denied' } } });
     f.desktop.install();
     await f.desktop.done();
-    expect(commands(f.calls).slice(-2)).toEqual(['/usr/bin/hdiutil detach /tmp/codemm-docker/mnt -quiet', '/usr/bin/open /tmp/codemm-docker/Docker.dmg']);
+    expect(commands(f.calls).slice(-2)).toEqual(['/usr/bin/hdiutil detach /tmp/code-learn-docker/mnt -quiet', '/usr/bin/open /tmp/code-learn-docker/Docker.dmg']);
     // The partial copy goes; the download stays for the learner.
-    expect(f.removed).toEqual([expect.stringMatching(/^\/Applications\/\.codemm-docker-\w+$/)]);
+    expect(f.removed).toEqual([expect.stringMatching(/^\/Applications\/\.code-learn-docker-\w+$/)]);
     expect(f.desktop.status()).toEqual({ phase: 'failed', problem: 'manual' });
   });
 
@@ -171,7 +171,7 @@ describe('installing Docker Desktop for the learner (§6.1)', () => {
     offline.desktop.install();
     await offline.desktop.done();
     expect(offline.desktop.status()).toEqual({ phase: 'failed', problem: 'offline' });
-    expect(offline.removed).toEqual(['/tmp/codemm-docker']);
+    expect(offline.removed).toEqual(['/tmp/code-learn-docker']);
   });
 
   it('reports download progress, then each step', async () => {
@@ -201,7 +201,7 @@ describe('installing Docker Desktop for the learner (§6.1)', () => {
     const [verify, install] = f.calls.slice(1);
     expect(verify.file).toBe(POWERSHELL);
     // The path reaches PowerShell as an environment variable, never inside the command text.
-    expect(verify.env).toEqual({ CODEMM_FILE: WIN_EXE });
+    expect(verify.env).toEqual({ CODE_LEARN_FILE: WIN_EXE });
     expect(verify.args.join(' ')).not.toContain(WIN_TMP);
     // Docker's own per-user install, Docker's default: no administrator, so no permission prompt, and --quiet hides its
     // window and install-type page. Docker's terms stay in Docker's own window, at its first start: no --accept-license.
@@ -259,7 +259,7 @@ describe('installing Docker Desktop for the learner (§6.1)', () => {
       const elevated = f.calls.filter((c) => [c.file, ...c.args].join(' ').startsWith(ELEVATED_KEY));
       expect(elevated).toHaveLength(1);
       // Docker's all-users install: as an administrator, a per-user one would go to that administrator's account.
-      expect(elevated[0].env).toEqual({ CODEMM_FILE: WIN_EXE, CODEMM_ARGS: 'install --quiet --backend=wsl-2' });
+      expect(elevated[0].env).toEqual({ CODE_LEARN_FILE: WIN_EXE, CODE_LEARN_ARGS: 'install --quiet --backend=wsl-2' });
       expect(phases).toEqual(['admin']);
       expect(f.desktop.status()).toEqual({ phase: 'starting' });
     }
@@ -415,7 +415,7 @@ describe('Astra review fixes', () => {
     await f.desktop.done();
     const cmds = commands(f.calls);
     const ditto = cmds.find((c) => c.startsWith('/usr/bin/ditto'))!;
-    expect(ditto).toMatch(/^\/usr\/bin\/ditto \/tmp\/codemm-docker\/mnt\/Docker\.app \/Applications\/\.codemm-docker-\w+\/Docker\.app$/);
+    expect(ditto).toMatch(/^\/usr\/bin\/ditto \/tmp\/code-learn-docker\/mnt\/Docker\.app \/Applications\/\.code-learn-docker-\w+\/Docker\.app$/);
     const staged = ditto.split(' ')[2];
     expect(cmds).toContain(`/bin/mv ${staged} /Applications/Docker.app`);
     expect(cmds.at(-1)).toBe('/usr/bin/open -a /Applications/Docker.app');
@@ -424,7 +424,7 @@ describe('Astra review fixes', () => {
     broken.desktop.install();
     await broken.desktop.done();
     expect(commands(broken.calls).some((c) => c.startsWith('/bin/mv '))).toBe(false);
-    expect(broken.removed.some((p) => p.startsWith('/Applications/.codemm-docker-'))).toBe(true);
+    expect(broken.removed.some((p) => p.startsWith('/Applications/.code-learn-docker-'))).toBe(true);
   });
 
   it("says when Docker won't open", async () => {
@@ -500,7 +500,7 @@ describe("this computer runs Docker Desktop, checked before the download (§6.1)
 });
 
 describe("this computer's own chip (§6.1)", () => {
-  it('an Intel build of Codemm under Rosetta, or x64 emulation on Windows on Arm, still picks the Arm download', () => {
+  it('an Intel build of code-learn under Rosetta, or x64 emulation on Windows on Arm, still picks the Arm download', () => {
     expect(nativeArch('x64', true)).toBe('arm64');
     expect(nativeArch('x64', false)).toBe('x64');
     expect(nativeArch('arm64', false)).toBe('arm64');
@@ -560,34 +560,34 @@ describe("Docker Desktop's app running, whether or not its engine answers yet (�
 });
 
 describe('what an install left behind (§6.1)', () => {
-  it("removes a download a failed or declined install kept, once it's over an hour old, and only Codemm's", async () => {
+  it("removes a download a failed or declined install kept, once it's over an hour old, and only code-learn's", async () => {
     const hour = 60 * 60_000;
     for (const platform of ['darwin', 'win32'] as const) {
       const f = fake(platform, {
         now: () => 10 * hour,
-        list: (dir) => (dir === '/tmp' ? ['codemm-docker-Ab3xYz', 'codemm-docker-new123', 'codemm-agent-Ab3xYz', 'other'] : []),
+        list: (dir) => (dir === '/tmp' ? ['code-learn-docker-Ab3xYz', 'code-learn-docker-new123', 'code-learn-agent-Ab3xYz', 'other'] : []),
         modifiedAt: (p) => (p.endsWith('new123') ? 10 * hour - 60_000 : hour),
       });
       await f.desktop.removeLeftovers();
-      expect(f.removed).toEqual([platform === 'win32' ? '\\tmp\\codemm-docker-Ab3xYz' : '/tmp/codemm-docker-Ab3xYz']);
+      expect(f.removed).toEqual([platform === 'win32' ? '\\tmp\\code-learn-docker-Ab3xYz' : '/tmp/code-learn-docker-Ab3xYz']);
     }
   });
 
-  it("removes only Codemm's own staging folders in Applications, once they are over an hour old, without blocking the app", async () => {
+  it("removes only code-learn's own staging folders in Applications, once they are over an hour old, without blocking the app", async () => {
     const hour = 60 * 60_000;
     const f = fake('darwin', {
       now: () => 10 * hour,
-      list: (dir) => (dir === '/Applications' ? ['.codemm-docker-1a2b3c4d', '.codemm-docker-0f0f0f0f', 'Docker.app', '.codemm-docker-other', 'Codemm.app'] : []),
+      list: (dir) => (dir === '/Applications' ? ['.code-learn-docker-1a2b3c4d', '.code-learn-docker-0f0f0f0f', 'Docker.app', '.code-learn-docker-other', 'code-learn.app'] : []),
       modifiedAt: (p) => (p.endsWith('0f0f0f0f') ? 10 * hour - 60_000 : hour),
     });
     await f.desktop.removeLeftovers();
     // A copy of Docker is about 2 GB: rm runs on its own, not in the app's process. The young one may be another
-    // Codemm's install that is still copying.
-    expect(commands(f.calls)).toEqual(['/bin/rm -rf /Applications/.codemm-docker-1a2b3c4d']);
+    // code-learn's install that is still copying.
+    expect(commands(f.calls)).toEqual(['/bin/rm -rf /Applications/.code-learn-docker-1a2b3c4d']);
   });
 
   it('leaves Applications alone on Windows, and when it cannot be read', async () => {
-    const win = fake('win32', { list: () => ['.codemm-docker-1a2b3c4d'] });
+    const win = fake('win32', { list: () => ['.code-learn-docker-1a2b3c4d'] });
     await win.desktop.removeLeftovers();
     expect(win.calls).toEqual([]);
     const unreadable = fake('darwin', { list: () => { throw new Error('EPERM'); } });

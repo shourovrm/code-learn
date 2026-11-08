@@ -13,7 +13,7 @@ export function Outline({ topic, current }: { topic: TopicView; current: string 
       <h2 className="h3">{topic.title}</h2>
       {topic.lessons.map((l) =>
         l.state === 'failed' ? (
-          <span key={l.id} className="item"><Icon name="book" color="var(--faint)" size={18} />Codemm couldn't write this lesson.</span>
+          <span key={l.id} className="item"><Icon name="book" color="var(--faint)" size={18} />code-learn couldn't write this lesson.</span>
         ) : l.state === 'writing' ? (
           <div key={l.id} className="item writing">
             <span className="item-head"><Icon name="book" color="var(--faint)" size={18} />{l.title}</span>

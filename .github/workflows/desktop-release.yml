@@ -53,7 +53,7 @@ jobs:
       - name: Test (Docker tests required)
         run: npm test
         env:
-          CODEMM_REQUIRE_DOCKER: "1"
+          CODE_LEARN_REQUIRE_DOCKER: "1"
 
   build:
     name: Build (${{ matrix.os }})
@@ -118,10 +118,10 @@ jobs:
         shell: bash
         run: |
           if [ "$RUNNER_OS" = macOS ]; then
-            app="$(ls -d release/mac-arm64/Codemm.app release/mac/Codemm.app 2>/dev/null | head -1)"
-            export CODEMM_PACKAGED="$PWD/$app/Contents/MacOS/Codemm" CODEMM_RESOURCES="$PWD/$app/Contents/Resources"
+            app="$(ls -d release/mac-arm64/code-learn.app release/mac/code-learn.app 2>/dev/null | head -1)"
+            export CODE_LEARN_PACKAGED="$PWD/$app/Contents/MacOS/code-learn" CODE_LEARN_RESOURCES="$PWD/$app/Contents/Resources"
           else
-            export CODEMM_PACKAGED="$PWD/release/win-unpacked/Codemm.exe" CODEMM_RESOURCES="$PWD/release/win-unpacked/resources"
+            export CODE_LEARN_PACKAGED="$PWD/release/win-unpacked/code-learn.exe" CODE_LEARN_RESOURCES="$PWD/release/win-unpacked/resources"
           fi
           npm run test:packaged
       # Each Mac app carries its own chip's wasmtime (scripts/fetch-wasmtime.mjs, fetched by npm run dist), signed with it.
@@ -129,9 +129,9 @@ jobs:
         if: runner.os == 'macOS'
         shell: bash
         run: |
-          for app in release/mac*/Codemm.app; do
+          for app in release/mac*/code-learn.app; do
             wasmtime="$app/Contents/Resources/wasmtime/wasmtime"
-            [ "$(lipo -archs "$app/Contents/MacOS/Codemm")" = "$(lipo -archs "$wasmtime")" ] || { echo "$app carries another chip's wasmtime."; exit 1; }
+            [ "$(lipo -archs "$app/Contents/MacOS/code-learn")" = "$(lipo -archs "$wasmtime")" ] || { echo "$app carries another chip's wasmtime."; exit 1; }
             codesign --verify --strict --verbose=2 "$wasmtime"
           done
       # D21: a stable release must be signed. Gatekeeper accepts only a notarized Developer ID app.
@@ -140,7 +140,7 @@ jobs:
         shell: bash
         run: |
           shopt -s nullglob
-          apps=(release/mac*/Codemm.app)
+          apps=(release/mac*/code-learn.app)
           [ ${#apps[@]} -gt 0 ] || { echo "No Mac app was built."; exit 1; }
           for app in "${apps[@]}"; do
             codesign --verify --deep --strict --verbose=2 "$app"
@@ -151,7 +151,7 @@ jobs:
         if: needs.tag.outputs.prerelease != 'true' && runner.os == 'Windows'
         shell: pwsh
         run: |
-          $files = @(Get-ChildItem release\*.exe) + @(Get-Item release\win-unpacked\Codemm.exe)
+          $files = @(Get-ChildItem release\*.exe) + @(Get-Item release\win-unpacked\code-learn.exe)
           foreach ($f in $files) {
             $s = Get-AuthenticodeSignature $f.FullName
             if ($s.Status -ne 'Valid') { throw "$($f.Name) isn't validly signed: $($s.Status)" }
@@ -195,4 +195,4 @@ jobs:
             flags+=(--prerelease)
             notes="Unsigned beta installers for macOS and Windows. Each needs one Open Anyway step (docs/desktop/beta-plan.md)."
           fi
-          gh release create "$TAG" installers/* "${flags[@]}" --title "Codemm $TAG" --notes "$notes" --repo "$GITHUB_REPOSITORY"
+          gh release create "$TAG" installers/* "${flags[@]}" --title "code-learn $TAG" --notes "$notes" --repo "$GITHUB_REPOSITORY"

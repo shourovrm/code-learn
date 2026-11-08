@@ -20,7 +20,7 @@ const BUSY = { proposing: 'Preparing setup for', installing: 'Setting up' } as c
 /** A topic's lessons, then its activity. Reading starts as soon as the first lesson exists; setup runs beside it. */
 export function TopicPage({ topicId }: { topicId: string }) {
   const { data: course, error, stale, reload } = useCourse([topicId]);
-  // Setup's progress: the agent proposing, then Codemm building and checking (§4.11). A proposing agent may still be
+  // Setup's progress: the agent proposing, then code-learn building and checking (§4.11). A proposing agent may still be
   // ending its turn while the install runs, so each state follows its own job.
   const installing = course?.setup === 'installing';
   const setupJob = useJob((p) => p.kind === 'setup' && (installing ? p.stage > 0 : p.stage === 0), [installing]);
@@ -81,7 +81,7 @@ function Items({ topic, onRetry }: { topic: TopicView; onRetry: () => void }) {
             </>
           ) : l.state === 'failed' ? (
             <>
-              <span className="fill">Codemm couldn't write this lesson.</span>
+              <span className="fill">code-learn couldn't write this lesson.</span>
               <Button variant="ghost" disabled={retrying.busy} onClick={retry}>Try again</Button>
             </>
           ) : (
@@ -123,8 +123,8 @@ function SetupFailed({ course, topicId, onRetry }: { course: CourseView; topicId
     'docker-busy': { title: 'Docker is busy or not answering.', text: 'Wait a moment, then try again.' },
     'docker-failed': { title: "Docker couldn't run that.", text: 'Try again, and restart Docker if it happens again.' },
     'docker-disk': { title: 'Docker ran out of disk space.', text: 'Remove unused images in Docker Desktop, then try again.' },
-    wasi: { title: "Codemm couldn't start the part that runs your code.", text: 'Reinstall Codemm, then try again.' },
-    'wasi-seal': { title: "Codemm couldn't make its files read-only on this drive.", text: "Keep Codemm's folder on this computer's own drive, then try again." },
+    wasi: { title: "code-learn couldn't start the part that runs your code.", text: 'Reinstall code-learn, then try again.' },
+    'wasi-seal': { title: "code-learn couldn't make its files read-only on this drive.", text: "Keep code-learn's folder on this computer's own drive, then try again." },
     gates: { title: `Couldn't set up ${course.track}.`, text: 'Try again, or stop and pick something else.' },
   }[problem];
 

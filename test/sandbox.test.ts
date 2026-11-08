@@ -5,7 +5,7 @@ import { baseImages, buildProblem, buildStep, inspectRecord, runtimeCode, runtim
 describe("sandboxArgs", () => {
   const args = sandboxArgs(
     { image: "img", script: "echo hi", env: { A: "1" }, mounts: [{ host: "/h/src", container: "/work/src" }], memoryMb: 128, deadlineMs: 1000 },
-    "codemm-x",
+    "code-learn-x",
     "501:20",
   );
   const joined = args.join(" ");
@@ -20,7 +20,7 @@ describe("sandboxArgs", () => {
     "--no-healthcheck --log-opt max-size=1m",
     "--entrypoint /bin/sh",
     "--user 501:20",
-    "--label codemm=1",
+    "--label code-learn=1",
     "-e HOME=/tmp",
   ])("always includes %s", (flag) => {
     expect(joined).toContain(flag);
@@ -37,14 +37,14 @@ describe("the sandbox user", () => {
 
   it("is the host user on POSIX", () => {
     if (!process.getuid || !process.getgid) return;
-    expect(sandboxArgs(run, "codemm-x").join(" ")).toContain(`--user ${process.getuid()}:${process.getgid()}`);
+    expect(sandboxArgs(run, "code-learn-x").join(" ")).toContain(`--user ${process.getuid()}:${process.getgid()}`);
   });
 
   it("is still unprivileged where the host has no uid (Windows)", () => {
     const { getuid, getgid } = process;
     Object.assign(process, { getuid: undefined, getgid: undefined });
     try {
-      expect(sandboxArgs(run, "codemm-x").join(" ")).toContain("--user 65534:65534");
+      expect(sandboxArgs(run, "code-learn-x").join(" ")).toContain("--user 65534:65534");
     } finally {
       Object.assign(process, { getuid, getgid });
     }
@@ -89,7 +89,7 @@ describe("runtime guidance", () => {
 });
 
 describe("buildProblem", () => {
-  it("reads a network line as the network, even when it also names Codemm's disk wording", () => {
+  it("reads a network line as the network, even when it also names code-learn's disk wording", () => {
     expect(buildProblem("not enough disk space; could not resolve host example.test")).toMatchObject({ kind: "offline", code: "offline" });
   });
 

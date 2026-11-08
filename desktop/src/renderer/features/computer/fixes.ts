@@ -12,13 +12,13 @@ export const CHECK_NAMES: Record<CheckId, string> = {
 };
 
 /** Docker isn't ready, but practice runs on the WASI engine (core §4.5): the learner can go on, and Docker stays an option. */
-export const WITHOUT_DOCKER = 'Codemm can run practice on this computer without Docker, for programs that read input and print output. For everything else, install Docker.';
+export const WITHOUT_DOCKER = 'code-learn can run practice on this computer without Docker, for programs that read input and print output. For everything else, install Docker.';
 
 /** Said while a check needs a step. Never the learner's fault. */
 export const NOT_YET: Record<CheckId, string> = {
   'docker-installed': "Docker isn't installed yet.",
   'docker-running': "Docker isn't running yet.",
-  sandbox: "Codemm couldn't confirm the sandbox yet.",
+  sandbox: "code-learn couldn't confirm the sandbox yet.",
 };
 
 const START_DESKTOP: Fix = {
@@ -30,7 +30,7 @@ export const INSTALL = {
   terms: "Docker's terms apply.",
   termsUrl: 'https://www.docker.com/legal/docker-subscription-service-agreement/',
   phase: {
-    // Windows' permission prompt can open behind Codemm, flashing in the taskbar.
+    // Windows' permission prompt can open behind code-learn, flashing in the taskbar.
     wsl: 'Allow WSL, which Docker needs, when Windows asks (look in the taskbar).',
     downloading: 'Downloading Docker Desktop',
     checking: "Checking it's from Docker…",
@@ -44,11 +44,11 @@ export const INSTALL = {
     'macos-version': 'Docker Desktop needs macOS 14 or later. Update macOS to install it.',
     'windows-version': 'Docker Desktop needs Windows 10 22H2, or Windows 11 23H2 or later. Docker no longer supports older versions, so update Windows first.',
     'windows-server': "Docker Desktop doesn't run on Windows Server.",
-    unverified: "The download wasn't signed by Docker, so Codemm deleted it.",
+    unverified: "The download wasn't signed by Docker, so code-learn deleted it.",
     manual: 'Drag Docker to Applications in the window that opened.',
     declined: 'Windows asks for permission first. Try again, and choose Yes.',
     'wsl-failed': "WSL's setup didn't finish.",
-    restart: 'Restart Windows, then open Codemm again.',
+    restart: 'Restart Windows, then open code-learn again.',
     failed: "Docker's installer didn't finish.",
   } satisfies Record<NonNullable<DockerInstall['problem']>, string>,
   /** Problems where trying again can help; the others need the learner first. */

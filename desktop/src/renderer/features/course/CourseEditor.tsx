@@ -16,7 +16,7 @@ import { Limit } from '../../ui/Limit';
 import { Markdown } from '../../ui/Markdown';
 import { LIMITS } from '../../../shared/limits';
 
-/** Rename, reorder, add or remove topics, or ask Codemm for changes. Then approve (§4.2). */
+/** Rename, reorder, add or remove topics, or ask code-learn for changes. Then approve (§4.2). */
 export function CourseEditor({ roadmap }: { roadmap: Roadmap }) {
   const api = useApi();
   const { go, fail } = useRouter();
@@ -26,12 +26,12 @@ export function CourseEditor({ roadmap }: { roadmap: Roadmap }) {
   const [adding, setAdding] = useState(false);
   /** Why the learner's own edit was refused. */
   const [notice, setNotice] = useState('');
-  /** What Codemm said when it changed nothing: agent-written Markdown, not an error. */
+  /** What code-learn said when it changed nothing: agent-written Markdown, not an error. */
   const [reply, setReply] = useState('');
   const [request, setRequest] = useState('');
   const [asking, setAsking] = useState(false);
   const dragFrom = useRef<string>(undefined);
-  // "Ask Codemm for changes" and Go deeper run a roadmap-change job (§4.11).
+  // "Ask code-learn for changes" and Go deeper run a roadmap-change job (§4.11).
   const job = useJob((p) => p.kind === 'roadmap', []);
   // A change the learner started, left and came back to is running here too: the same locks apply (the sidebar opens
   // this screen for it), and when it ends the draft it changed is read again.
@@ -49,7 +49,7 @@ export function CourseEditor({ roadmap }: { roadmap: Roadmap }) {
     }
   }, [job]);
 
-  /** Applies an edit and saves it, so the draft survives leaving or closing Codemm; or says why it was refused. */
+  /** Applies an edit and saves it, so the draft survives leaving or closing code-learn; or says why it was refused. */
   function edit(change: (cs: Concept[]) => Concept[]) {
     if (working) return;
     let next: Concept[];
@@ -89,7 +89,7 @@ export function CourseEditor({ roadmap }: { roadmap: Roadmap }) {
     if (!working) void change(`Go deeper on "${title}": split it into the smaller skills it needs, each its own topic with its prerequisites. Keep "${title}" as the first of them, with its id.`, { id, title });
   }
 
-  /** Codemm changes the roadmap as it stands now, so the learner's own edits wait until it's done (an open one closes). */
+  /** code-learn changes the roadmap as it stands now, so the learner's own edits wait until it's done (an open one closes). */
   async function change(text: string, keep?: { id: string; title: string }) {
     setAsking(true);
     setEditing(undefined);
@@ -167,7 +167,7 @@ export function CourseEditor({ roadmap }: { roadmap: Roadmap }) {
           </button>
         </div>
       </div>
-      {/* Its own space under the topics: asking, what Codemm said, and Approve are always in view, and nothing covers them. */}
+      {/* Its own space under the topics: asking, what code-learn said, and Approve are always in view, and nothing covers them. */}
       <footer className="editor-foot">
         <div className="stack editor-col" style={{ gap: 10 }}>
           {job && <JobBar job={job} label="Changing the roadmap" />}
@@ -182,7 +182,7 @@ export function CourseEditor({ roadmap }: { roadmap: Roadmap }) {
           </div>
           <div className="editor-actions">
             <form className="composer" onSubmit={ask}>
-              <Field aria-label="Ask Codemm for changes" placeholder="Ask Codemm for changes" value={request} maxLength={LIMITS.words} disabled={working} onChange={(e) => setRequest(e.target.value)} />
+              <Field aria-label="Ask code-learn for changes" placeholder="Ask code-learn for changes" value={request} maxLength={LIMITS.words} disabled={working} onChange={(e) => setRequest(e.target.value)} />
               <Button type="submit" variant="ghost" size="lg" disabled={!request.trim() || working}>Apply</Button>
             </form>
             {/* A typed request is applied or cleared first, so approving never drops it. */}

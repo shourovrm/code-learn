@@ -4,11 +4,11 @@ vi.mock('highlight.js/lib/common', async (importActual) => (loaded(), importActu
 
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import type { CodemmApi } from '../../../shared/api';
+import type { CodeLearnApi } from '../../../shared/api';
 import { mockWithCourse, renderApp } from '../../test-utils';
 
 /** The first lesson of a course, saying `markdown`. */
-async function lessonSaying(markdown: string): Promise<{ api: CodemmApi; id: string }> {
+async function lessonSaying(markdown: string): Promise<{ api: CodeLearnApi; id: string }> {
   const { api, course } = await mockWithCourse({ read: true });
   const id = course.topics[0].lessons[0].id;
   const real = await api.lesson(id);

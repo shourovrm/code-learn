@@ -17,14 +17,14 @@ export function usageOf(u: Record<string, unknown> | undefined, keys: { input: s
   return [{ type: 'usage', input, output: count(u[keys.output]), cachedInput: read, ...costUsd }];
 }
 
-/** Codemm's own tools, as the step each job shows (§4.11). Fixed text: nothing from a tool's arguments or result. */
+/** code-learn's own tools, as the step each job shows (§4.11). Fixed text: nothing from a tool's arguments or result. */
 export const STEP_LABELS: Record<string, string> = {
   list_tracks: 'Checking the installed tracks',
   save_roadmap: 'Saving the roadmap',
   get_roadmap: 'Reading the roadmap',
   save_track: 'Proposing the setup',
   save_lesson: 'Saving the lesson',
-  save_exercise: 'Codemm is checking the exercise',
+  save_exercise: 'code-learn is checking the exercise',
   next_step: 'Checking the next step',
   progress: 'Checking your progress',
   get_exercise: 'Reading the activity',

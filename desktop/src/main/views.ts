@@ -27,7 +27,7 @@ export function tryView(core: CoreCheckView): TryResult {
 
 /**
  * A track's name for the learner, from its ref: `Python` for `python@1`, `Node Js` for `node-js@2`. No version, and
- * no list of names: Codemm knows no language, so a name the track gives itself is a later step (1.1).
+ * no list of names: code-learn knows no language, so a name the track gives itself is a later step (1.1).
  */
 export const trackName = (ref: string) =>
   ref
@@ -38,7 +38,7 @@ export const trackName = (ref: string) =>
     .join(' ');
 
 /**
- * Why the last setup proposal failed, in Codemm's own words. Only the failed gate's name is read from core's message,
+ * Why the last setup proposal failed, in code-learn's own words. Only the failed gate's name is read from core's message,
  * never what the message quotes (the build's or the test runner's output).
  */
 export function setupWhy(message: string | undefined): string | undefined {
@@ -47,7 +47,7 @@ export function setupWhy(message: string | undefined): string | undefined {
   if (gate === 'build') return "The last try didn't build.";
   if (gate === 'valid') return "The last try's files weren't valid.";
   if (gate?.startsWith('probe') || gate === 'deterministic') return "The last try built, but its tests didn't work.";
-  return "The last try didn't pass Codemm's checks.";
+  return "The last try didn't pass code-learn's checks.";
 }
 
 /** A roadmap as the window sees it, named `title`. Core accepts only https sources; main checks again before anything reaches the window (§2.1). */
@@ -112,7 +112,7 @@ export function activityView(ex: CoreExercise, files: Record<string, { text: str
 
 // ---------- the reply filter (§2.2) ----------
 
-export const HELD_BACK = 'Codemm held back a reply that showed hidden material.';
+export const HELD_BACK = 'code-learn held back a reply that showed hidden material.';
 const MIN_LINE = 24;
 const normalize = (text: string) => text.replace(/\s+/g, ' ').trim();
 /** The normalized lines, 24 characters or longer, of an exercise's hidden material (core hiddenMaterial). */

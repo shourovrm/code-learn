@@ -20,7 +20,7 @@ export function Connect({ then = { to: 'goal' } }: { then?: Route }) {
   const [agents, setAgents] = useState<Agent[]>();
   useEffect(() => setAgents(undefined), [data]);
   const [busy, setBusy] = useState<string>();
-  // The agent the learner is installing or signing in: once it's connected, Codemm moves on by itself.
+  // The agent the learner is installing or signing in: once it's connected, code-learn moves on by itself.
   const [following, setFollowing] = useState<AgentId>();
   const list = agents ?? data;
   // The only supported agent installed is the learner's choice already: its sign-in check runs at once, once, on the
@@ -114,7 +114,7 @@ export function Connect({ then = { to: 'goal' } }: { then?: Route }) {
                 )
               ) : (
                 <div className="actions">
-                  {/* The agent's own login, where the learner sees it; Codemm never handles credentials. */}
+                  {/* The agent's own login, where the learner sees it; code-learn never handles credentials. */}
                   {a.state === 'signed-out' && <Button variant="ghost" onClick={() => act(a.id, () => api.signIn(a.id))}>Sign in</Button>}
                   <Button variant="ghost" disabled={busy !== undefined} onClick={() => connect(a.id)}>
                     {a.state === 'not-connected' ? 'Connect' : 'Try again'}
@@ -126,7 +126,7 @@ export function Connect({ then = { to: 'goal' } }: { then?: Route }) {
           })}
         </ul>
         <div className="a-up" style={{ ...stagger(4), display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-          <span className="quiet-text">Codemm uses your agent and your account.</span>
+          <span className="quiet-text">code-learn uses your agent and your account.</span>
           <Button size="lg" disabled={!list.some((a) => a.state === 'connected')} onClick={() => go(next)}>Continue</Button>
         </div>
       </div>
@@ -142,11 +142,11 @@ const VENDOR: Record<AgentId, string> = { claude: 'Anthropic', codex: 'OpenAI', 
 const PROBLEM: Record<NonNullable<AgentInstall['problem']>, (a: Agent) => string> = {
   offline: () => "You're offline. Connect to the internet, then try again.",
   disk: () => 'Not enough disk space. Free up 1 GB, then try again.',
-  unverified: () => "Codemm couldn't verify the installation. Try again.",
+  unverified: () => "code-learn couldn't verify the installation. Try again.",
   failed: (a) => `${a.name}'s installer didn't finish.`,
 };
 
-/** Codemm installing the agent, the vendor's own way: the download, the check, then its installer. */
+/** code-learn installing the agent, the vendor's own way: the download, the check, then its installer. */
 export function InstallProgress({ agent }: { agent: Agent }) {
   const install = agent.install;
   if (!install || install.phase === 'done') return null;

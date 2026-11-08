@@ -4,7 +4,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as app from "./app.js";
 import { doctor } from "./doctor.js";
-import { CodemmError } from "./errors.js";
+import { CodeLearnError } from "./errors.js";
 import { readFileMap } from "./files.js";
 import { claudeHook } from "./hook.js";
 import { parseCli } from "./args.js";
@@ -14,28 +14,28 @@ import { parseToolList, serveMcp } from "./mcp.js";
 const here = dirname(fileURLToPath(import.meta.url));
 const VERSION = (JSON.parse(readFileSync(join(here, "..", "package.json"), "utf8")) as { version: string }).version;
 
-const USAGE = `codemm ${VERSION}: your coding agent writes the exercises, Codemm verifies, grades and tracks mastery.
+const USAGE = `code-learn ${VERSION}: your coding agent writes the exercises, code-learn verifies, grades and tracks mastery.
 
 Usage:
-  codemm init [--host claude|codex|cursor]...   set up this project for your agent(s)
-  codemm doctor [--fix]                          check Docker and sandbox isolation
-  codemm status                                  your progress and the next step
-  codemm test [exercise]                         run the visible tests (not recorded)
-  codemm check [exercise]                        run every test and record the attempt
-  codemm skip <concept>                          come back to a concept later
-  codemm assist on|off                           let your agent edit exercise files (counts for less)
-  codemm tracks                                  list installed tracks
-  codemm track add <folder>                      install a track from a folder
-  codemm track rebuild <id@version>              rebuild a track image and re-verify its exercises
-  codemm mcp [--workspace <dir>]                 run the MCP server (your agent starts this)
+  code-learn init [--host claude|codex|cursor]...   set up this project for your agent(s)
+  code-learn doctor [--fix]                          check Docker and sandbox isolation
+  code-learn status                                  your progress and the next step
+  code-learn test [exercise]                         run the visible tests (not recorded)
+  code-learn check [exercise]                        run every test and record the attempt
+  code-learn skip <concept>                          come back to a concept later
+  code-learn assist on|off                           let your agent edit exercise files (counts for less)
+  code-learn tracks                                  list installed tracks
+  code-learn track add <folder>                      install a track from a folder
+  code-learn track rebuild <id@version>              rebuild a track image and re-verify its exercises
+  code-learn mcp [--workspace <dir>]                 run the MCP server (your agent starts this)
              [--course <c>] [--tools <a,b>] [--desktop]   bind it to one course, limit its tools, or propose tracks
              [--progress <file>]                 write which gate save_exercise runs to <file>
-  codemm hook claude [--workspace <dir>]         Claude Code practice hook (init sets this up)
+  code-learn hook claude [--workspace <dir>]         Claude Code practice hook (init sets this up)
 
 Options: --workspace <dir>. Learner commands (status, test, check, skip, assist) default to the nearest folder
-with codemm.json; every other command uses the current folder. Set CODEMM_HOME to move Codemm's data.`;
+with code-learn.json; every other command uses the current folder. Set CODE_LEARN_HOME to move code-learn's data.`;
 
-/** Learner commands find the nearest folder with codemm.json; everything else uses the current folder. */
+/** Learner commands find the nearest folder with code-learn.json; everything else uses the current folder. */
 const LEARNER_COMMANDS = new Set(["status", "test", "check", "skip", "assist"]);
 
 function workspaceFor(command: string, explicit?: string): string {
@@ -43,7 +43,7 @@ function workspaceFor(command: string, explicit?: string): string {
   if (!LEARNER_COMMANDS.has(command)) return process.cwd();
   let dir = process.cwd();
   for (;;) {
-    if (existsSync(join(dir, "codemm.json"))) return dir;
+    if (existsSync(join(dir, "code-learn.json"))) return dir;
     const parent = dirname(dir);
     if (parent === dir) return process.cwd();
     dir = parent;
@@ -84,7 +84,7 @@ async function main(argv: string[]): Promise<number> {
   switch (command) {
     case "init": {
       const hosts = (options.host ?? []) as Host[];
-      for (const h of hosts) if (!HOSTS.includes(h)) throw new CodemmError(`Unknown host "${h}". Use ${HOSTS.join(", ")}.`);
+      for (const h of hosts) if (!HOSTS.includes(h)) throw new CodeLearnError(`Unknown host "${h}". Use ${HOSTS.join(", ")}.`);
       const written = await init(ws, hosts, { command: process.execPath, args: [fileURLToPath(import.meta.url)] });
       print(`Set up ${ws}:\n${written.map((f) => `  ${f}`).join("\n")}`);
       print("Next: open this folder in your agent and ask it to teach you something. Codex needs this project marked as trusted to load .codex/config.toml.");
@@ -119,16 +119,16 @@ async function main(argv: string[]): Promise<number> {
     }
     case "skip":
       await app.skip(ws, rest[0]!);
-      print(`Codemm will come back to ${rest[0]} later.`);
+      print(`code-learn will come back to ${rest[0]} later.`);
       return 0;
     case "assist":
-      if (rest[0] !== "on" && rest[0] !== "off") throw new CodemmError("Use codemm assist on or codemm assist off.");
+      if (rest[0] !== "on" && rest[0] !== "off") throw new CodeLearnError("Use code-learn assist on or code-learn assist off.");
       await app.setAssist(ws, rest[0] === "on");
       print(rest[0] === "on" ? "Assist mode on: your agent may edit exercise files, and these exercises count for less." : "Assist mode off.");
       return 0;
     case "tracks": {
       const tracks = app.listTracks();
-      if (tracks.length === 0) print("No tracks installed yet. Ask your agent to set one up, or run codemm track add <folder>.");
+      if (tracks.length === 0) print("No tracks installed yet. Ask your agent to set one up, or run code-learn track add <folder>.");
       for (const t of tracks) print(`${t.track}  styles: ${t.styles.join(", ")}  files: ${t.files.join(", ")}`);
       return 0;
     }
@@ -144,7 +144,7 @@ async function main(argv: string[]): Promise<number> {
         print(`Rebuilt ${r.rebuilt}; ${r.exercises} exercise(s) re-verified.`);
         return 0;
       }
-      throw new CodemmError("Use codemm track add <folder> or codemm track rebuild <id@version>.");
+      throw new CodeLearnError("Use code-learn track add <folder> or code-learn track rebuild <id@version>.");
     }
     case "mcp":
       await serveMcp(ws, VERSION, {
@@ -155,7 +155,7 @@ async function main(argv: string[]): Promise<number> {
       });
       return -1; // keep running
     case "hook": {
-      if (rest[0] !== "claude") throw new CodemmError("Only `codemm hook claude` is supported.");
+      if (rest[0] !== "claude") throw new CodeLearnError("Only `code-learn hook claude` is supported.");
       const stdin = readFileSync(0, "utf8");
       const r = claudeHook(ws, stdin);
       if (r.message) process.stderr.write(`${r.message}\n`);
@@ -175,13 +175,13 @@ main(process.argv.slice(2)).then(
     if (code >= 0) process.exitCode = code;
   },
   (e: unknown) => {
-    if (e instanceof CodemmError) {
+    if (e instanceof CodeLearnError) {
       process.stderr.write(`${e.message}\n`);
       process.exitCode = 1;
     } else {
       // Unexpected errors may carry internal data; show details only on request.
-      const detail = process.env.CODEMM_DEBUG === "1" ? `\n${(e as Error).stack ?? String(e)}` : " Set CODEMM_DEBUG=1 for details.";
-      process.stderr.write(`Codemm hit an unexpected error.${detail}\n`);
+      const detail = process.env.CODE_LEARN_DEBUG === "1" ? `\n${(e as Error).stack ?? String(e)}` : " Set CODE_LEARN_DEBUG=1 for details.";
+      process.stderr.write(`code-learn hit an unexpected error.${detail}\n`);
       process.exitCode = 2;
     }
   },

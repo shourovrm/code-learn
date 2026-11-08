@@ -5,7 +5,7 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
-/** Converts JUnit XML reports (Surefire's TEST-*.xml) in a folder into Codemm's report: {"tests":[{name,status,message?}]}. */
+/** Converts JUnit XML reports (Surefire's TEST-*.xml) in a folder into code-learn's report: {"tests":[{name,status,message?}]}. */
 public class Report {
     public static void main(String[] args) throws Exception {
         StringBuilder out = new StringBuilder("{\"tests\":[");

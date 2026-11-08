@@ -28,6 +28,6 @@ export function callTool({ command, args, env }, tool, input = {}) {
         }
       }
     });
-    send({ id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'codemm-smoke', version: '1' } } });
+    send({ id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'code-learn-smoke', version: '1' } } });
   });
 }

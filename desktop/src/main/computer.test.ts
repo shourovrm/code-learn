@@ -62,7 +62,7 @@ describe('check this computer (§6.1, D13)', () => {
       expect(asks).toBe(2);
     });
 
-    it('asks once wasmtime has run: it stays there while Codemm runs', async () => {
+    it('asks once wasmtime has run: it stays there while code-learn runs', async () => {
       let asks = 0;
       const check = computerCheck(probe({ find: () => null, wasi: async () => (asks++, true) }), 'darwin');
       await check();
@@ -78,12 +78,12 @@ describe('check this computer (§6.1, D13)', () => {
     expect(asked).toBe(false);
   });
 
-  it("calls a silent Docker stopped, not starting, unless Codemm just opened it (§6.1)", async () => {
+  it("calls a silent Docker stopped, not starting, unless code-learn just opened it (§6.1)", async () => {
     const p = probe({ state: async () => 'down' });
     expect(await states(computerCheck(p, 'darwin'))).toEqual(['ok', 'problem', 'waiting']);
   });
 
-  it('says Docker is starting for 3 minutes after Codemm opened or installed it, then asks to open it', async () => {
+  it('says Docker is starting for 3 minutes after code-learn opened or installed it, then asks to open it', async () => {
     const p = probe({ state: async () => 'down', startedAt: () => 0 });
     const check = computerCheck(p, 'darwin');
     expect(await states(check)).toEqual(['ok', 'problem:starting', 'waiting']);
@@ -121,10 +121,10 @@ describe('check this computer (§6.1, D13)', () => {
     // Homebrew's docker, or a stopped Colima or OrbStack: Open Docker Desktop would fail.
     const bare = probe({ state: async () => 'down', canInstall: true, desktopInstalled: () => false });
     expect(await states(computerCheck(bare, 'darwin'))).toEqual(['problem', 'waiting', 'waiting']);
-    // With Docker Desktop there, Docker is stopped; and an engine that answers is all Codemm needs.
+    // With Docker Desktop there, Docker is stopped; and an engine that answers is all code-learn needs.
     expect(await states(computerCheck(probe({ state: async () => 'down', canInstall: true, desktopInstalled: () => true }), 'win32'))).toEqual(['ok', 'problem', 'waiting']);
     expect(await states(computerCheck(probe({ canInstall: true, desktopInstalled: () => false }), 'darwin'))).toEqual(['ok', 'ok', 'ok']);
-    // Where Codemm can't install it (Linux), a stopped engine is just stopped.
+    // Where code-learn can't install it (Linux), a stopped engine is just stopped.
     expect(await states(computerCheck(probe({ state: async () => 'down', desktopInstalled: () => false }), 'linux'))).toEqual(['ok', 'problem', 'waiting']);
   });
 
@@ -178,7 +178,7 @@ describe('check this computer (§6.1, D13)', () => {
     expect(await states(check)).toEqual(['ok', 'ok', 'problem']);
   });
 
-  it('is still checking the sandbox just after Codemm opened or installed Docker', async () => {
+  it('is still checking the sandbox just after code-learn opened or installed Docker', async () => {
     expect(await states(computerCheck(probe({ startedAt: () => 0, sandbox: async () => FAIL }), 'darwin'))).toEqual(['ok', 'ok', 'problem:checking']);
   });
 
@@ -188,7 +188,7 @@ describe('check this computer (§6.1, D13)', () => {
     // Offline is offline even just after Docker started: it isn't a slow first container.
     expect(await sandboxRow(probe({ startedAt: () => 0, sandbox: async () => offline }))).toEqual({ id: 'sandbox', state: 'problem', reason: { kind: 'offline', text: offline.detail } });
     // Docker's own causes (a folder to share, its sign-in helper) say so once Docker has had its first minutes.
-    const mount = { ok: false, kind: 'docker' as const, detail: "Docker couldn't start a test container with Codemm's folder mounted (mounts denied). Codemm keeps what a check mounts in /Users/me/.codemm/runs. If the engine says it can't see that folder, share it with the engine (Colima and Rancher Desktop share only your home folder by default), then try again." };
+    const mount = { ok: false, kind: 'docker' as const, detail: "Docker couldn't start a test container with code-learn's folder mounted (mounts denied). code-learn keeps what a check mounts in /Users/me/.code-learn/runs. If the engine says it can't see that folder, share it with the engine (Colima and Rancher Desktop share only your home folder by default), then try again." };
     expect(await sandboxRow(probe({ sandbox: async () => mount }))).toEqual({ id: 'sandbox', state: 'problem', reason: { kind: 'docker', text: mount.detail } });
     expect(await sandboxRow(probe({ startedAt: () => 0, sandbox: async () => mount }))).toEqual({ id: 'sandbox', state: 'problem', detail: 'checking' });
     // An inconclusive one says what it saw, and that it is a guess.

@@ -14,15 +14,15 @@ const STALL = {
   'docker-failed': "Docker couldn't run that. Try again, and restart Docker if it happens again.",
   'docker-disk': 'Docker ran out of disk space. Remove unused images in Docker Desktop, then try again.',
   disk: 'Not enough disk space. Free some space on this computer, then try again.',
-  wasi: "Codemm couldn't start the part that runs your code. Reinstall Codemm, then try again.",
-  'wasi-seal': "Codemm couldn't make its files read-only on this drive. Keep Codemm's folder on this computer's own drive, then try again.",
+  wasi: "code-learn couldn't start the part that runs your code. Reinstall code-learn, then try again.",
+  'wasi-seal': "code-learn couldn't make its files read-only on this drive. Keep code-learn's folder on this computer's own drive, then try again.",
   rebuild: REBUILD,
-  lesson: "Codemm couldn't write this lesson.",
+  lesson: "code-learn couldn't write this lesson.",
 };
 const named = (stalled: string): stalled is keyof typeof STALL => stalled in STALL;
 /** The work that stopped, by its kind, so the banner never says "that" with nothing on screen to point at. */
 const WORK = { setup: 'setting up the course', lesson: 'writing a lesson', author: 'writing an activity' };
-const unfinished = (work: CourseView['stalledWork']) => `Codemm couldn't finish ${work ? WORK[work] : "the course's next step"}.`;
+const unfinished = (work: CourseView['stalledWork']) => `code-learn couldn't finish ${work ? WORK[work] : "the course's next step"}.`;
 
 /** Background work stopped after its retry, and nothing was recorded (§5). A sign-out goes to connect instead. */
 export function Stalled({ stalled, work, later, retry }: { stalled: NonNullable<CourseView['stalled']>; work?: CourseView['stalledWork']; later?: string; retry: () => void }) {
@@ -61,7 +61,7 @@ export function Stalled({ stalled, work, later, retry }: { stalled: NonNullable<
       {stalled === 'failed' && <Button variant="text" onClick={() => go({ to: 'connect', then: route })}>Check your agent</Button>}
       {(stalled === 'docker' || stalled === 'docker-failed') && <Button variant="text" onClick={() => go({ to: 'computer', then: route })}>Check this computer</Button>}
       {stalled === 'rebuild' && <Button variant="text" onClick={() => go({ to: 'tracks' })}>Go to Tracks</Button>}
-      {/* An agent Codemm couldn't stop is still running: only quitting stops it (§3.1). */}
+      {/* An agent code-learn couldn't stop is still running: only quitting stops it (§3.1). */}
       {stalled !== 'unstoppable' && <Button variant="text" disabled={starting.busy} onClick={again}>Try again</Button>}
       {later && <Button variant="text" disabled={starting.busy} onClick={() => leave(later)}>Come back later</Button>}
     </div>
@@ -102,7 +102,7 @@ export function Stale({ error, retry }: { error: unknown; retry: () => void }) {
   const why = problem === 'other' || problem === 'agent' ? '' : ` ${SAY[problem]}`;
   return (
     <div className="failed" role="status">
-      Codemm couldn't refresh this.{why}
+      code-learn couldn't refresh this.{why}
       <Button variant="text" onClick={retry}>Try again</Button>
     </div>
   );

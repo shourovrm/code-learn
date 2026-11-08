@@ -1,10 +1,10 @@
-// The CodemmApi contract: what the mock (CODEMM_MOCK, the renderer's tests) and the live API (over a fake core and
+// The CodeLearnApi contract: what the mock (CODE_LEARN_MOCK, the renderer's tests) and the live API (over a fake core and
 // fake agents) both promise, checked by one suite against each. Only the public API is used, through the same steps.
 import { describe, expect, it } from 'vitest';
-import { CHANGED, type Activity, type CodemmApi, type CourseView, type Roadmap } from '../../shared/api';
+import { CHANGED, type Activity, type CodeLearnApi, type CourseView, type Roadmap } from '../../shared/api';
 
 export interface Subject {
-  api: CodemmApi;
+  api: CodeLearnApi;
   /** Docker stops: Try it and Check can't run. */
   stopDocker(): void;
 }
@@ -22,9 +22,9 @@ async function poll<T>(read: () => Promise<T>, done: (value: T) => boolean, what
   throw new Error(`never settled: ${what}`);
 }
 
-const course = (api: CodemmApi, done: (c: CourseView) => boolean, what: string) => poll(async () => (await api.course())!, (c) => c !== null && done(c), what);
+const course = (api: CodeLearnApi, done: (c: CourseView) => boolean, what: string) => poll(async () => (await api.course())!, (c) => c !== null && done(c), what);
 
-async function research(api: CodemmApi, topic = GOAL.topic): Promise<Roadmap> {
+async function research(api: CodeLearnApi, topic = GOAL.topic): Promise<Roadmap> {
   await api.connect('claude');
   const r = await poll(() => api.research({ ...GOAL, topic }), (x) => x.state !== 'running', 'research');
   expect(r.state).toBe('done');
@@ -32,7 +32,7 @@ async function research(api: CodemmApi, topic = GOAL.topic): Promise<Roadmap> {
 }
 
 /** A course set up, with the first topic's lessons read and its activity open. */
-async function practise(api: CodemmApi): Promise<Activity> {
+async function practise(api: CodeLearnApi): Promise<Activity> {
   const roadmap = await research(api);
   await api.approve(roadmap.concepts);
   const consent = await course(api, (c) => c.setup === 'consent', 'setup consent');
@@ -43,8 +43,8 @@ async function practise(api: CodemmApi): Promise<Activity> {
   return api.activity(open.topics[0].id);
 }
 
-export function codemmApiContract(name: string, make: () => Subject) {
-  describe(`the CodemmApi contract: ${name}`, () => {
+export function codeLearnApiContract(name: string, make: () => Subject) {
+  describe(`the CodeLearnApi contract: ${name}`, () => {
     it('lists Claude Code, Codex and Cursor, in that order', async () => {
       expect((await make().api.agents()).map((a) => a.id)).toEqual(['claude', 'codex', 'cursor']);
     });
@@ -122,12 +122,12 @@ export function codemmApiContract(name: string, make: () => Subject) {
       expect(heard).toHaveLength(before);
     });
 
-    it('answers a question as Codemm', async () => {
+    it('answers a question as code-learn', async () => {
       const { api } = make();
       const activity = await practise(api);
       const reply = await api.ask({ activityId: activity.id }, 'Why?');
       expect(reply.length).toBeGreaterThan(0);
-      expect(reply.every((m) => m.from === 'codemm' && m.text.length > 0)).toBe(true);
+      expect(reply.every((m) => m.from === 'code-learn' && m.text.length > 0)).toBe(true);
     });
 
     it('defers a skipped topic without mastering it', async () => {

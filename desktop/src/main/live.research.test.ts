@@ -4,10 +4,10 @@ import { type JobProgress } from '../shared/api';
 import { CANARY, live, practising, researched, until } from './testing/fakes';
 import { HELD_BACK } from './views';
 
-describe('live CodemmApi: research, roadmaps and drafts (§4.2, §4.9)', () => {
+describe('live CodeLearnApi: research, roadmaps and drafts (§4.2, §4.9)', () => {
   it('needs a connected agent before research', async () => {
     const t = live();
-    await expect(t.api.research({ topic: 'React', known: '', depth: 'standard', practice: 'code' })).rejects.toThrow('codemm:no-agent');
+    await expect(t.api.research({ topic: 'React', known: '', depth: 'standard', practice: 'code' })).rejects.toThrow('code-learn:no-agent');
   });
 
   it('researches a new course on a server bound to it, then shows the roadmap', async () => {
@@ -19,8 +19,8 @@ describe('live CodemmApi: research, roadmaps and drafts (§4.2, §4.9)', () => {
     expect(course).toMatch(/^react-[a-z0-9]+$/);
     expect(job.server(['list_tracks', 'save_roadmap']).args).toEqual(['core/cli.mjs', 'mcp', '--course', course, '--tools', 'list_tracks,save_roadmap']);
     expect(job.brief).toContain(`Course id: ${course}`);
-    // Agents that read config from their working directory get Codemm's own folder, never the workspace.
-    expect([job.cwd, job.agentDir]).toEqual(['/Users/me/Codemm', '/userData/agents']);
+    // Agents that read config from their working directory get code-learn's own folder, never the workspace.
+    expect([job.cwd, job.agentDir]).toEqual(['/Users/me/code-learn', '/userData/agents']);
   });
 
   it('reviews once on the same course after sources save, and stays running until review ends', async () => {

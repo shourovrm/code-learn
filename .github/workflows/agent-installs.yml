@@ -1,7 +1,7 @@
 name: Agent installs
 
 # Every official way to install Claude Code, Codex, Cursor and Docker Desktop, on GitHub's macOS and Windows
-# machines, then Codemm's own lookup (desktop/src/main/agent/find.real.test.ts): found with the PATH a Codemm
+# machines, then code-learn's own lookup (desktop/src/main/agent/find.real.test.ts): found with the PATH a code-learn
 # already running had, and the agent answers its version. No sign-in, no credentials and no model calls. Docker
 # Desktop's engine can't run on these machines, so only its lookup is checked.
 on:
@@ -39,7 +39,7 @@ jobs:
           - { name: windows codex npm, os: windows-latest, agent: codex, npm: "@openai/codex" }
           - { name: windows codex winget, os: windows-latest, agent: codex, winget: OpenAI.Codex }
           - { name: windows cursor script, os: windows-latest, agent: cursor, install: "irm 'https://cursor.com/install?win32=true' | iex" }
-          # Codemm's own install arguments (dockerDesktop.ts WIN_INSTALL): no --accept-license, Docker's terms stay in its window.
+          # code-learn's own install arguments (dockerDesktop.ts WIN_INSTALL): no --accept-license, Docker's terms stay in its window.
           - { name: windows docker per-user, os: windows-latest, agent: docker, docker: "--user --quiet --backend=wsl-2", dockerbin: '%LOCALAPPDATA%\Programs\DockerDesktop\resources\bin' }
           - { name: windows docker all users, os: windows-latest, agent: docker, docker: "--quiet --accept-license", dockerbin: 'C:\Program Files\Docker\Docker\resources\bin' }
           - { name: macos claude script, os: macos-latest, agent: claude, install: "curl -fsSL https://claude.ai/install.sh | bash" }
@@ -77,22 +77,22 @@ jobs:
         env:
           ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
       # A Mac app opened from Finder gets only the system folders. A Windows app keeps the PATH it started with,
-      # so this is a Codemm opened before the install: the runner's own PATH, without the runner's Docker.
+      # so this is a code-learn opened before the install: the runner's own PATH, without the runner's Docker.
       # That PATH is the runner's process PATH, which holds more folders than Explorer would give an app.
-      - name: Remember the PATH Codemm starts with (Windows)
+      - name: Remember the PATH code-learn starts with (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           $path = ($env:PATH -split ';' | Where-Object { $_ -and -not (Test-Path (Join-Path $_ 'docker.exe')) }) -join ';'
-          "CODEMM_INSTALL_PATH=$path" >> $env:GITHUB_ENV
+          "CODE_LEARN_INSTALL_PATH=$path" >> $env:GITHUB_ENV
           [Environment]::GetEnvironmentVariable('Path', 'User') | Set-Content "$env:RUNNER_TEMP\user-path.txt"
           [Environment]::GetEnvironmentVariable('Path', 'Machine') | Set-Content "$env:RUNNER_TEMP\machine-path.txt"
-          if ($env:DOCKER_BIN) { "CODEMM_DOCKER_BIN=$([Environment]::ExpandEnvironmentVariables($env:DOCKER_BIN))" >> $env:GITHUB_ENV }
-      - name: Remember the PATH Codemm starts with (macOS)
+          if ($env:DOCKER_BIN) { "CODE_LEARN_DOCKER_BIN=$([Environment]::ExpandEnvironmentVariables($env:DOCKER_BIN))" >> $env:GITHUB_ENV }
+      - name: Remember the PATH code-learn starts with (macOS)
         if: runner.os == 'macOS'
         run: |
-          echo "CODEMM_INSTALL_PATH=/usr/bin:/bin:/usr/sbin:/sbin" >> "$GITHUB_ENV"
-          if [ -n "$DOCKER_BIN" ]; then echo "CODEMM_DOCKER_BIN=$DOCKER_BIN" >> "$GITHUB_ENV"; fi
+          echo "CODE_LEARN_INSTALL_PATH=/usr/bin:/bin:/usr/sbin:/sbin" >> "$GITHUB_ENV"
+          if [ -n "$DOCKER_BIN" ]; then echo "CODE_LEARN_DOCKER_BIN=$DOCKER_BIN" >> "$GITHUB_ENV"; fi
 
       # The vendors' own commands, in Windows PowerShell as their docs say. No token reaches any of them.
       - name: Install (Windows)
@@ -113,8 +113,8 @@ jobs:
             exit 1
           }
           winget install --id $env:WINGET -e --source winget --accept-source-agreements --accept-package-agreements --disable-interactivity
-      # Accepting Docker's license is fine on a throwaway runner for the all-users row; Codemm's own per-user row leaves
-      # it to Docker's own window. Codemm runs the installer unelevated, so its manifest must not ask for an
+      # Accepting Docker's license is fine on a throwaway runner for the all-users row; code-learn's own per-user row leaves
+      # it to Docker's own window. code-learn runs the installer unelevated, so its manifest must not ask for an
       # administrator: a standard user would get error 740. This runner's user is an administrator, so only the
       # manifest shows that.
       - name: Install Docker Desktop (Windows)
@@ -126,7 +126,7 @@ jobs:
           Invoke-WebRequest 'https://desktop.docker.com/win/main/amd64/Docker%20Desktop%20Installer.exe' -OutFile $installer
           $level = [regex]::Match([Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($installer)), 'requestedExecutionLevel\s+level="(\w+)"').Groups[1].Value
           Write-Output "Docker Desktop's installer asks for: $($level)"
-          if ($env:DOCKER_ARGS -like '*--user*' -and $level -ne 'asInvoker') { throw "Docker Desktop's installer now asks for $($level): Codemm's unelevated install would fail" }
+          if ($env:DOCKER_ARGS -like '*--user*' -and $level -ne 'asInvoker') { throw "Docker Desktop's installer now asks for $($level): code-learn's unelevated install would fail" }
           $p = Start-Process $installer -ArgumentList "install $env:DOCKER_ARGS" -Wait -PassThru
           Write-Output "Docker Desktop's installer exited with $($p.ExitCode)"
           if ($p.ExitCode -ne 0) { throw "Docker Desktop didn't install" }
@@ -168,7 +168,7 @@ jobs:
               Write-Output "--- $($f.FullName)"
               Get-Content $f.FullName
             }
-            # The signer Codemm's Cursor install requires (agentInstall.ts), in the form it reads.
+            # The signer code-learn's Cursor install requires (agentInstall.ts), in the form it reads.
             foreach ($node in Get-ChildItem "$root\versions\*\node.exe" -ErrorAction SilentlyContinue) {
               $s = Get-AuthenticodeSignature -LiteralPath $node.FullName
               Write-Output "--- signature of $($node.FullName): $($s.Status)|$($s.SignerCertificate.Subject)"
@@ -182,10 +182,10 @@ jobs:
           }
 
       # A red row's lookup may fail until its fix lands; its install must still work.
-      - name: Codemm finds it
+      - name: code-learn finds it
         continue-on-error: ${{ matrix.red == true }}
         working-directory: desktop
         shell: bash
         env:
-          CODEMM_REAL_INSTALL: ${{ matrix.agent }}
+          CODE_LEARN_REAL_INSTALL: ${{ matrix.agent }}
         run: npx vitest run src/main/agent/find.real.test.ts

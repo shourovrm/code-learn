@@ -10,7 +10,7 @@ const say = (message: string) => {
 };
 
 describe('what a failure says', () => {
-  it("is Codemm's words for a known problem", () => {
+  it("is code-learn's words for a known problem", () => {
     expect(say(OFFLINE)).toBe(SAY.offline);
     expect(say(AGENT_FAILED)).toBe(SAY.agent);
   });
@@ -25,7 +25,7 @@ describe('what a failure says', () => {
     expect(say("The container runtime isn't running. Start Docker Desktop (or `podman machine start`).")).toBe(SAY.other);
     expect(say('exercises/react/state-easy-1/Counter.jsx is missing. Restore it, or run get_exercise.')).toBe(SAY.other);
     expect(say('Bad input')).toBe(SAY.other);
-    expect(say('Codemm is busy with another change to this course or track. Retry in a moment.')).toBe('Codemm is busy with another change to this course or track. Retry in a moment.');
+    expect(say('code-learn is busy with another change to this course or track. Retry in a moment.')).toBe('code-learn is busy with another change to this course or track. Retry in a moment.');
   });
 
   it("never shows an error the window made itself", () => {

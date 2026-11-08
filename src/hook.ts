@@ -2,7 +2,7 @@ import { existsSync, realpathSync, statSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { readWorkspace } from "./store.js";
 
-const WARN = "Codemm hook: couldn't read the file path from the hook input; allowing the edit.";
+const WARN = "code-learn hook: couldn't read the file path from the hook input; allowing the edit.";
 
 /**
  * Resolves symlinks and aliases (e.g. /tmp vs /private/tmp) through the deepest existing ancestor.
@@ -23,10 +23,10 @@ function canonical(path: string): string {
 
 /**
  * True when the workspace's disk ignores case: a name in it, in another case, is the same file.
- * codemm.json always has letters to swap; the workspace's own name is the fallback.
+ * code-learn.json always has letters to swap; the workspace's own name is the fallback.
  */
 function caseInsensitive(ws: string): boolean {
-  for (const path of [join(ws, "codemm.json"), ws]) {
+  for (const path of [join(ws, "code-learn.json"), ws]) {
     const name = basename(path);
     const swapped = name.replace(/[a-z]/gi, (c) => (c === c.toLowerCase() ? c.toUpperCase() : c.toLowerCase()));
     if (swapped === name) continue;
@@ -65,13 +65,13 @@ export function claudeHook(ws: string, stdin: string): { exit: 0 | 2; message?: 
   try {
     assist = readWorkspace(ws).assist;
   } catch {
-    // An unreadable codemm.json means practice mode.
+    // An unreadable code-learn.json means practice mode.
   }
   if (assist) return { exit: 0 };
   return {
     exit: 2,
     message:
-      "Codemm practice mode: the learner writes the code in exercises/. Give a hint, explain the concept or point at the failing test instead. " +
-      "(The learner can run `codemm assist on` to allow your edits; assisted attempts count for less.)",
+      "code-learn practice mode: the learner writes the code in exercises/. Give a hint, explain the concept or point at the failing test instead. " +
+      "(The learner can run `code-learn assist on` to allow your edits; assisted attempts count for less.)",
   };
 }

@@ -3,13 +3,13 @@ import { resolve } from 'node:path';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import { SIGNED_OUT, type CodemmApi, type Concept, type JobProgress, type Roadmap, type RoadmapChange } from '../../../shared/api';
+import { SIGNED_OUT, type CodeLearnApi, type Concept, type JobProgress, type Roadmap, type RoadmapChange } from '../../../shared/api';
 import type { MockOptions } from '../../../main/mock';
 import { jobAt, jobBus, mockWithRoadmap, renderApp } from '../../test-utils';
 
 const names = () => within(screen.getByRole('list')).getAllByRole('listitem').map((li) => li.getAttribute('aria-label'));
 
-async function open(options?: MockOptions, before?: (api: CodemmApi) => void): Promise<{ api: CodemmApi; roadmap: Roadmap; user: ReturnType<typeof userEvent.setup> }> {
+async function open(options?: MockOptions, before?: (api: CodeLearnApi) => void): Promise<{ api: CodeLearnApi; roadmap: Roadmap; user: ReturnType<typeof userEvent.setup> }> {
   const { api, roadmap } = await mockWithRoadmap(options);
   before?.(api);
   const small = { ...roadmap, concepts: roadmap.concepts.filter((c) => ['javascript-basics', 'jsx', 'lists-and-keys', 'forms'].includes(c.id)) };
@@ -88,7 +88,7 @@ describe('course editor', () => {
     expect(screen.getByRole('button', { name: 'Approve' })).toBeEnabled();
   });
 
-  it('goes deeper on one topic: Codemm splits it into its smaller skills', async () => {
+  it('goes deeper on one topic: code-learn splits it into its smaller skills', async () => {
     const asked: string[] = [];
     const { api, user } = await open();
     const revise = api.reviseRoadmap;
@@ -142,14 +142,14 @@ describe('course editor', () => {
     expect(name).toHaveValue('n'.repeat(200));
     expect(screen.getByText('Up to 200 characters.')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Done' }));
-    const request = screen.getByRole('textbox', { name: 'Ask Codemm for changes' });
+    const request = screen.getByRole('textbox', { name: 'Ask code-learn for changes' });
     await user.click(request);
     await user.paste('r'.repeat(2500));
     expect(request).toHaveValue('r'.repeat(2000));
     expect(screen.getByText('Up to 2,000 characters.')).toBeInTheDocument();
   });
 
-  it("locks the learner's own edits while Codemm changes the roadmap, so its change can't overwrite them", async () => {
+  it("locks the learner's own edits while code-learn changes the roadmap, so its change can't overwrite them", async () => {
     const { api, roadmap, user } = await open();
     let finish: (c: RoadmapChange) => void = () => undefined;
     api.reviseRoadmap = () => new Promise((r) => (finish = r));
@@ -164,12 +164,12 @@ describe('course editor', () => {
     for (const name of locked) expect(screen.getByRole('button', { name })).toBeEnabled();
   });
 
-  it('shows the change job\'s stages and latest step while Codemm changes the roadmap', async () => {
+  it('shows the change job\'s stages and latest step while code-learn changes the roadmap', async () => {
     let hear: (p: JobProgress) => void = () => undefined;
     const { api, roadmap, user } = await open(undefined, (a) => (a.onJobProgress = (listener) => ((hear = listener), () => undefined)));
     let finish: (c: RoadmapChange) => void = () => undefined;
     api.reviseRoadmap = () => new Promise((r) => (finish = r));
-    await user.type(screen.getByRole('textbox', { name: 'Ask Codemm for changes' }), 'Testing{Enter}');
+    await user.type(screen.getByRole('textbox', { name: 'Ask code-learn for changes' }), 'Testing{Enter}');
     const job: JobProgress = { job: 'j1', kind: 'roadmap', stage: 1, steps: [{ kind: 'step', label: 'Reading the roadmap' }], count: 1, thinking: true, elapsedMs: 3000, idleMs: 0 };
     act(() => hear(job));
     const bar = await screen.findByRole('group', { name: 'Changing the roadmap' });
@@ -181,10 +181,10 @@ describe('course editor', () => {
     expect(screen.queryByRole('group', { name: 'Changing the roadmap' })).not.toBeInTheDocument();
   });
 
-  it("shows Codemm's reply as a note in Markdown, and keeps the alert for a refused edit", async () => {
+  it("shows code-learn's reply as a note in Markdown, and keeps the alert for a refused edit", async () => {
     const { api, roadmap, user } = await open();
     api.reviseRoadmap = async () => ({ roadmap, changed: false, text: 'It already covers **hooks**.' });
-    await user.type(screen.getByRole('textbox', { name: 'Ask Codemm for changes' }), 'Add hooks{Enter}');
+    await user.type(screen.getByRole('textbox', { name: 'Ask code-learn for changes' }), 'Add hooks{Enter}');
     const status = within(screen.getByRole('main')).getByRole('status');
     expect(await within(status).findByText('hooks', { selector: 'strong' })).toBeInTheDocument();
     expect(status).not.toHaveTextContent('**');
@@ -195,9 +195,9 @@ describe('course editor', () => {
     expect(status.querySelector('.note')).toBeNull();
   });
 
-  it('asks Codemm for changes', async () => {
+  it('asks code-learn for changes', async () => {
     const { user } = await open();
-    await user.type(screen.getByRole('textbox', { name: 'Ask Codemm for changes' }), 'Testing{Enter}');
+    await user.type(screen.getByRole('textbox', { name: 'Ask code-learn for changes' }), 'Testing{Enter}');
     expect(await screen.findByRole('listitem', { name: 'Testing' })).toBeInTheDocument();
   });
 
@@ -206,7 +206,7 @@ describe('course editor', () => {
     const revise = api.reviseRoadmap;
     let finish!: () => void;
     api.reviseRoadmap = (concepts, request) => new Promise((resolve) => (finish = () => resolve(revise(concepts, request))));
-    await user.type(screen.getByRole('textbox', { name: 'Ask Codemm for changes' }), 'Testing');
+    await user.type(screen.getByRole('textbox', { name: 'Ask code-learn for changes' }), 'Testing');
     expect(screen.getByRole('button', { name: 'Approve' })).toBeDisabled();
     await user.click(screen.getByRole('button', { name: 'Apply' }));
     expect(await screen.findByText('Updating the roadmap…')).toBeInTheDocument();
@@ -221,7 +221,7 @@ describe('course editor', () => {
     const { user } = await open(options);
     await user.click(screen.getByRole('button', { name: 'Remove Forms' }));
     options.agentProblem = 'signed-out';
-    await user.type(screen.getByRole('textbox', { name: 'Ask Codemm for changes' }), 'Testing{Enter}');
+    await user.type(screen.getByRole('textbox', { name: 'Ask code-learn for changes' }), 'Testing{Enter}');
     const claude = await screen.findByRole('listitem', { name: 'Claude Code' });
     await user.click(within(claude).getByRole('button', { name: 'Try again' }));
     // A ready computer passes by itself.
@@ -239,7 +239,7 @@ describe('course editor', () => {
       if (calls > 1) throw new Error(SIGNED_OUT);
       return { roadmap: { ...roadmap, sources: [{ title: 'New source', url: 'https://example.com/new' }] }, changed: true, text: '' };
     };
-    const ask = async (text: string) => user.type(screen.getByRole('textbox', { name: 'Ask Codemm for changes' }), `${text}{Enter}`);
+    const ask = async (text: string) => user.type(screen.getByRole('textbox', { name: 'Ask code-learn for changes' }), `${text}{Enter}`);
     await ask('Add sources');
     await screen.findByRole('link', { name: 'New source' });
     options.agentProblem = 'signed-out';
@@ -269,7 +269,7 @@ describe('a roadmap change that started elsewhere', () => {
     expect(await screen.findByRole('group', { name: 'Changing the roadmap' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Approve' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Add a topic' })).toBeDisabled();
-    expect(screen.getByRole('textbox', { name: 'Ask Codemm for changes' })).toBeDisabled();
+    expect(screen.getByRole('textbox', { name: 'Ask code-learn for changes' })).toBeDisabled();
 
     // The change landed in the draft, which this screen opened before it did.
     api.draft = async () => ({ ...roadmap, concepts: [...roadmap.concepts, { id: 'testing', title: 'Testing', requires: [] }] });
@@ -292,7 +292,7 @@ describe('a long roadmap', () => {
     expect(getComputedStyle(body).overflowY).toBe('auto');
     const foot = approve.closest('footer')!;
     expect(body.contains(foot)).toBe(false);
-    expect(foot).toContainElement(screen.getByRole('textbox', { name: 'Ask Codemm for changes' }));
+    expect(foot).toContainElement(screen.getByRole('textbox', { name: 'Ask code-learn for changes' }));
     sheet.remove();
   });
 });

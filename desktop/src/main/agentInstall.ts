@@ -1,7 +1,7 @@
 // Installs Claude Code, Codex or Cursor for the learner, the vendor's own way, into the learner's own folders: no
 // Node, npm or admin rights (DESIGN §3.1). Downloads come only from the vendor's https host, checked at every hop.
 // Every command is an argument array, never a shell string, and nothing runs until it is verified where the vendor
-// publishes a way to verify it. Codemm never signs in for the learner: the agent's own login does that.
+// publishes a way to verify it. code-learn never signs in for the learner: the agent's own login does that.
 import { createHash } from 'node:crypto';
 import { chmodSync, mkdtempSync, readFileSync, realpathSync } from 'node:fs';
 import { createReadStream } from 'node:fs';
@@ -20,7 +20,7 @@ export interface AgentInstallDeps extends Omit<DesktopDeps, 'list' | 'modifiedAt
   sha256(file: string): Promise<string>;
   makeExecutable(file: string): void;
   realpath(file: string): string;
-  /** The agent's CLI where Codemm looks for it (find.ts). */
+  /** The agent's CLI where code-learn looks for it (find.ts). */
   find(bin: string): Executable | null;
 }
 
@@ -29,8 +29,8 @@ const MiB = 1024 * KiB;
 const GiB = 1024 ** 3;
 /** System tools by absolute path: a tool earlier on PATH can't answer for them. */
 const CODESIGN = '/usr/bin/codesign';
-/** The path arrives as $env:CODEMM_FILE, so nothing outside this text is ever parsed as PowerShell. */
-const SIGNATURE = '$s = Get-AuthenticodeSignature -LiteralPath $env:CODEMM_FILE; "$($s.Status)|$($s.SignerCertificate.Subject)"';
+/** The path arrives as $env:CODE_LEARN_FILE, so nothing outside this text is ever parsed as PowerShell. */
+const SIGNATURE = '$s = Get-AuthenticodeSignature -LiteralPath $env:CODE_LEARN_FILE; "$($s.Status)|$($s.SignerCertificate.Subject)"';
 const CLAUDE_RELEASES = 'https://downloads.claude.ai/claude-code-releases';
 /** OpenAI's documented chatgpt.com/codex/install.* redirect here. */
 const CODEX_SCRIPTS = 'https://releases.openai.com/codex';
@@ -117,7 +117,7 @@ export function agentInstaller(d: AgentInstallDeps) {
       const requirement = `-R=anchor apple generic and certificate leaf[subject.OU] = "${team}"`;
       if (!ok(await d.run(CODESIGN, ['--verify', '--strict', requirement, file]))) throw new Stop('unverified');
     } else {
-      const r = await d.run(POWERSHELL, ['-NoProfile', '-NonInteractive', '-Command', SIGNATURE], { env: { CODEMM_FILE: file } });
+      const r = await d.run(POWERSHELL, ['-NoProfile', '-NonInteractive', '-Command', SIGNATURE], { env: { CODE_LEARN_FILE: file } });
       if (!ok(r) || !signedBy(r.output, orgs)) throw new Stop('unverified');
     }
   }
@@ -150,7 +150,7 @@ export function agentInstaller(d: AgentInstallDeps) {
 
   /**
    * A downloaded vendor install script, run as a file by its interpreter (`sh` or `bash` on macOS, PowerShell on
-   * Windows), never a shell string. Then its CLI must be where Codemm looks. The script's output stays here: it is
+   * Windows), never a shell string. Then its CLI must be where code-learn looks. The script's output stays here: it is
    * only read for being offline.
    */
   async function runScript(id: 'codex' | 'cursor', file: string, unix: string, env?: Record<string, string>) {
@@ -177,7 +177,7 @@ export function agentInstaller(d: AgentInstallDeps) {
   }
 
   /**
-   * Cursor's own install script (bash on macOS: it uses bash's [[ ]]). Then Codemm must find the version the script
+   * Cursor's own install script (bash on macOS: it uses bash's [[ ]]). Then code-learn must find the version the script
    * names, not a copy an earlier run left, and that version's Node.js, which runs Cursor's code, is checked against
    * its signer. On Windows find() gives that node.exe itself; on macOS `cursor-agent` links to a launcher beside it.
    * Nothing is signed by Cursor, and Cursor publishes no checksum (DESIGN §3.1).
@@ -203,7 +203,7 @@ export function agentInstaller(d: AgentInstallDeps) {
       dir = d.tempDir();
       if ((await d.freeBytes(dir)) < GiB) throw new Stop('disk');
       await INSTALLS[id](dir);
-      // Done only once Codemm finds it where it looks for agents.
+      // Done only once code-learn finds it where it looks for agents.
       if (!d.find(AGENT_CLIS[id].bin)) throw new Stop('failed');
       status.set(id, { phase: 'done' });
     } catch (e) {
@@ -240,7 +240,7 @@ export function agentInstaller(d: AgentInstallDeps) {
 export function nodeAgentDeps(find: (bin: string) => Executable | null, network: Network): AgentInstallDeps {
   return {
     ...nodeDesktopDeps(network),
-    tempDir: () => mkdtempSync(join(tmpdir(), 'codemm-agent-')),
+    tempDir: () => mkdtempSync(join(tmpdir(), 'code-learn-agent-')),
     readText: (file) => readFileSync(file, 'utf8').slice(0, 1_000_000),
     sha256: (file) =>
       new Promise((resolve, reject) => {

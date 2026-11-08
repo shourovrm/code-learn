@@ -34,7 +34,7 @@ function runWorkers(n: number, lock: string, counter: string): Promise<number[]>
 
 describe("withLock across processes", () => {
   it("serializes concurrent writers", async () => {
-    const dir = tempDir("codemm-lock-");
+    const dir = tempDir("code-learn-lock-");
     const counter = join(dir, "n");
     writeFileSync(counter, "0");
     expect(await runWorkers(12, join(dir, "x.lock"), counter)).toEqual(Array(12).fill(0));
@@ -42,7 +42,7 @@ describe("withLock across processes", () => {
   });
 
   it("lets exactly one process at a time take over a stale lock", async () => {
-    const dir = tempDir("codemm-lock-");
+    const dir = tempDir("code-learn-lock-");
     const counter = join(dir, "n");
     const lock = join(dir, "x.lock");
     writeFileSync(counter, "0");

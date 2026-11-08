@@ -1,5 +1,5 @@
-// Bundles Codemm's core from the repository into out/core (DESIGN §7): the
-// CLI, which the app runs as `codemm mcp` with Electron as Node, and the app
+// Bundles code-learn's core from the repository into out/core (DESIGN §7): the
+// CLI, which the app runs as `code-learn mcp` with Electron as Node, and the app
 // module main loads in-process. Learners then need no Node, npm or terminal.
 import { build } from 'esbuild';
 import { copyFileSync, mkdirSync } from 'node:fs';
@@ -18,7 +18,7 @@ await build({
   format: 'esm',
   outfile: join(out, 'dist', 'cli.mjs'),
   // Bundled CommonJS dependencies still call require.
-  banner: { js: "import { createRequire as __codemmRequire } from 'node:module'; const require = __codemmRequire(import.meta.url);" },
+  banner: { js: "import { createRequire as __CodeLearnRequire } from 'node:module'; const require = __CodeLearnRequire(import.meta.url);" },
 });
 await build({ ...common, entryPoints: [join(desktop, 'scripts', 'core-entry.ts')], format: 'cjs', outfile: join(out, 'dist', 'app.cjs') });
 // The CLI reads its version from ../package.json.

@@ -43,8 +43,8 @@ describe('shared parts', () => {
   it('Banner: an info card, spread out when it has an action', () => {
     const { rerender } = render(<Banner action={<button type="button">Resume roadmap</button>}>React</Banner>);
     expect(screen.getByText('React').parentElement).toHaveClass('card', 'info', 'resume');
-    rerender(<Banner>Codemm will set it up.</Banner>);
-    expect(screen.getByText('Codemm will set it up.').parentElement).not.toHaveClass('resume');
+    rerender(<Banner>code-learn will set it up.</Banner>);
+    expect(screen.getByText('code-learn will set it up.').parentElement).not.toHaveClass('resume');
   });
 
   it('ExternalLink: opens outside the app, sending no referrer', () => {

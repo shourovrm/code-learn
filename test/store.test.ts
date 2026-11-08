@@ -8,8 +8,8 @@ import { tempDir } from "./temp.js";
 
 let home: string;
 beforeEach(() => {
-  home = tempDir("codemm-home-");
-  process.env.CODEMM_HOME = home;
+  home = tempDir("code-learn-home-");
+  process.env.CODE_LEARN_HOME = home;
 });
 
 const ev = (n: number) => ({ format_version: 1 as const, kind: "skip" as const, at: `2026-10-17T00:00:0${n}Z`, concept: `c${n}` });
@@ -62,8 +62,8 @@ describe("withLock", () => {
 
 describe("withWorkspaceLock", () => {
   it("is one lock for every spelling of the workspace", async () => {
-    const ws = tempDir("codemm-ws-");
-    const alias = join(tempDir("codemm-alias-"), "ws");
+    const ws = tempDir("code-learn-ws-");
+    const alias = join(tempDir("code-learn-alias-"), "ws");
     symlinkSync(ws, alias);
     const order: string[] = [];
     const slow = withWorkspaceLock(ws, async () => {
@@ -80,8 +80,8 @@ describe("withWorkspaceLock", () => {
 
 describe("withWorkspaceLock for a folder that doesn't exist yet", () => {
   it("is the same lock before and after the folder is created", async () => {
-    const real = tempDir("codemm-ws-");
-    const alias = join(tempDir("codemm-alias-"), "ws");
+    const real = tempDir("code-learn-ws-");
+    const alias = join(tempDir("code-learn-alias-"), "ws");
     symlinkSync(real, alias);
     const order: string[] = [];
     const slow = withWorkspaceLock(join(alias, "new"), async () => {
@@ -98,7 +98,7 @@ describe("withWorkspaceLock for a folder that doesn't exist yet", () => {
 
 describe("materialize", () => {
   it("writes missing files and never overwrites the learner's edits", () => {
-    const ws = tempDir("codemm-ws-");
+    const ws = tempDir("code-learn-ws-");
     materialize(ws, "exercises/demo/sum", { "main.sh": "starter", "README.md": "v1" });
     writeFileSync(join(ws, "exercises/demo/sum/main.sh"), "my edit");
     materialize(ws, "exercises/demo/sum", { "main.sh": "starter", "README.md": "v1", "tests/01.in": "1" });
@@ -107,8 +107,8 @@ describe("materialize", () => {
   });
 
   it("refuses to write through a symlinked folder", () => {
-    const ws = tempDir("codemm-ws-");
-    const outside = tempDir("codemm-outside-");
+    const ws = tempDir("code-learn-ws-");
+    const outside = tempDir("code-learn-outside-");
     symlinkSync(outside, join(ws, "exercises"));
     expect(() => materialize(ws, "exercises/demo/sum", { "main.sh": "x" })).toThrow(/symlink/i);
     expect(readdirSync(outside)).toEqual([]);
@@ -116,10 +116,10 @@ describe("materialize", () => {
 });
 
 describe.runIf(process.platform !== "win32")("file modes", () => {
-  it("keeps the umask's modes for Codemm's own files, and 0644 for learner files", () => {
+  it("keeps the umask's modes for code-learn's own files, and 0644 for learner files", () => {
     const old = process.umask(0o002);
     try {
-      const ws = tempDir("codemm-ws-");
+      const ws = tempDir("code-learn-ws-");
       const mode = (path: string) => statSync(join(ws, path)).mode & 0o777;
       writeTextAtomic(join(ws, "own.json"), "{}");
       expect(mode("own.json")).toBe(0o664);
@@ -145,7 +145,7 @@ describe("corrupted records", () => {
 });
 
 describe("generated records", () => {
-  it("reads an exercise at the author file limit plus Codemm's own record", async () => {
+  it("reads an exercise at the author file limit plus code-learn's own record", async () => {
     const { readExercise } = await import("../src/store.js");
     const dir = join(home, "courses", "demo", "exercises", "big");
     mkdirSync(dir, { recursive: true });
@@ -166,18 +166,18 @@ describe("assertFreeSpace", () => {
 });
 
 describe("trackImageTag", () => {
-  it("names a track's image after its Codemm home, so two homes on one Docker never share a tag", () => {
+  it("names a track's image after its code-learn home, so two homes on one Docker never share a tag", () => {
     const a = trackImageTag("python", 1);
-    expect(a).toMatch(/^codemm-track-[0-9a-f]{8}-python:1$/);
+    expect(a).toMatch(/^code-learn-track-[0-9a-f]{8}-python:1$/);
     expect(trackImageTag("python", 1)).toBe(a);
-    const other = tempDir("codemm-home-");
-    process.env.CODEMM_HOME = other;
+    const other = tempDir("code-learn-home-");
+    process.env.CODE_LEARN_HOME = other;
     expect(trackImageTag("python", 1)).not.toBe(a);
     // The same home spelled through a symlink is the same home.
-    const link = join(tempDir("codemm-link-"), "home");
+    const link = join(tempDir("code-learn-link-"), "home");
     symlinkSync(other, link);
     const direct = trackImageTag("python", 1);
-    process.env.CODEMM_HOME = link;
+    process.env.CODE_LEARN_HOME = link;
     expect(trackImageTag("python", 1)).toBe(direct);
   });
 });
@@ -186,7 +186,7 @@ describe("toolchain folders", () => {
   const base = { format_version: 1 as const, id: "py", version: 1, styles: ["io" as const], files: ["main.py"], run: "/work/src/main.py", limits: { time_ms: 2000, memory_mb: 256 }, installedAt: "now" };
 
   it("names a toolchain's folder by its digest, and refuses anything else", () => {
-    expect(store.toolchainDir("a".repeat(64))).toBe(join(store.codemmHome(), "toolchains", "a".repeat(64)));
+    expect(store.toolchainDir("a".repeat(64))).toBe(join(store.codeLearnHome(), "toolchains", "a".repeat(64)));
     expect(() => store.toolchainDir("../x")).toThrow(/Invalid toolchain digest/);
   });
 

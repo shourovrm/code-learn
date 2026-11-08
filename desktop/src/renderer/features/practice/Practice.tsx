@@ -73,8 +73,8 @@ function Waiting({ topic, course, stale, retry }: { topic: TopicView; course: Co
 }
 
 /**
- * Statement, editor, terminal and results, with Codemm beside them. Only Check is graded; Run and Try it never are.
- * The learner edits, Codemm explains.
+ * Statement, editor, terminal and results, with code-learn beside them. Only Check is graded; Run and Try it never are.
+ * The learner edits, code-learn explains.
  */
 function Workspace({ activity, course, focus }: { activity: Activity; course: CourseView; focus: boolean }) {
   const api = useApi();
@@ -86,7 +86,7 @@ function Workspace({ activity, course, focus }: { activity: Activity; course: Co
   const [open, setOpen] = useState(activity.files[0].path);
   const chat = useConversation({ activityId: activity.id }, 'Ask me if you get stuck.');
   const { add } = chat;
-  const onReloaded = useCallback(() => add({ from: 'codemm', text: 'This file changed outside Codemm, so it was reloaded.' }), [add]);
+  const onReloaded = useCallback(() => add({ from: 'code-learn', text: 'This file changed outside code-learn, so it was reloaded.' }), [add]);
   const { files, edit, save } = useLearnerFiles(activity, onReloaded);
   const topic = course.topics.find((t) => t.id === activity.concept);
   const terminal = useRef<TerminalHandle>(null);
@@ -98,13 +98,13 @@ function Workspace({ activity, course, focus }: { activity: Activity; course: Co
   const { shown, setShown, attempt } = useAttempt({ save, fail, blocked: () => program.running });
 
   const busy = shown.kind === 'busy' || program.running;
-  // Codemm reads the saved files, so pending edits are saved before each question.
+  // code-learn reads the saved files, so pending edits are saved before each question.
   const ask = (text: string) => chat.ask(text, save);
 
   const check = () =>
     attempt('Checking', async (run) => {
       const result = await api.check(activity.id, run);
-      if (result.kind === 'not-counted') chat.add({ from: 'codemm', text: 'Your code is saved. Nothing was recorded.' });
+      if (result.kind === 'not-counted') chat.add({ from: 'code-learn', text: 'Your code is saved. Nothing was recorded.' });
       return { kind: 'check', result, keepTrying: false };
     });
 
@@ -128,7 +128,7 @@ function Workspace({ activity, course, focus }: { activity: Activity; course: Co
     later: () => act(() => api.skip(activity.concept), { to: 'learn' }),
     computer: () => go({ to: 'computer', then: { to: 'practice', concept: activity.concept } }),
     tracks: () => go({ to: 'tracks' }),
-    // Straight on to the topic Codemm offers now; a finished course shows its celebration. The same topic, or a review,
+    // Straight on to the topic code-learn offers now; a finished course shows its celebration. The same topic, or a review,
     // opens on Practice, which waits while its activity is written.
     next: async () => {
       try {

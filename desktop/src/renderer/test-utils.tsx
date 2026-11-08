@@ -1,16 +1,16 @@
 import { render } from '@testing-library/react';
-import type { CodemmApi, CourseView, JobProgress, Roadmap } from '../shared/api';
+import type { CodeLearnApi, CourseView, JobProgress, Roadmap } from '../shared/api';
 import { createMock, type MockOptions } from '../main/mock';
 import { App } from './app/App';
 import type { Route } from './app/router';
 
 /** `strict` renders under StrictMode, as the app's root does, which replays every effect once. */
-export function renderApp(start: Route = { to: 'welcome' }, api: CodemmApi = createMock(), { strict = false } = {}) {
+export function renderApp(start: Route = { to: 'welcome' }, api: CodeLearnApi = createMock(), { strict = false } = {}) {
   return { api, ...render(<App api={api} start={start} />, { reactStrictMode: strict }) };
 }
 
 /** A connected mock with a researched roadmap. */
-export async function mockWithRoadmap(options?: MockOptions): Promise<{ api: CodemmApi; roadmap: Roadmap }> {
+export async function mockWithRoadmap(options?: MockOptions): Promise<{ api: CodeLearnApi; roadmap: Roadmap }> {
   const api = createMock(options);
   await api.connect('claude');
   const goal = { topic: 'React', known: '', depth: 'standard' as const, practice: 'code' as const };
@@ -20,7 +20,7 @@ export async function mockWithRoadmap(options?: MockOptions): Promise<{ api: Cod
 }
 
 /** The course once `done` holds, reading it again (which moves the mock's jobs along) a few times at most. */
-export async function until(api: CodemmApi, done: (c: CourseView) => boolean): Promise<CourseView> {
+export async function until(api: CodeLearnApi, done: (c: CourseView) => boolean): Promise<CourseView> {
   for (let i = 0; i < 10; i++) {
     const c = (await api.course())!;
     if (done(c)) return c;
@@ -40,7 +40,7 @@ export async function mockWithCourse(options?: MockOptions & { read?: boolean })
 }
 
 /** Jobs a test tells the app about: every subscriber hears them, and a screen that opens meanwhile reads the running ones. */
-export function jobBus(api: CodemmApi) {
+export function jobBus(api: CodeLearnApi) {
   const listeners = new Set<(p: JobProgress) => void>();
   let running: JobProgress[] = [];
   api.onJobProgress = (listener) => (listeners.add(listener), () => void listeners.delete(listener));

@@ -1,4 +1,4 @@
-// Cursor Agent: launching a headless turn with Codemm's MCP server, and reading its JSON stream (DESIGN §3.1).
+// Cursor Agent: launching a headless turn with code-learn's MCP server, and reading its JSON stream (DESIGN §3.1).
 import type { AgentCli, AgentEvent } from './agents';
 import { CURSOR_BIN } from './cursorWindows';
 import { json, obj, plain, PLAN_LIMIT, progress, readOf, searchOf, stepOf, str, TEXT_MAX, textOf, usageOf, versionRead } from './stream';
@@ -16,19 +16,19 @@ export const cursor: AgentCli = {
   bin: CURSOR_BIN,
   launch({ prompt, server, tools, model, resume, web }) {
     // Cursor reads MCP servers and permissions from the working directory (and the learner's ~/.cursor, which stays
-    // untouched): the job folder holds only the codemm server, and allows only the job's tools. Print mode approves
+    // untouched): the job folder holds only the code-learn server, and allows only the job's tools. Print mode approves
     // web search and fetch only with --force, so only research, review and setup get it; the deny rules still hold under it (§3.1).
     const permissions = {
-      allow: [...tools.map((t) => `Mcp(codemm:${t})`), ...(web ? ['WebFetch(*)'] : [])],
+      allow: [...tools.map((t) => `Mcp(code-learn:${t})`), ...(web ? ['WebFetch(*)'] : [])],
       deny: ['Shell(*)', 'Read(**)', 'Read(/**)', 'Write(**)', 'Write(/**)', ...(web ? [] : ['WebFetch(*)'])],
     };
-    // --trust: the job folder is Codemm's own, and an untrusted folder stops print mode to ask.
+    // --trust: the job folder is code-learn's own, and an untrusted folder stops print mode to ask.
     const args = ['-p', '--output-format', 'stream-json', '--approve-mcps', '--trust'];
     if (web) args.push('--force');
     if (model) args.push('--model', model);
     if (resume) args.push('--resume', resume);
     args.push(prompt);
-    return { args, files: { '.cursor/mcp.json': JSON.stringify({ mcpServers: { codemm: server } }), '.cursor/cli.json': JSON.stringify({ permissions }) } };
+    return { args, files: { '.cursor/mcp.json': JSON.stringify({ mcpServers: { 'code-learn': server } }), '.cursor/cli.json': JSON.stringify({ permissions }) } };
   },
   parse(line) {
     const e = json(line);
@@ -52,7 +52,7 @@ export const cursor: AgentCli = {
       const args = obj(mcp?.args);
       if (mcp) {
         if (!args || !str(args.providerIdentifier) || !str(args.toolName)) return [];
-        return [{ type: 'tool_call', id: e.call_id, name: `${args.providerIdentifier}.${args.toolName}` }, ...(args.providerIdentifier === 'codemm' ? progress(stepOf(args.toolName)) : [])];
+        return [{ type: 'tool_call', id: e.call_id, name: `${args.providerIdentifier}.${args.toolName}` }, ...(args.providerIdentifier === 'code-learn' ? progress(stepOf(args.toolName)) : [])];
       }
       const started: AgentEvent = { type: 'tool_call', id: e.call_id, name: kind.replace(/ToolCall$/, '') };
       const input = obj(obj(call[kind])?.args) ?? {};
@@ -68,7 +68,7 @@ export const cursor: AgentCli = {
     const failure = mcp ? cursorFailure(result) : 'success' in result ? null : (str(obj(result.error)?.error) ? (obj(result.error)!.error as string) : '');
     const events: AgentEvent[] = [failure === null ? { type: 'tool_result', id: e.call_id, error: false } : { type: 'tool_result', id: e.call_id, error: true, ...(mcp ? { text: failure } : {}) }];
     // Cursor never says a server failed to start: the tool lookup can't find its namespace, or a call its server (recorded).
-    if (failure && /namespace "codemm" not found|MCP server does not exist: codemm\b/i.test(failure)) events.push({ type: 'server', ok: false });
+    if (failure && /namespace "code-learn" not found|MCP server does not exist: code-learn\b/i.test(failure)) events.push({ type: 'server', ok: false });
     return events;
   },
   errors: (line) =>

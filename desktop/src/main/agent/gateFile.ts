@@ -1,4 +1,4 @@
-// The exercise gate core writes while an author job's save runs (`codemm mcp --progress`, DESIGN §4.11).
+// The exercise gate core writes while an author job's save runs (`code-learn mcp --progress`, DESIGN §4.11).
 // Main reads only the gate's name from it: nothing else in the file is kept or forwarded.
 import { readFileSync, rmSync, statSync } from 'node:fs';
 import { GATES, type Gate } from './progress';
@@ -20,7 +20,7 @@ export function watchGates(path: string, onGate: (gate: Gate) => void, everyMs =
     const gate = readGate(path);
     if (gate) onGate(gate);
   }, everyMs);
-  // Never throws: a file Codemm can't remove (Windows EPERM) only means a stale gate, which the tracker ignores.
+  // Never throws: a file code-learn can't remove (Windows EPERM) only means a stale gate, which the tracker ignores.
   const clear = () => {
     try {
       rmSync(path, { force: true });

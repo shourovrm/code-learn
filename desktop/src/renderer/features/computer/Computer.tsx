@@ -34,7 +34,7 @@ export function Computer({ then, fromConnect = false }: { then: Route; fromConne
     { settled: (c) => c.ready, every: installing(last.current) ? timing.pollMs : timing.recheckMs },
   );
   last.current = data;
-  // On the way in from Connect, ready at the first check: nothing to show, so Codemm moves on. An explicit
+  // On the way in from Connect, ready at the first check: nothing to show, so code-learn moves on. An explicit
   // Check this computer, or one where the learner had a step to take, says "This computer is ready." and waits.
   const hadStep = useRef(!fromConnect);
   if (data && !data.ready) hadStep.current = true;
@@ -82,7 +82,7 @@ export function Computer({ then, fromConnect = false }: { then: Route; fromConne
     <main className="center">
       <div className="stack" style={{ width: 620, gap: 22 }}>
         <h1 className="h1 a-up">Check this computer</h1>
-        <p className="sub a-up" style={stagger(1)}>{withoutDocker ? WITHOUT_DOCKER : 'Codemm runs your code in Docker, on this computer.'}</p>
+        <p className="sub a-up" style={stagger(1)}>{withoutDocker ? WITHOUT_DOCKER : 'code-learn runs your code in Docker, on this computer.'}</p>
         <ul className="stack plain" ref={list} onFocus={() => (focusInList.current = true)}>
           {data.checks.map((c, i) => (
             <CheckItem
@@ -122,7 +122,7 @@ export function Computer({ then, fromConnect = false }: { then: Route; fromConne
 
 /** The stops of WSL's own setup. */
 const WSL_PROBLEMS = new Set<DockerInstall['problem']>(['declined', 'wsl-failed', 'restart']);
-/** Codemm is downloading or installing Docker; once it's starting, Check this computer speaks for Docker. */
+/** code-learn is downloading or installing Docker; once it's starting, Check this computer speaks for Docker. */
 const installing = (c?: ComputerView) => Boolean(c?.install && c.install.phase !== 'failed' && c.install.phase !== 'starting');
 
 interface ItemProps {
@@ -140,7 +140,7 @@ interface ItemProps {
 function CheckItem({ check, computer, index, optional, onInstall, onOpen, onUpdateWindows, onRestart }: ItemProps) {
   const name = CHECK_NAMES[check.id];
   const platform = computer.platform;
-  // Right after Codemm installed Docker, its first start asks the learner to accept Docker's terms.
+  // Right after code-learn installed Docker, its first start asks the learner to accept Docker's terms.
   const justInstalled = check.detail === 'starting' && computer.install?.phase === 'starting';
   const fix =
     check.state !== 'problem' ? undefined
@@ -201,7 +201,7 @@ interface InstallProps {
   onRestart: () => void;
 }
 
-/** Codemm installs Docker Desktop from Docker, checked, with Docker's own window for its terms (§6.1). */
+/** code-learn installs Docker Desktop from Docker, checked, with Docker's own window for its terms (§6.1). */
 function InstallDocker({ install, platform, manual, wsl, action, onInstall, onUpdateWindows, onRestart }: InstallProps) {
   if (install && install.phase !== 'failed') {
     return (

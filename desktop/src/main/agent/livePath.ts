@@ -1,6 +1,6 @@
 // Windows' PATH as installers leave it in the registry, merged into this process's own (DESIGN §3.1). A process
-// keeps the environment it started with, so without this an agent or Docker installed while Codemm is open stays
-// "Not installed" until Codemm restarts. Agent jobs and core's docker calls inherit process.env, so they see it too.
+// keeps the environment it started with, so without this an agent or Docker installed while code-learn is open stays
+// "Not installed" until code-learn restarts. Agent jobs and core's docker calls inherit process.env, so they see it too.
 import { execFile } from 'node:child_process';
 import { win32 } from 'node:path';
 
@@ -97,8 +97,8 @@ export function livePath(d: PathDeps): () => Promise<void> {
   }
 
   return () => {
-    // CODEMM_TEST_FIXED_PATH is set only by the packaged and install tests, which stage a PATH with no Node, npm or Git.
-    if (d.platform !== 'win32' || d.env.CODEMM_TEST_FIXED_PATH) return Promise.resolve();
+    // CODE_LEARN_TEST_FIXED_PATH is set only by the packaged and install tests, which stage a PATH with no Node, npm or Git.
+    if (d.platform !== 'win32' || d.env.CODE_LEARN_TEST_FIXED_PATH) return Promise.resolve();
     if (reading) return reading;
     if (readAt !== undefined && d.now() - readAt < wait) return Promise.resolve();
     reading = read()

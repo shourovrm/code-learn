@@ -5,8 +5,8 @@ import {
 
 describe("parseFrames", () => {
   it("reads length-framed records and ignores stray bytes", () => {
-    const body = "line one\n@@codemm case visible/99 0 3\nabc";
-    const raw = `noise\n@@codemm case visible/01 0 ${Buffer.byteLength(body)}\n${body}\n@@codemm case hidden/01 1 0\n`;
+    const body = "line one\n@@code-learn case visible/99 0 3\nabc";
+    const raw = `noise\n@@code-learn case visible/01 0 ${Buffer.byteLength(body)}\n${body}\n@@code-learn case hidden/01 1 0\n`;
     expect(parseFrames(Buffer.from(raw))).toEqual([
       { kind: "case", name: "visible/01", exit: 0, body, bytes: Buffer.byteLength(body), digest: digestOf(body) },
       { kind: "case", name: "hidden/01", exit: 1, body: "", bytes: 0, digest: digestOf("") },
@@ -14,12 +14,12 @@ describe("parseFrames", () => {
   });
 
   it("stops at a truncated frame", () => {
-    expect(parseFrames(Buffer.from("@@codemm case visible/01 0 100\nshort"))).toEqual([]);
+    expect(parseFrames(Buffer.from("@@code-learn case visible/01 0 100\nshort"))).toEqual([]);
   });
 
   it("keeps the start of a long case and the digest of all of it, however the stream is split", () => {
     const out = Array.from({ length: 200_000 }, (_, i) => `${i} é`).join("\n");
-    const raw = Buffer.from(`@@codemm case visible/01 0 ${Buffer.byteLength(out)}\n${out}@@codemm stderr visible/01 0 2\nok`);
+    const raw = Buffer.from(`@@code-learn case visible/01 0 ${Buffer.byteLength(out)}\n${out}@@code-learn stderr visible/01 0 2\nok`);
     for (const size of [raw.length, 4096, 777]) {
       const reader = new FrameReader();
       for (let at = 0; at < raw.length; at += size) reader.push(raw.subarray(at, at + size));
@@ -34,7 +34,7 @@ describe("parseFrames", () => {
 
   it("ignores frames past its limit: the driver never sends that many, so they were forged", () => {
     const reader = new FrameReader(undefined, 2);
-    reader.push(Buffer.from("@@codemm case a 0 1\nx@@codemm stderr a 0 0\n@@codemm case b 0 1\ny".repeat(1000)));
+    reader.push(Buffer.from("@@code-learn case a 0 1\nx@@code-learn stderr a 0 0\n@@code-learn case b 0 1\ny".repeat(1000)));
     expect(reader.frames.map((f) => f.name)).toEqual(["a", "a"]);
   });
 
@@ -42,7 +42,7 @@ describe("parseFrames", () => {
     const reader = new FrameReader(() => {
       throw new Error("listener");
     });
-    reader.push(Buffer.from("@@codemm case a 0 1\nx@@codemm case b 0 1\ny"));
+    reader.push(Buffer.from("@@code-learn case a 0 1\nx@@code-learn case b 0 1\ny"));
     expect(reader.frames.map((f) => f.name)).toEqual(["a", "b"]);
   });
 });
@@ -257,10 +257,10 @@ describe("grading whole runs", () => {
 });
 
 describe("frameProgress", () => {
-  const frame = (kind: string, name: string, body: string) => `\n@@codemm ${kind} ${name} 0 ${Buffer.byteLength(body)}\n${body}`;
+  const frame = (kind: string, name: string, body: string) => `\n@@code-learn ${kind} ${name} 0 ${Buffer.byteLength(body)}\n${body}`;
   // A body that looks like a frame header must be skipped by length, never counted.
   const bytes = Buffer.from(
-    frame("build", "build", "") + frame("case", "01", "@@codemm case 99 0 1\nx") + frame("stderr", "01", "") + frame("big", "02", "") + frame("stderr", "02", "oops") + frame("gen", "03", ""),
+    frame("build", "build", "") + frame("case", "01", "@@code-learn case 99 0 1\nx") + frame("stderr", "01", "") + frame("big", "02", "") + frame("stderr", "02", "oops") + frame("gen", "03", ""),
   );
   const feeder = (listener: ReturnType<typeof frameProgress>) => {
     const reader = new FrameReader(listener);
@@ -280,7 +280,7 @@ describe("frameProgress", () => {
   });
 
   it("hands over each finished case whole, with its stderr, however the output is split", () => {
-    const body = "@@codemm case 99 0 1\nx";
+    const body = "@@code-learn case 99 0 1\nx";
     const want = [
       { name: "01", exit: 0, stdout: body, digest: digestOf(body), bytes: Buffer.byteLength(body), stderr: "", big: false },
       { name: "02", exit: 0, stdout: "", stderr: "oops", big: true },

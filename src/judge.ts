@@ -1,6 +1,6 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { CodemmError, infraError } from "./errors.js";
+import { CodeLearnError, infraError } from "./errors.js";
 import { type FileMap, writeFileMap } from "./files.js";
 import {
   CASE_OUTPUT_BYTES, type CaseFrames, type Expectation, type Frame, frameProgress, FrameReader, gradeRuns, type IoRun, type RawCase, type Runs, type TestResult, type TestSet, type UnitRun,
@@ -11,7 +11,7 @@ import { prepareWasi, removeSealed, sealReadOnly, startWasi } from "./wasi.js";
 
 /**
  * A WASI track's toolchain as the judge runs it (DESIGN §4.5): `root` is its folder under
- * `$CODEMM_HOME/toolchains/`, `sha256` names its compiled module, `module` and each `dirs` value are paths in it, and `dirs`
+ * `$CODE_LEARN_HOME/toolchains/`, `sha256` names its compiled module, `module` and each `dirs` value are paths in it, and `dirs`
  * keys are sandbox paths.
  */
 export type WasiToolchain = { root: string; sha256: string; module: string; dirs: Record<string, string>; env: Record<string, string> };
@@ -47,7 +47,7 @@ export const DRIVER_TOOLS = ["timeout", "sleep", "head", "wc", "cat", "basename"
 /** `timeout` and `sleep` take seconds; busybox and coreutils both accept decimals. */
 export const seconds = (ms: number) => Math.max(0.1, ms / 1000).toFixed(3);
 /** The time limit, which the watchdog enforces, and \`timeout\`'s backstop a second later. */
-const timeEnv = (ms: number) => ({ CODEMM_TIME_S: seconds(ms), CODEMM_BACKSTOP_S: seconds(ms + 1000) });
+const timeEnv = (ms: number) => ({ CODE_LEARN_TIME_S: seconds(ms), CODE_LEARN_BACKSTOP_S: seconds(ms + 1000) });
 
 // The driver is PID 1. Program output only leaves the container inside a length-framed
 // record, and `kill -9 -1` clears leftover processes between cases. Every command the track or learner
@@ -63,13 +63,13 @@ const timeEnv = (ms: number) => ({ CODEMM_TIME_S: seconds(ms), CODEMM_BACKSTOP_S
 // and loses if the container has already exited. So the driver sets k and, on exit, waits a second first.
 const EMIT = `OOM='{ echo 1000 > /proc/self/oom_score_adj; } 2>/dev/null || :; '
 k=; trap '[ -z "$k" ] || sleep 1' EXIT
-emit() { size=$(($(wc -c < "$4"))); printf '\\n@@codemm %s %s %s %s\\n' "$1" "$2" "$3" "$size"; cat "$4"; }
-watch() { : > /tmp/t; ( sleep "$CODEMM_TIME_S" 2>/dev/null && { echo t > /tmp/t; kill -9 -1 2>/dev/null; } ) & }
+emit() { size=$(($(wc -c < "$4"))); printf '\\n@@code-learn %s %s %s %s\\n' "$1" "$2" "$3" "$size"; cat "$4"; }
+watch() { : > /tmp/t; ( sleep "$CODE_LEARN_TIME_S" 2>/dev/null && { echo t > /tmp/t; kill -9 -1 2>/dev/null; } ) & }
 for u in ${DRIVER_TOOLS.join(" ")}; do command -v "$u" >/dev/null 2>&1 || { echo "the image has no '$u'" > /tmp/m; emit fatal tools 1 /tmp/m; exit 0; }; done`;
 
 const IO_DRIVER = `${EMIT}
-if [ -n "\${CODEMM_BUILD:-}" ]; then
-  timeout -s KILL ${BUILD_SECONDS} sh -c "$OOM$CODEMM_BUILD" > /tmp/b 2>&1; c=$?
+if [ -n "\${CODE_LEARN_BUILD:-}" ]; then
+  timeout -s KILL ${BUILD_SECONDS} sh -c "$OOM$CODE_LEARN_BUILD" > /tmp/b 2>&1; c=$?
   head -c 16384 /tmp/b > /tmp/bc; emit build build "$c" /tmp/bc
   [ "$c" = 0 ] || exit 0
 fi
@@ -78,13 +78,13 @@ for f in /work/tests/*; do
     *.in) n=$(basename "$f" .in); i=$f ;;
     *.gen)
       n=$(basename "$f" .gen); i=/tmp/in
-      timeout -s KILL "$CODEMM_GEN_S" sh -c "$OOM"'exec sh "$0"' "$f" > /tmp/in 2>/dev/null; c=$?
+      timeout -s KILL "$CODE_LEARN_GEN_S" sh -c "$OOM"'exec sh "$0"' "$f" > /tmp/in 2>/dev/null; c=$?
       kill -9 -1 2>/dev/null
-      if [ "$c" != 0 ]; then rm -f /tmp/in; emit gen "$n" "$c" /dev/null; [ -n "\${CODEMM_STOP:-}" ] && exit 0; continue; fi ;;
+      if [ "$c" != 0 ]; then rm -f /tmp/in; emit gen "$n" "$c" /dev/null; [ -n "\${CODE_LEARN_STOP:-}" ] && exit 0; continue; fi ;;
     *) continue ;;
   esac
   watch
-  timeout -s KILL "$CODEMM_BACKSTOP_S" sh -c "$OOM$CODEMM_RUN" < "$i" > /tmp/o 2> /tmp/e; c=$?
+  timeout -s KILL "$CODE_LEARN_BACKSTOP_S" sh -c "$OOM$CODE_LEARN_RUN" < "$i" > /tmp/o 2> /tmp/e; c=$?
   kill -9 -1 2>/dev/null
   head -c 4096 /tmp/e > /tmp/ec
   if [ $(($(wc -c < /tmp/o))) -gt ${CASE_OUTPUT_BYTES} ]; then : > /tmp/oc; emit big "$n" "$c" /tmp/oc; s=big; else emit case "$n" "$c" /tmp/o; s=$c; fi
@@ -92,13 +92,13 @@ for f in /work/tests/*; do
   [ -s /tmp/t ] && emit timeout "$n" "$c" /dev/null
   [ "$c" = 137 ] && [ ! -s /tmp/t ] && k=1
   rm -f /tmp/in
-  [ -n "\${CODEMM_STOP:-}" ] && [ "$s" != 0 ] && exit 0
+  [ -n "\${CODE_LEARN_STOP:-}" ] && [ "$s" != 0 ] && exit 0
 done
 exit 0`;
 
 const UNIT_DRIVER = `${EMIT}
 watch
-TESTS=/work/tests OUT=/tmp/report.json timeout -s KILL "$CODEMM_BACKSTOP_S" sh -c "$OOM$CODEMM_TEST" > /tmp/o 2>&1; c=$?
+TESTS=/work/tests OUT=/tmp/report.json timeout -s KILL "$CODE_LEARN_BACKSTOP_S" sh -c "$OOM$CODE_LEARN_TEST" > /tmp/o 2>&1; c=$?
 kill -9 -1 2>/dev/null
 if [ -f /tmp/report.json ] && [ $(($(wc -c < /tmp/report.json))) -le 1048576 ]; then emit report report "$c" /tmp/report.json; else : > /tmp/r; emit report report "$c" /tmp/r; fi
 head -c 4096 /tmp/o > /tmp/oc; emit log log "$c" /tmp/oc
@@ -138,7 +138,7 @@ async function runDriver(
     if (result.flooded) return { frames: [], flooded: true };
     // The driver stops every case at its limit, so only a slow runtime reaches the host deadline.
     if (result.timedOut) throw infraError(`The check didn't finish in time, so nothing was recorded. The container runtime may be slow. ${BUSY_HELP}`, "check-timeout");
-    if (result.cleanupFailed) throw infraError("A check container couldn't be removed, so nothing was recorded. Run `codemm doctor --fix`, then retry.", "container-remove");
+    if (result.cleanupFailed) throw infraError("A check container couldn't be removed, so nothing was recorded. Run `code-learn doctor --fix`, then retry.", "container-remove");
     // The driver always ends with exit 0. Anything else means it was killed or the runtime failed, whatever was
     // printed so far. Only a memory-limit kill is the program's doing; everything else records nothing.
     if (result.exit !== 0) {
@@ -148,15 +148,15 @@ async function runDriver(
       // 126 or 127 before the driver printed anything, with the runtime saying /bin/sh isn't there: the image can't run
       // its shell. That's the track's to fix. Any other 126 (a host's exec policy) is the runtime failing, below.
       if ((result.exit === 126 || result.exit === 127) && result.stdout.length === 0 && /\/bin\/sh[^\n]*(?:no such file|not found)/i.test(result.stderr)) {
-        throw new CodemmError(`The track image can't run /bin/sh (exit ${result.exit}), which every check runs in. Base it on an image that has sh, ${DRIVER_TOOLS.join(", ")}.`);
+        throw new CodeLearnError(`The track image can't run /bin/sh (exit ${result.exit}), which every check runs in. Base it on an image that has sh, ${DRIVER_TOOLS.join(", ")}.`);
       }
       // Exit 125 is the runtime's own failure. Its stderr is read for why, as a fixed phrase, but never shown: code that
       // had already started can write there too, and a check runs hidden tests and hidden code.
       if (result.exit === 125 && result.stdout.length === 0) {
         const { code, why } = startRefusal(result.stderr.slice(0, 2000));
-        throw infraError(`The container couldn't start (${why}), so it wasn't counted. Run \`codemm doctor\`, then retry.`, code);
+        throw infraError(`The container couldn't start (${why}), so it wasn't counted. Run \`code-learn doctor\`, then retry.`, code);
       }
-      if (result.exit === -1) throw infraError("The container couldn't start. Run `codemm doctor`.", /ENOENT/.test(result.stderr) ? "no-runtime" : "container-start");
+      if (result.exit === -1) throw infraError("The container couldn't start. Run `code-learn doctor`.", /ENOENT/.test(result.stderr) ? "no-runtime" : "container-start");
       throw infraError("The container runtime failed during the run, so it wasn't counted. Try again, and restart Docker if it happens again.", "runtime-failed");
     }
     const frames = reader.frames;
@@ -166,7 +166,7 @@ async function runDriver(
       throw infraError("The container runtime failed during the run, so it wasn't counted. Try again, and restart Docker if it happens again.", "runtime-failed");
     }
     // Never echo a fatal frame's body: code in the container could forge one (DESIGN §4.2).
-    if (frames.some((f) => f.kind === "fatal")) throw new CodemmError(`The track image is missing a tool Codemm needs: sh, ${DRIVER_TOOLS.join(", ")}.`);
+    if (frames.some((f) => f.kind === "fatal")) throw new CodeLearnError(`The track image is missing a tool code-learn needs: sh, ${DRIVER_TOOLS.join(", ")}.`);
     // A case or runner killed with 137 that the watchdog didn't mark as a time-out may have hit the memory limit while
     // the driver went on: only the runtime's record says so (DESIGN §4.3).
     const marked = new Set(frames.filter((f) => f.kind === "timeout").map((f) => f.name));
@@ -201,7 +201,7 @@ async function runWasiCases(
       const run = { engine, toolchain: wasi, src: dir, run: track.run!, memoryMb: track.limits.memory_mb, timeMs };
       const r = await startWasi({ ...run, input: Buffer.from(inputs[file]!), outputCap: CASE_OUTPUT_BYTES }).done;
       const exit = r.timedOut || r.flooded ? 137 : r.exit;
-      const emit = (kind: string, body: Buffer) => reader.push(Buffer.concat([Buffer.from(`\n@@codemm ${kind} ${name} ${exit} ${body.length}\n`), body]));
+      const emit = (kind: string, body: Buffer) => reader.push(Buffer.concat([Buffer.from(`\n@@code-learn ${kind} ${name} ${exit} ${body.length}\n`), body]));
       emit(r.flooded ? "big" : "case", r.flooded ? Buffer.alloc(0) : r.stdout);
       emit("stderr", Buffer.from(r.stderr));
       if (r.timedOut) emit("timeout", Buffer.alloc(0));
@@ -215,17 +215,17 @@ async function runWasiCases(
 
 /** Runs one io test set. `inputs` holds `NN.in` files. Case names come back as `<set>/NN`. */
 export async function runIo(track: JudgeTrack, set: TestSet, src: FileMap, inputs: FileMap, opts: RunOptions = {}): Promise<IoRun> {
-  if (!track.run) throw new CodemmError("This track has no run command, so it can't run io exercises.");
-  if (track.wasi && track.build) throw new CodemmError("A WASI track has no build: it runs interpreted languages only (DESIGN §4.5).");
-  if (track.wasi && Object.keys(inputs).some((p) => p.endsWith(".gen"))) throw new CodemmError("A WASI track's tests can't have input generators (NN.gen needs sh); write NN.in inputs instead.");
+  if (!track.run) throw new CodeLearnError("This track has no run command, so it can't run io exercises.");
+  if (track.wasi && track.build) throw new CodeLearnError("A WASI track has no build: it runs interpreted languages only (DESIGN §4.5).");
+  if (track.wasi && Object.keys(inputs).some((p) => p.endsWith(".gen"))) throw new CodeLearnError("A WASI track's tests can't have input generators (NN.gen needs sh); write NN.in inputs instead.");
   const timeMs = opts.timeMs ?? track.limits.time_ms;
   const generated = Object.keys(inputs).filter((p) => p.endsWith(".gen")).length;
   const caseCount = Object.keys(inputs).filter((p) => p.endsWith(".in")).length + generated;
   const generatorMs = opts.generatorMs ?? GENERATOR_SECONDS * 1000;
   const deadline = opts.deadlineMs ?? BUILD_SECONDS * 1000 + caseCount * (timeMs + 1000) + generated * generatorMs + SLACK_MS;
-  const env: Record<string, string> = { CODEMM_RUN: track.run, CODEMM_GEN_S: seconds(generatorMs), ...timeEnv(timeMs) };
-  if (track.build) env.CODEMM_BUILD = track.build;
-  if (opts.stopAtError) env.CODEMM_STOP = "1";
+  const env: Record<string, string> = { CODE_LEARN_RUN: track.run, CODE_LEARN_GEN_S: seconds(generatorMs), ...timeEnv(timeMs) };
+  if (track.build) env.CODE_LEARN_BUILD = track.build;
+  if (opts.stopAtError) env.CODE_LEARN_STOP = "1";
   // Each case frames at most CASE_OUTPUT_BYTES of output and 4 KB of errors; the rest of the stream is small.
   const outputCap = OUTPUT_CAP + caseCount * (CASE_OUTPUT_BYTES + 8192);
   const progress = (opts.onProgress || opts.onCase) ? frameProgress(opts.onProgress ?? (() => undefined), opts.onCase) : undefined;
@@ -249,11 +249,11 @@ export async function runIo(track: JudgeTrack, set: TestSet, src: FileMap, input
 
 /** Runs one unit test set: the track's `test` command against `tests`. */
 export async function runUnit(track: JudgeTrack, src: FileMap, tests: FileMap, opts: RunOptions = {}): Promise<UnitRun> {
-  if (track.wasi) throw new CodemmError("A WASI track runs io exercises only, not unit tests (DESIGN §4.5).");
-  if (!track.test) throw new CodemmError("This track has no test command, so it can't run unit exercises.");
+  if (track.wasi) throw new CodeLearnError("A WASI track runs io exercises only, not unit tests (DESIGN §4.5).");
+  if (!track.test) throw new CodeLearnError("This track has no test command, so it can't run unit exercises.");
   const timeMs = opts.timeMs ?? track.limits.time_ms;
   const deadline = opts.deadlineMs ?? timeMs + SLACK_MS;
-  const env = { CODEMM_TEST: track.test, ...timeEnv(timeMs) };
+  const env = { CODE_LEARN_TEST: track.test, ...timeEnv(timeMs) };
   const { frames, flooded, outOfMemory, memoryKill } = await runDriver(track, UNIT_DRIVER, env, src, tests, deadline, OUTPUT_CAP, 8);
   const report = frames.find((f) => f.kind === "report");
   const log = frames.find((f) => f.kind === "log");
@@ -286,7 +286,7 @@ export async function judgeSets(
   const runs = await runSets(track, style, src, sets, opts);
   // Each generator passed the gates three times, so one failing now is this computer (a slow moment) or the program
   // filling /tmp before it: not grounds for a grade either way, so nothing is recorded (DESIGN §4.3).
-  if (generatorFailed(runs)) throw new CodemmError("A test's input couldn't be generated, so nothing was recorded. Retry; if it keeps happening, ask Codemm for a new exercise.");
+  if (generatorFailed(runs)) throw new CodeLearnError("A test's input couldn't be generated, so nothing was recorded. Retry; if it keeps happening, ask code-learn for a new exercise.");
   return gradeRuns(style, runs, exp);
 }
 

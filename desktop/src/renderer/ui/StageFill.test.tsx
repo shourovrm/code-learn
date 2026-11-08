@@ -14,7 +14,7 @@ describe('StageFill (installs)', () => {
     expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '40');
   });
 
-  it('shows Emm as decoration, and no elapsed time: an install has no start Codemm knows', () => {
+  it('shows Emm as decoration, and no elapsed time: an install has no start code-learn knows', () => {
     const { container } = render(<StageFill label="Installing" stages={3} stage={2} text="Installing Codex…" />);
     expect(container.querySelector('.emm-fill')).toHaveAttribute('aria-hidden', 'true');
     expect(container.querySelector('.job-time')).toBeNull();

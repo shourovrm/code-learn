@@ -16,7 +16,7 @@ import { tempDir } from "./temp.js";
 const fixtures = join(import.meta.dirname, "fixtures");
 
 beforeEach(() => {
-  vi.stubEnv("CODEMM_HOME", tempDir("codemm-home-"));
+  vi.stubEnv("CODE_LEARN_HOME", tempDir("code-learn-home-"));
 });
 
 afterEach(() => {
@@ -168,7 +168,7 @@ describe.runIf(posix)("interactive run", () => {
 
   it("leaves no run folder behind, whatever happens", async () => {
     const ws = await installedExercise();
-    // This test's own Codemm home (stubbed above), so other test runs on the machine can't add folders.
+    // This test's own code-learn home (stubbed above), so other test runs on the machine can't add folders.
     const runs = () => readdirSync(runsDir());
     fakeDocker("interactive");
     const ok = await app.runInteractive(ws, undefined, undefined, () => undefined);
@@ -192,10 +192,10 @@ describe.runIf(posix)("interactive run", () => {
 
 /** A workspace whose io exercise is installed (with a fake image) and edited. */
 async function installedExercise(): Promise<string> {
-  const ws = tempDir("codemm-ws-");
+  const ws = tempDir("code-learn-ws-");
   const track = readFileMap(join(fixtures, "tracks", "shell-io"));
   store.commitFolder(store.trackDir("shell-io@1"), track, {
-    "track.json": { format_version: 1, ...parseTrackYaml(track["track.yaml"]!), image: "codemm-track-shell-io:1", imageId: "sha256:fake", installedAt: new Date().toISOString() },
+    "track.json": { format_version: 1, ...parseTrackYaml(track["track.yaml"]!), image: "code-learn-track-shell-io:1", imageId: "sha256:fake", installedAt: new Date().toISOString() },
   });
   await app.saveRoadmap(ws, "shell", readFileSync(join(fixtures, "roadmaps", "shell-io.yaml"), "utf8"));
   store.commitFolder(store.exerciseDir("shell", "max-of-line"), readFileMap(join(fixtures, "exercises", "io-max")), {
@@ -214,7 +214,7 @@ describe.runIf(posix)("a container that can't start for lack of disk", () => {
     const ws = await installedExercise();
     fakeDocker("nospace");
     const run = await app.runInteractive(ws, undefined, undefined, () => undefined);
-    // Docker's own disk, named in Codemm's words.
+    // Docker's own disk, named in code-learn's words.
     await expect(run.done).rejects.toMatchObject({ kind: "disk", code: "docker-disk", message: expect.stringMatching(/^The container couldn't start \(Docker ran out of disk space\)/) });
     await expect(app.checkExercise(ws)).rejects.toMatchObject({ kind: "disk", code: "docker-disk" });
     expect(store.readEvents("shell")).toEqual([]);
@@ -261,8 +261,8 @@ describe("Run's driver markers", () => {
     f.end();
     return { text, marks };
   };
-  // What the driver adds is exactly "\n@@codemm-run <fields>\n"; the rest is the program's own stderr.
-  const stream = "warn\n" + "\n@@codemm-run start run\n" + "oops: no newline" + "\n@@codemm-run end run 3\n";
+  // What the driver adds is exactly "\n@@code-learn-run <fields>\n"; the rest is the program's own stderr.
+  const stream = "warn\n" + "\n@@code-learn-run start run\n" + "oops: no newline" + "\n@@code-learn-run end run 3\n";
 
   it("passes the program's stderr through and takes out the driver's markers, however it's split", () => {
     const want = { text: "warn\noops: no newline", marks: ["start run", "end run 3"] };
@@ -271,7 +271,7 @@ describe("Run's driver markers", () => {
   });
 
   it("holds back only what could still become a marker, and lets it go at the end", () => {
-    expect(feed(["prompt> \n@@codemm"]).text).toBe("prompt> \n@@codemm");
+    expect(feed(["prompt> \n@@code-learn"]).text).toBe("prompt> \n@@code-learn");
     expect(feed(["a", "\n", "@", "b"]).text).toBe("a\n@b");
   });
 });

@@ -4,7 +4,7 @@ import { judgeTrack, trackImageTag } from "./store.js";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { CodemmError, infraError } from "./errors.js";
+import { CodeLearnError, infraError } from "./errors.js";
 import { type FileMap, subMap, validateFileMap, writeFileMap } from "./files.js";
 import { CASE_OUTPUT_MB, caseDigest, type Expected, gradeRuns, type IoRun, type RawCase, recordOutput, redact, type Runs, type TestResult, type UnitRun } from "./grading.js";
 import { GENERATOR_SECONDS, generatorFailed, type JudgeTrack, runSets, type WasiToolchain } from "./judge.js";
@@ -20,7 +20,7 @@ import { compileModule, wasmtime } from "./wasi.js";
  * A gate failed: the track's or the exercise's to fix. The message names the gate and never contains hidden inputs or
  * outputs. This computer's problems are never gate failures: they throw with their own code (errors.ts INFRA).
  */
-export class GateError extends CodemmError {
+export class GateError extends CodeLearnError {
   constructor(gate: string, details: string, output = "") {
     super(`Gate "${gate}" failed: ${details}${output}`);
   }
@@ -112,7 +112,7 @@ function probeOutput(runs: Runs): string {
 
 /**
  * Why a unit reference failed, by status only (its messages and output come from running hidden code). When the
- * runner reported no test (one `report` result), the statuses alone don't say why, so it adds what Codemm itself knows:
+ * runner reported no test (one `report` result), the statuses alone don't say why, so it adds what code-learn itself knows:
  * a time, memory or output limit stopped the runner, or else the tests or the reference didn't load. Never its output.
  */
 export function unitReferenceFailure(tests: TestResult[], visible: UnitRun): string {
@@ -125,7 +125,7 @@ export function unitReferenceFailure(tests: TestResult[], visible: UnitRun): str
   return (
     `${lines}\nThe test runner stopped before reporting any test, so the tests or the reference didn't load. Check that ` +
     "the tests import the learner files at the track's paths the way the example tests in contract.examples do, that " +
-    "the reference has no syntax or import errors, and that it holds every learner file. Codemm doesn't show the " +
+    "the reference has no syntax or import errors, and that it holds every learner file. code-learn doesn't show the " +
     "runner's output, because it can quote the reference."
   );
 }
@@ -232,7 +232,7 @@ export async function verifyTrack(
   if (spec.wasi) return verifyWasiTrack(spec, { ...spec.wasi, sha256: spec.wasi.sha256 ?? recorded }, probes, onProgress, rebuild);
 
   const image = tag ?? trackImageTag(spec.id, spec.version);
-  const context = mkdtempSync(join(tmpdir(), "codemm-build-"));
+  const context = mkdtempSync(join(tmpdir(), "code-learn-build-"));
   let builtId = "";
   try {
     writeFileMap(context, files);
@@ -281,7 +281,7 @@ async function verifyWasiTrack(
     await compileModule(toolchain);
   } catch (e) {
     // The track's link, digest, archive or module is wrong (no infrastructure code).
-    if (e instanceof CodemmError && !e.code) throw new GateError("toolchain", e.message);
+    if (e instanceof CodeLearnError && !e.code) throw new GateError("toolchain", e.message);
     throw e;
   }
   const { sha256 } = toolchain;
@@ -290,7 +290,7 @@ async function verifyWasiTrack(
   // As for a base image not pinned by digest (§4.4): rebuilds must match what was recorded.
   const warning = block.sha256
     ? undefined
-    : `The toolchain isn't pinned by digest, so Codemm recorded the one it downloaded. Rebuilds must match it. Pin it in the next version: wasi.sha256: ${sha256}`;
+    : `The toolchain isn't pinned by digest, so code-learn recorded the one it downloaded. Rebuilds must match it. Pin it in the next version: wasi.sha256: ${sha256}`;
   return { spec, wasi: { sha256, module, dirs, env }, ...(warning ? { warning } : {}) };
 }
 
@@ -374,7 +374,7 @@ function validate(track: TrackRecord, course: CourseRecord, files: FileMap, take
       const bad = Object.keys(tests).filter((p) => !/^[A-Za-z0-9_-]+\.(in|gen)$/.test(p));
       const listed = set === "hidden" ? `${bad.length} file(s)` : bad.join(", ");
       if (bad.length > 0) {
-        throw new GateError("valid", `tests/${set}/ may only hold NN.in inputs and NN.gen input generators; Codemm writes expected outputs (.out) itself. Remove: ${listed}.`);
+        throw new GateError("valid", `tests/${set}/ may only hold NN.in inputs and NN.gen input generators; code-learn writes expected outputs (.out) itself. Remove: ${listed}.`);
       }
       const both = Object.keys(tests).filter((p) => p.endsWith(".gen") && `${p.slice(0, -4)}.in` in tests);
       if (both.length > 0) throw new GateError("valid", `tests/${set}/ has both NN.in and NN.gen for ${set === "hidden" ? `${both.length} test(s)` : both.map((p) => p.slice(0, -4)).join(", ")}. Keep one of each pair.`);
@@ -463,7 +463,7 @@ export async function verifyExercise(
         "reference passes",
         `the reference doesn't build (exit ${visibleBuild.exit})${track.build ? ` with the track's build command (\`${track.build}\`)` : ""}. ` +
           `Check that solution/ holds exactly the track's learner files (${track.files.join(", ")}) and builds with the track's toolchain. ` +
-          "Codemm doesn't show the build output, because it can quote the reference.",
+          "code-learn doesn't show the build output, because it can quote the reference.",
       );
     }
     const hiddenBuild = (first.hidden as IoRun).build;

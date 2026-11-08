@@ -6,12 +6,12 @@ import { AGENT_CLIS, isTested, readOf } from './agents';
 
 const fixture = (name: string) => readFileSync(join(__dirname, 'fixtures', name), 'utf8').split('\n');
 const parseAll = (agent: 'claude' | 'codex' | 'cursor', lines: string[]) => lines.flatMap((line) => AGENT_CLIS[agent].parse!(line));
-const server = { command: '/abs/Codemm', args: ['/abs/core/cli.js', 'mcp', '--workspace', '/ws'], env: { CODEMM_HOME: '/home', ELECTRON_RUN_AS_NODE: '1' } };
+const server = { command: '/abs/code-learn', args: ['/abs/core/cli.js', 'mcp', '--workspace', '/ws'], env: { CODE_LEARN_HOME: '/home', ELECTRON_RUN_AS_NODE: '1' } };
 
 describe('research progress from the stream (one parser for both CLIs)', () => {
   const steps = (agent: 'claude' | 'codex', name: string) => parseAll(agent, fixture(name)).flatMap((e) => (e.type === 'progress' ? [e.step] : []));
 
-  it('claude: web searches, https reads as host and path, and Codemm steps; never a file or plain-http link', () => {
+  it('claude: web searches, https reads as host and path, and code-learn steps; never a file or plain-http link', () => {
     expect(steps('claude', 'claude-research.jsonl')).toEqual([
       { kind: 'step', label: 'Checking the installed tracks' },
       { kind: 'search', query: 'react roadmap 2026' },
@@ -20,7 +20,7 @@ describe('research progress from the stream (one parser for both CLIs)', () => {
     ]);
   });
 
-  it('codex: its web search items (recorded), page reads, and Codemm steps', () => {
+  it('codex: its web search items (recorded), page reads, and code-learn steps', () => {
     expect(steps('codex', 'codex-research.jsonl')).toEqual([
       { kind: 'step', label: 'Checking the installed tracks' },
       { kind: 'search', query: 'site:react.dev/learn React Learn official tutorial thinking in React state effects refs context reducers' },
@@ -51,7 +51,7 @@ describe('agent stream contracts (recorded fixtures, §3.3)', () => {
       { type: 'session', id: 'f242da1d-dc70-4d6f-96da-1f92ecc2d720' },
       { type: 'tool_call', id: 'toolu_01MvSVPGD77trQgd9hUqhwG3', name: 'ToolSearch' },
       { type: 'tool_result', id: 'toolu_01MvSVPGD77trQgd9hUqhwG3', error: false },
-      { type: 'tool_call', id: 'toolu_01NfoeX7ahYrG2GZ1kmsnnnP', name: 'codemm.list_tracks' },
+      { type: 'tool_call', id: 'toolu_01NfoeX7ahYrG2GZ1kmsnnnP', name: 'code-learn.list_tracks' },
       { type: 'progress', step: { kind: 'step', label: 'Checking the installed tracks' } },
       { type: 'tool_result', id: 'toolu_01NfoeX7ahYrG2GZ1kmsnnnP', error: false },
       { type: 'text', text: '0' },
@@ -60,7 +60,7 @@ describe('agent stream contracts (recorded fixtures, §3.3)', () => {
     ]);
   });
 
-  it('claude: a Codemm server that failed to start is a server event (recorded)', () => {
+  it('claude: a code-learn server that failed to start is a server event (recorded)', () => {
     expect(parseAll('claude', fixture('claude-mcp-failed.jsonl'))).toEqual([
       { type: 'session', id: 'ae1c50df-0a98-4d41-bb1b-5e28415bdb54' },
       { type: 'server', ok: false },
@@ -68,10 +68,10 @@ describe('agent stream contracts (recorded fixtures, §3.3)', () => {
     ]);
   });
 
-  it('a failed Codemm tool result keeps its text, so an infrastructure failure can be told apart', () => {
+  it('a failed code-learn tool result keeps its text, so an infrastructure failure can be told apart', () => {
     const claudeLine = JSON.stringify({ type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 't1', is_error: true, content: [{ type: 'text', text: "The container runtime isn't running." }] }] } });
     expect(AGENT_CLIS.claude.parse!(claudeLine)).toEqual([{ type: 'tool_result', id: 't1', error: true, text: "The container runtime isn't running." }]);
-    const codexLine = JSON.stringify({ type: 'item.completed', item: { id: 'i1', type: 'mcp_tool_call', server: 'codemm', tool: 'save_exercise', status: 'failed', error: { message: 'Not enough disk space' }, result: null } });
+    const codexLine = JSON.stringify({ type: 'item.completed', item: { id: 'i1', type: 'mcp_tool_call', server: 'code-learn', tool: 'save_exercise', status: 'failed', error: { message: 'Not enough disk space' }, result: null } });
     expect(AGENT_CLIS.codex.parse!(codexLine)).toEqual([{ type: 'tool_result', id: 'i1', error: true, text: 'Not enough disk space' }]);
   });
 
@@ -83,8 +83,8 @@ describe('agent stream contracts (recorded fixtures, §3.3)', () => {
   it('codex: a recorded run becomes session, tool, text and done events', () => {
     expect(parseAll('codex', fixture('codex-list-tracks.jsonl'))).toEqual([
       { type: 'session', id: '01a14a25-cfba-7b41-a5d4-d7f42843ba87' },
-      { type: 'text', text: 'I’ll locate the available Codemm tool and call `list_tracks` exactly once.' },
-      { type: 'tool_call', id: 'item_1', name: 'codemm.list_tracks' },
+      { type: 'text', text: 'I’ll locate the available code-learn tool and call `list_tracks` exactly once.' },
+      { type: 'tool_call', id: 'item_1', name: 'code-learn.list_tracks' },
       { type: 'progress', step: { kind: 'step', label: 'Checking the installed tracks' } },
       { type: 'tool_result', id: 'item_1', error: false },
       { type: 'text', text: '0' },
@@ -103,8 +103,8 @@ describe('agent stream contracts (recorded fixtures, §3.3)', () => {
     const id = 'call-ae295db3-0a12-4df1-8a5e-c6a6ed50d8eb-1\nfc_e6b3e488-3488-9c7d-b2b6-884faeddd958_0';
     expect(parseAll('cursor', fixture('cursor-list-tracks.jsonl'))).toEqual([
       { type: 'session', id: '58a468a6-05de-4564-b518-475343f68a24' },
-      { type: 'text', text: "I'll inspect the `codemm` `list_tracks` schema, call it once, then reply with only the track count." },
-      { type: 'tool_call', id, name: 'codemm.list_tracks' },
+      { type: 'text', text: "I'll inspect the `code-learn` `list_tracks` schema, call it once, then reply with only the track count." },
+      { type: 'tool_call', id, name: 'code-learn.list_tracks' },
       { type: 'progress', step: { kind: 'step', label: 'Checking the installed tracks' } },
       { type: 'tool_result', id, error: false },
       { type: 'text', text: '0' },
@@ -112,15 +112,15 @@ describe('agent stream contracts (recorded fixtures, §3.3)', () => {
     ]);
   });
 
-  it('cursor: a Codemm server that failed to start is a server event (recorded: its namespace and server are missing)', () => {
+  it('cursor: a code-learn server that failed to start is a server event (recorded: its namespace and server are missing)', () => {
     const events = parseAll('cursor', fixture('cursor-mcp-failed.jsonl'));
     expect(events.filter((e) => e.type === 'server')).not.toHaveLength(0);
     expect(events[0]).toEqual({ type: 'session', id: 'c84e6140-5911-4338-87a9-873afb53dce8' });
   });
 
-  it('cursor: a failed, rejected or denied Codemm call is a failed result that keeps its text', () => {
+  it('cursor: a failed, rejected or denied code-learn call is a failed result that keeps its text', () => {
     const call = (result: unknown) =>
-      JSON.stringify({ type: 'tool_call', subtype: 'completed', call_id: 'c1', tool_call: { mcpToolCall: { args: { providerIdentifier: 'codemm', toolName: 'save_exercise' }, result } } });
+      JSON.stringify({ type: 'tool_call', subtype: 'completed', call_id: 'c1', tool_call: { mcpToolCall: { args: { providerIdentifier: 'code-learn', toolName: 'save_exercise' }, result } } });
     expect(AGENT_CLIS.cursor.parse!(call({ success: { content: [{ text: { text: 'Not enough disk space' } }], isError: true } }))).toEqual([
       { type: 'tool_result', id: 'c1', error: true, text: 'Not enough disk space' },
     ]);
@@ -192,13 +192,13 @@ describe('agent stream contracts (recorded fixtures, §3.3)', () => {
 });
 
 describe('launch arguments (§3.1)', () => {
-  it('claude: stream-json, no built-in tools, only the codemm server and the job tools', () => {
+  it('claude: stream-json, no built-in tools, only the code-learn server and the job tools', () => {
     const { args } = AGENT_CLIS.claude.launch!({ prompt: 'hi', server, tools: ['list_tracks', 'progress'], model: 'sonnet' });
     expect(args.slice(0, 5)).toEqual(['-p', 'hi', '--output-format', 'stream-json', '--verbose']);
-    expect(JSON.parse(args[args.indexOf('--mcp-config') + 1])).toEqual({ mcpServers: { codemm: server } });
+    expect(JSON.parse(args[args.indexOf('--mcp-config') + 1])).toEqual({ mcpServers: { 'code-learn': server } });
     expect(args).toContain('--strict-mcp-config');
     expect(args[args.indexOf('--tools') + 1]).toBe('');
-    expect(args[args.indexOf('--allowedTools') + 1]).toBe('mcp__codemm__list_tracks,mcp__codemm__progress');
+    expect(args[args.indexOf('--allowedTools') + 1]).toBe('mcp__code-learn__list_tracks,mcp__code-learn__progress');
     expect(args[args.indexOf('--model') + 1]).toBe('sonnet');
     expect(args).not.toContain('--resume');
   });
@@ -206,9 +206,9 @@ describe('launch arguments (§3.1)', () => {
   it('claude: a web job may search and fetch, allowed so print mode never refuses them; resume adds the session', () => {
     const web = AGENT_CLIS.claude.launch!({ prompt: 'r', server, tools: ['save_track'], web: true }).args;
     expect(web[web.indexOf('--tools') + 1]).toBe('WebSearch,WebFetch');
-    expect(web[web.indexOf('--allowedTools') + 1]).toBe('mcp__codemm__save_track,WebSearch,WebFetch');
+    expect(web[web.indexOf('--allowedTools') + 1]).toBe('mcp__code-learn__save_track,WebSearch,WebFetch');
     const plain = AGENT_CLIS.claude.launch!({ prompt: 'r', server, tools: ['save_track'] }).args;
-    expect(plain[plain.indexOf('--allowedTools') + 1]).toBe('mcp__codemm__save_track');
+    expect(plain[plain.indexOf('--allowedTools') + 1]).toBe('mcp__code-learn__save_track');
     const { args } = AGENT_CLIS.claude.launch!({ prompt: 'again', server, tools: [], resume: 'abc' });
     expect(args[args.indexOf('--resume') + 1]).toBe('abc');
   });
@@ -220,15 +220,15 @@ describe('launch arguments (§3.1)', () => {
       'sandbox_mode="read-only"',
       // Only research, review and setup may search the web (§3.2).
       'web_search="disabled"',
-      'mcp_servers.codemm.command="/abs/Codemm"',
-      'mcp_servers.codemm.args=["/abs/core/cli.js","mcp","--workspace","/ws"]',
-      'mcp_servers.codemm.env={CODEMM_HOME="/home",ELECTRON_RUN_AS_NODE="1"}',
-      'mcp_servers.codemm.enabled_tools=["list_tracks"]',
-      'mcp_servers.codemm.default_tools_approval_mode="approve"',
-      // A Codemm server that can't start fails the run instead of running without tools.
-      'mcp_servers.codemm.required=true',
+      'mcp_servers.code-learn.command="/abs/code-learn"',
+      'mcp_servers.code-learn.args=["/abs/core/cli.js","mcp","--workspace","/ws"]',
+      'mcp_servers.code-learn.env={CODE_LEARN_HOME="/home",ELECTRON_RUN_AS_NODE="1"}',
+      'mcp_servers.code-learn.enabled_tools=["list_tracks"]',
+      'mcp_servers.code-learn.default_tools_approval_mode="approve"',
+      // A code-learn server that can't start fails the run instead of running without tools.
+      'mcp_servers.code-learn.required=true',
       // Codex's own 60-second default would end long builds and gates before the job's deadline.
-      'mcp_servers.codemm.tool_timeout_sec=900',
+      'mcp_servers.code-learn.tool_timeout_sec=900',
     ]);
     expect(args.flatMap((a, i) => (args[i - 1] === '--disable' ? [a] : []))).toEqual(['shell_tool', 'unified_exec', 'browser_use', 'computer_use', 'apps', 'multi_agent']);
     expect(args[args.indexOf('-m') + 1]).toBe('gpt-5.6-luna');
@@ -254,19 +254,19 @@ describe('launch arguments (§3.1)', () => {
 
   it('cursor: print mode with stream-json and its MCP servers approved; the prompt goes last', () => {
     const { args } = AGENT_CLIS.cursor.launch!({ prompt: 'hi', server, tools: ['list_tracks'], model: 'auto' });
-    // --trust: the job folder is Codemm's own; without it Cursor may stop to ask.
+    // --trust: the job folder is code-learn's own; without it Cursor may stop to ask.
     expect(args).toEqual(['-p', '--output-format', 'stream-json', '--approve-mcps', '--trust', '--model', 'auto', 'hi']);
     expect(args).not.toContain('--force');
     const again = AGENT_CLIS.cursor.launch!({ prompt: 'again', server, tools: [], resume: 'chat-1' }).args;
     expect(again.slice(-3)).toEqual(['--resume', 'chat-1', 'again']);
   });
 
-  it("cursor: the job folder's config holds only the codemm server and allows only the job's tools", () => {
+  it("cursor: the job folder's config holds only the code-learn server and allows only the job's tools", () => {
     const { files } = AGENT_CLIS.cursor.launch!({ prompt: 'hi', server, tools: ['list_tracks', 'save_roadmap'] });
-    expect(JSON.parse(files!['.cursor/mcp.json'])).toEqual({ mcpServers: { codemm: server } });
+    expect(JSON.parse(files!['.cursor/mcp.json'])).toEqual({ mcpServers: { 'code-learn': server } });
     expect(JSON.parse(files!['.cursor/cli.json'])).toEqual({
       permissions: {
-        allow: ['Mcp(codemm:list_tracks)', 'Mcp(codemm:save_roadmap)'],
+        allow: ['Mcp(code-learn:list_tracks)', 'Mcp(code-learn:save_roadmap)'],
         // No shell, no file reads or writes anywhere, no web.
         deny: ['Shell(*)', 'Read(**)', 'Read(/**)', 'Write(**)', 'Write(/**)', 'WebFetch(*)'],
       },
@@ -308,7 +308,7 @@ describe('status commands', () => {
 
   it('counts a later release of a tested major as tested, since agents update themselves (D6)', () => {
     expect(isTested('claude', '2.1.283')).toBe(true);
-    // Codemm installs the maker's latest, and the agent keeps itself current: a newer 2.x is what learners have.
+    // code-learn installs the maker's latest, and the agent keeps itself current: a newer 2.x is what learners have.
     expect(isTested('claude', '2.1.302')).toBe(true);
     expect(isTested('claude', '2.4.0')).toBe(true);
     expect(isTested('codex', '0.157.0')).toBe(true);

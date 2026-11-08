@@ -11,13 +11,13 @@ import { Logo, Mark } from '../../ui/Mark';
 import { stagger } from '../../ui/motion';
 import { missing } from '../setup/Setup';
 
-/** The first seconds of a launch, while Codemm looks for the agents: never a blank window. */
+/** The first seconds of a launch, while code-learn looks for the agents: never a blank window. */
 function Starting() {
   return (
     <main className="welcome">
       <div className="welcome-text">
         <Logo height={26} className="brand bw" />
-        <Busy>Codemm is starting</Busy>
+        <Busy>code-learn is starting</Busy>
       </div>
       <div className="welcome-art bw">
         <div className="bg" aria-hidden="true"><Mark size={440} /></div>
@@ -36,7 +36,7 @@ export function Welcome() {
     settled: (d) => d.agents.some((a) => a.state === 'connected'),
     every: timing.agentsMs,
   });
-  // Read beside the agents, so Welcome shows at once: what Codemm could install here.
+  // Read beside the agents, so Welcome shows at once: what code-learn could install here.
   const { data: computer } = useLoad(() => api.computer(), []);
   // A relaunch with a course in progress and the agent connected goes straight back to the course.
   const resume = Boolean(data?.course && data.agents.some((a) => a.state === 'connected'));

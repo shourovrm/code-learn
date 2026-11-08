@@ -12,8 +12,8 @@ const appFrame = { fromApp: true };
 
 describe('errors at the IPC boundary (D4)', () => {
   it("logs core's code for this computer's problem, never its text, and no code from anything else", () => {
-    const busy = Object.assign(new Error("The container runtime isn't answering. /h/secret"), { name: 'CodemmError', kind: 'docker', code: 'runtime-busy' });
-    expect(errorFields(busy)).toEqual({ kind: 'core', name: 'CodemmError', code: undefined, cause: 'runtime-busy' });
+    const busy = Object.assign(new Error("The container runtime isn't answering. /h/secret"), { name: 'CodeLearnError', kind: 'docker', code: 'runtime-busy' });
+    expect(errorFields(busy)).toEqual({ kind: 'core', name: 'CodeLearnError', code: undefined, cause: 'runtime-busy' });
     expect(errorFields(Object.assign(new Error('x'), { code: 'runtime-busy' }))).toMatchObject({ kind: 'internal', cause: undefined });
     expect(errorFields(Object.assign(new Error('x'), { code: 'ENOSPC' }))).toMatchObject({ code: 'ENOSPC', cause: undefined });
   });
@@ -34,14 +34,14 @@ describe('errors at the IPC boundary (D4)', () => {
     expect(log).not.toContain('secret');
   });
 
-  it("passes Codemm's codes and core's learner-safe messages, and refuses other senders", async () => {
+  it("passes code-learn's codes and core's learner-safe messages, and refuses other senders", async () => {
     const t = live();
     const activity = await practising(t);
     const handle = handler(t.api, createLog(t.dir), (e: typeof appFrame) => e.fromApp);
     await t.api.saveFile(activity.id, 'main.c', 'x', activity.files[0].digest);
     await expect(handle(appFrame, 'saveFile', [activity.id, 'main.c', 'y', activity.files[0].digest])).rejects.toThrow(CHANGED);
     t.app.skip = async () => {
-      throw Object.assign(new Error('Finish the prerequisites first.'), { name: 'CodemmError' });
+      throw Object.assign(new Error('Finish the prerequisites first.'), { name: 'CodeLearnError' });
     };
     await expect(handle(appFrame, 'skip', ['values'])).rejects.toThrow('Finish the prerequisites first.');
     await expect(handle({ fromApp: false }, 'agents', [])).rejects.toThrow('Unknown sender');
@@ -63,7 +63,7 @@ describe('errors at the IPC boundary (D4)', () => {
     await expect(research()).rejects.toThrow(OFFLINE);
   });
 
-  it("passes the code for an agent Codemm couldn't stop", () => {
+  it("passes the code for an agent code-learn couldn't stop", () => {
     expect(safeError(new Error(UNSTOPPABLE)).message).toBe(UNSTOPPABLE);
   });
 });

@@ -1,13 +1,13 @@
 import { act, renderHook } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import type { CheckProgress, CodemmApi } from '../../../shared/api';
+import type { CheckProgress, CodeLearnApi } from '../../../shared/api';
 import { createMock } from '../../../main/mock';
 import { ApiContext } from '../../app/api';
 import { useAttempt } from './useAttempt';
 
 function setup(blocked = false) {
-  const api = createMock() as CodemmApi;
+  const api = createMock() as CodeLearnApi;
   let hear: (p: CheckProgress) => void = () => undefined;
   api.onCheckProgress = (l) => ((hear = l), () => undefined);
   const wrapper = ({ children }: { children: ReactNode }) => <ApiContext.Provider value={api}>{children}</ApiContext.Provider>;

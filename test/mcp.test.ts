@@ -12,13 +12,13 @@ import * as store from "../src/store.js";
 import { fakeDocker, posix } from "./fake-docker.js";
 import { tempDir } from "./temp.js";
 
-/** The per-job server: `codemm mcp --tools`, `--course` and `--desktop`. */
+/** The per-job server: `code-learn mcp --tools`, `--course` and `--desktop`. */
 
 let ws: string;
 let client: Client | undefined;
 beforeEach(() => {
-  vi.stubEnv("CODEMM_HOME", tempDir("codemm-home-"));
-  ws = tempDir("codemm-ws-");
+  vi.stubEnv("CODE_LEARN_HOME", tempDir("code-learn-home-"));
+  ws = tempDir("code-learn-ws-");
 });
 afterEach(async () => {
   await client?.close();
@@ -83,7 +83,7 @@ describe("--course", () => {
     const { id, version } = store.parseTrackRef("shell-io@1");
     store.writeTrackRecord("shell-io@1", {
       format_version: 1, id, version, styles: ["io"], files: ["main.sh"], run: "sh main.sh",
-      limits: { time_ms: 2000, memory_mb: 256 }, image: "codemm-track-shell-io:1", imageId: "sha256:fake", installedAt: new Date().toISOString(),
+      limits: { time_ms: 2000, memory_mb: 256 }, image: "code-learn-track-shell-io:1", imageId: "sha256:fake", installedAt: new Date().toISOString(),
     });
     await app.saveRoadmap(ws, "first", roadmap("First"));
     await app.saveRoadmap(ws, "second", roadmap("Second").replace("shell-io@1", "other@1"));
@@ -104,10 +104,10 @@ describe("--progress", () => {
     const fixtures = join(import.meta.dirname, "fixtures");
     const track = readFileMap(join(fixtures, "tracks", "shell-io"));
     store.commitFolder(store.trackDir("shell-io@1"), track, {
-      "track.json": { format_version: 1, ...parseTrackYaml(track["track.yaml"]!), image: "codemm-track-shell-io:1", imageId: "sha256:fake", installedAt: new Date().toISOString() },
+      "track.json": { format_version: 1, ...parseTrackYaml(track["track.yaml"]!), image: "code-learn-track-shell-io:1", imageId: "sha256:fake", installedAt: new Date().toISOString() },
     });
     await app.saveRoadmap(ws, "shell", readFileSync(join(fixtures, "roadmaps", "shell-io.yaml"), "utf8"));
-    const progress = join(tempDir("codemm-progress-"), "job.json");
+    const progress = join(tempDir("code-learn-progress-"), "job.json");
     const { call } = await connect({ course: "shell", progress });
     fakeDocker("streams");
     // Every fake run prints the same output, so the starter passes too and its gate fails.
@@ -125,7 +125,7 @@ describe("--desktop", () => {
     fakeDocker("missing");
     const { call } = await connect({ desktop: true });
     const track = readFileMap(join(import.meta.dirname, "fixtures", "tracks", "shell-io"));
-    expect(await call("save_track", { files: track })).toEqual({ proposed: "shell-io@1", note: "The learner decides in Codemm. End your turn." });
+    expect(await call("save_track", { files: track })).toEqual({ proposed: "shell-io@1", note: "The learner decides in code-learn. End your turn." });
     expect(app.listTracks()).toEqual([]);
     expect(app.listProposals()).toHaveLength(1);
   });
@@ -182,7 +182,7 @@ describe.runIf(posix)("hidden data through the tools", () => {
     const fixtures = join(import.meta.dirname, "fixtures");
     const track = readFileMap(join(fixtures, "tracks", "shell-io"));
     store.commitFolder(store.trackDir("shell-io@1"), track, {
-      "track.json": { format_version: 1, ...parseTrackYaml(track["track.yaml"]!), image: "codemm-track-shell-io:1", imageId: "sha256:fake", installedAt: new Date().toISOString() },
+      "track.json": { format_version: 1, ...parseTrackYaml(track["track.yaml"]!), image: "code-learn-track-shell-io:1", imageId: "sha256:fake", installedAt: new Date().toISOString() },
     });
     await app.saveRoadmap(ws, "shell", readFileSync(join(fixtures, "roadmaps", "shell-io.yaml"), "utf8"));
     // Every hidden part of the exercise carries a canary.
@@ -215,7 +215,7 @@ describe.runIf(posix)("reference-gate diagnostics through save_exercise", () => 
   const install = async (kind: "io" | "unit") => {
     const track = readFileMap(join(fixtures, "tracks", `shell-${kind}`));
     store.commitFolder(store.trackDir(`shell-${kind}@1`), track, {
-      "track.json": { format_version: 1, ...parseTrackYaml(track["track.yaml"]!), image: `codemm-track-shell-${kind}:1`, imageId: "sha256:fake", installedAt: new Date().toISOString() },
+      "track.json": { format_version: 1, ...parseTrackYaml(track["track.yaml"]!), image: `code-learn-track-shell-${kind}:1`, imageId: "sha256:fake", installedAt: new Date().toISOString() },
     });
     await app.saveRoadmap(ws, "shell", `goal: Shell\ntrack: shell-${kind}@1\nstyle: ${kind}\nconcepts:\n  - { id: sh.basics, title: Basics, requires: [] }\n  - { id: sh.loops, title: Loops, requires: [sh.basics] }\n`);
   };
@@ -245,15 +245,15 @@ describe.runIf(posix)("reference-gate diagnostics through save_exercise", () => 
     const message = await failure(call, withCanary(readFileMap(join(fixtures, "exercises", "io-max"))));
     expect(message).toMatch(/container couldn't start/);
     expect(message).not.toContain("CANARY");
-    // This computer's problem says so on its first line, which only Codemm writes: the desktop reads that, never the wording.
-    expect(message).toMatch(/^codemm:container-start\n/);
+    // This computer's problem says so on its first line, which only code-learn writes: the desktop reads that, never the wording.
+    expect(message).toMatch(/^code-learn:container-start\n/);
   });
 
-  it("starts every other failure with Codemm's own first line, so the agent's files can't put a code there", async () => {
+  it("starts every other failure with code-learn's own first line, so the agent's files can't put a code there", async () => {
     const { call } = await connect();
-    const message = await call("save_roadmap", { course: "c", roadmap: "goal: *codemm:runtime-busy\n" }).then(() => "saved", (e: Error) => e.message);
-    expect(message).toMatch(/^codemm:error\n/);
-    expect(message).not.toMatch(/^codemm:runtime-busy/);
+    const message = await call("save_roadmap", { course: "c", roadmap: "goal: *code-learn:runtime-busy\n" }).then(() => "saved", (e: Error) => e.message);
+    expect(message).toMatch(/^code-learn:error\n/);
+    expect(message).not.toMatch(/^code-learn:runtime-busy/);
   });
 
   it("a unit reference that fails is described by test and status, without its messages", async () => {
@@ -285,7 +285,7 @@ describe.runIf(posix)("mutants in gate diagnostics", () => {
   beforeEach(async () => {
     const track = readFileMap(join(fixtures, "tracks", "shell-io"));
     store.commitFolder(store.trackDir("shell-io@1"), track, {
-      "track.json": { format_version: 1, ...parseTrackYaml(track["track.yaml"]!), image: "codemm-track-shell-io:1", imageId: "sha256:fake", installedAt: new Date().toISOString() },
+      "track.json": { format_version: 1, ...parseTrackYaml(track["track.yaml"]!), image: "code-learn-track-shell-io:1", imageId: "sha256:fake", installedAt: new Date().toISOString() },
     });
     await app.saveRoadmap(ws, "shell", readFileSync(join(fixtures, "roadmaps", "shell-io.yaml"), "utf8"));
   });
@@ -336,14 +336,14 @@ describe("the engines this computer has (DESIGN §4.5)", () => {
   });
 
   it.runIf(posix)("finds a container CLI, installed whether or not it runs, and wasmtime, without asking a daemon", () => {
-    const wasmtime = join(tempDir("codemm-fake-wasmtime-"), "wasmtime");
+    const wasmtime = join(tempDir("code-learn-fake-wasmtime-"), "wasmtime");
     writeFileSync(wasmtime, "#!/bin/sh\necho 'wasmtime 50.0.0'\n");
     chmodSync(wasmtime, 0o755);
     fakeDocker("missing");
-    vi.stubEnv("CODEMM_WASMTIME", wasmtime);
+    vi.stubEnv("CODE_LEARN_WASMTIME", wasmtime);
     expect(findEngines()).toEqual({ docker: false, wasi: true });
     fakeDocker("down");
-    vi.stubEnv("CODEMM_WASMTIME", join(tempDir("codemm-no-wasmtime-"), "wasmtime"));
+    vi.stubEnv("CODE_LEARN_WASMTIME", join(tempDir("code-learn-no-wasmtime-"), "wasmtime"));
     expect(findEngines()).toEqual({ docker: true, wasi: false });
   });
 
@@ -374,7 +374,7 @@ it("saves and checks a quiz through MCP without a track", async () => {
   const ex = await call("get_exercise");
   expect(JSON.stringify(ex)).not.toMatch(/correct|why/);
   const unanswered = await client.callTool({ name: "check", arguments: {} });
-  expect((unanswered.content as { text: string }[])[0]!.text).toBe("codemm:error\nAnswer every question, then check.");
+  expect((unanswered.content as { text: string }[])[0]!.text).toBe("code-learn:error\nAnswer every question, then check.");
   writeFileSync(join(ex.path, "answers.yaml"), "1: 1\n2: 1\n3: 1\n4: 1\n5: 1\n");
   expect(await call("check")).toMatchObject({ recorded: true, total: 5 });
   expect(await call("check")).toMatchObject({ recorded: false, total: 5 });

@@ -1,4 +1,4 @@
-// The Codemm MCP server an agent job starts (DESIGN §2, §4.6): the bundled core,
+// The code-learn MCP server an agent job starts (DESIGN §2, §4.6): the bundled core,
 // run by the app itself as Node, bound to one course and the job's tools.
 import { join } from 'node:path';
 import type { McpServer } from './agent/agents';
@@ -12,7 +12,7 @@ export interface ServerPlaces {
   env: NodeJS.ProcessEnv;
 }
 
-export function codemmServer({ runtime, coreDir, ws, env }: ServerPlaces) {
+export function codeLearnServer({ runtime, coreDir, ws, env }: ServerPlaces) {
   /** `progress`: a file where save_exercise writes which gate runs, for the job's progress (§4.11). */
   return (course: string | undefined, tools: string[], progress?: string): McpServer => ({
     command: runtime,
@@ -20,13 +20,13 @@ export function codemmServer({ runtime, coreDir, ws, env }: ServerPlaces) {
       join(coreDir, 'dist', 'cli.mjs'), 'mcp', '--workspace', ws, ...(course ? ['--course', course] : []), '--tools', tools.join(','), '--desktop',
       ...(progress ? ['--progress', progress] : []),
     ],
-    // Codex starts MCP servers without the app's environment, so the server is told where Codemm's data is,
+    // Codex starts MCP servers without the app's environment, so the server is told where code-learn's data is,
     // the PATH the app found Docker and its helpers on (§3.1), and the wasmtime the app bundles (core §4.5).
     env: {
       ELECTRON_RUN_AS_NODE: '1',
-      ...(env.CODEMM_HOME ? { CODEMM_HOME: env.CODEMM_HOME } : {}),
+      ...(env.CODE_LEARN_HOME ? { CODE_LEARN_HOME: env.CODE_LEARN_HOME } : {}),
       ...(env.PATH ? { PATH: env.PATH } : {}),
-      ...(env.CODEMM_WASMTIME ? { CODEMM_WASMTIME: env.CODEMM_WASMTIME } : {}),
+      ...(env.CODE_LEARN_WASMTIME ? { CODE_LEARN_WASMTIME: env.CODE_LEARN_WASMTIME } : {}),
     },
   });
 }

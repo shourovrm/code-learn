@@ -69,7 +69,7 @@ function face(mood: Mood, dark: string): { eye: ReactNode; mouth: ReactNode; fro
   }
 }
 
-/** Emm, Codemm's mascot. Decorative: whatever Emm means is said in text nearby. */
+/** Emm, code-learn's mascot. Decorative: whatever Emm means is said in text nearby. */
 export function Emm({ mood = 'ready', width = 160, perch = false, name }: { mood?: Mood; width?: number; perch?: boolean; name?: string }) {
   const [body, dark, belly, stripe] = PALETTES[hue(name)];
   const { eye, mouth, front, extra } = face(mood, dark);

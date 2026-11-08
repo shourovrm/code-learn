@@ -4,7 +4,7 @@ Status: draft for the owner's review, 31 Oct 2026, revised after an Opus review 
 
 ## 1. The problem
 
-A learner asked for a Harness Engineering course. The roadmap came back as 15 concepts, such as "Task contracts and explicit acceptance criteria" and "Calibrating autonomy, human review, and merge gates". Codemm can't practise most of them well today, for three reasons.
+A learner asked for a Harness Engineering course. The roadmap came back as 15 concepts, such as "Task contracts and explicit acceptance criteria" and "Calibrating autonomy, human review, and merge gates". code-learn can't practise most of them well today, for three reasons.
 
 1. **The only activity is code.** An exercise is a starter, a reference, 2 to 4 wrong solutions and hidden tests, run in a track's sandbox (DESIGN §6). A concept that is mostly judgment either gets a toy coding task or is skipped. A skipped concept never counts as mastered, so the course never finishes.
 2. **Research ends at the roadmap.** The research brief says only "You may research the topic first" (`src/templates.ts:144`). The roadmap keeps up to 10 `sources`, and `get_roadmap` returns them (`src/app/roadmaps.ts:59`), but nothing records what the research found per concept: the practice, the common mistakes, or how the concept is practised. Lessons and activities are written from the model's memory.
@@ -21,7 +21,7 @@ Goals:
 
 Non-goals:
 
-- Codemm calling a model, or a model grading an answer. Grades stay deterministic.
+- code-learn calling a model, or a model grading an answer. Grades stay deterministic.
 - Changing the mastery bar. The owner kept it at 4 perfect checks (26 Oct 2026). `src/learner.ts`'s rules stay unchanged.
 - Proving a statement or a quiz is right. DESIGN §1 already says the gates don't; that stays true and stays said.
 
@@ -106,7 +106,7 @@ The workspace gets `README.md` and `answers.yaml`, the learner file:
 ```
 
 - The learner writes a choice number for each question, in a file or on the app's quiz screen through `writeLearnerFile`. For a quiz, `answers.yaml` is the only learner file.
-- Codemm shuffles each question's choices once, after the gates pass and before the commit point. The stored order is the only order, so the right answer's position gives nothing away and every view shows the same order.
+- code-learn shuffles each question's choices once, after the gates pass and before the commit point. The stored order is the only order, so the right answer's position gives nothing away and every view shows the same order.
 - `get_exercise` returns the questions and shuffled choices, never `correct` or `why`.
 
 **Gates.** No sandbox. These replace gates 2 to 7 for a quiz.
@@ -140,7 +140,7 @@ The `why` is the quiz's wrong solution: each wrong choice names the mistake it r
 
 **The tutor never gives the key.** The tutor and `AGENTS_SECTION` get a rule: never say which choice is right, only why a picked choice is wrong. The app's reply filter matches text (`desktop/src/main/views.ts:116`), so it can't catch "it's B", and `hiddenMaterial` (`src/app/lessons.ts:124`) doesn't cover a quiz key. This is the same honor-system line as "never give the learner a solution".
 
-**The terminal.** `codemm check` works on `answers.yaml` like any learner file. `codemm test` refuses a quiz.
+**The terminal.** `code-learn check` works on `answers.yaml` like any learner file. `code-learn test` refuses a quiz.
 
 **Where the code assumes a track.** The quiz path is one early branch in `app/exercises` (save, load, check), plus an optional track in the roadmap and exercise schemas. These sites assume a track today and need the branch or a guard:
 
@@ -203,7 +203,7 @@ Lessons read in lessons-only mode still count as read afterwards, so `next_step`
 
 ### 3.6 A quality bar for roadmaps and lessons
 
-Owner, 31 Oct 2026: "the quality of the roadmap and its teachings matter so always always use the best practices." Two kinds of best practice apply: the subject's own, from its primary sources, and proven teaching practice. Codemm can't judge either; it can make the agent show its work and check the structure.
+Owner, 31 Oct 2026: "the quality of the roadmap and its teachings matter so always always use the best practices." Two kinds of best practice apply: the subject's own, from its primary sources, and proven teaching practice. code-learn can't judge either; it can make the agent show its work and check the structure.
 
 **Sources the research trusts.**
 
@@ -217,7 +217,7 @@ Owner, 31 Oct 2026: "the quality of the roadmap and its teachings matter so alwa
 - With at most 10 sources, a ref is a small number.
 - The app can show a lesson's sources from its concept's refs.
 
-**A roadmap review.** After the research job saves the roadmap, a review job checks it before the learner sees it. The review job is the learner's agent in a fresh session, as every job is, and Codemm calls no model. It reads the roadmap and its sources and reports:
+**A roadmap review.** After the research job saves the roadmap, a review job checks it before the learner sees it. The review job is the learner's agent in a fresh session, as every job is, and code-learn calls no model. It reads the roadmap and its sources and reports:
 
 - a core topic that is missing;
 - an order that teaches a topic before what it needs;
@@ -246,7 +246,7 @@ The research job then revises once, in its own session. This costs one more agen
   - no trick wording or negatives;
   - choices of similar length.
 
-**Already in Codemm, and kept.** Spaced review at 1, 3, 7, 21 and 60 days (the other technique Dunlosky et al. rate most useful). Mastery before moving on (Bloom's mastery learning). Difficulty 3 combines a concept with earlier ones.
+**Already in code-learn, and kept.** Spaced review at 1, 3, 7, 21 and 60 days (the other technique Dunlosky et al. rate most useful). Mastery before moving on (Bloom's mastery learning). Difficulty 3 combines a concept with earlier ones.
 
 **References.**
 
@@ -260,14 +260,14 @@ The research job then revises once, in its own session. This costs one more agen
 
 | Invariant | Holds because |
 |---|---|
-| Codemm ships no languages | `quiz` is an exercise style, never a track's, and kits are track files the agent writes. |
-| Codemm never calls a model | A quiz is graded by comparing choice numbers. Reviews are the learner's own tutor. |
+| code-learn ships no languages | `quiz` is an exercise style, never a track's, and kits are track files the agent writes. |
+| code-learn never calls a model | A quiz is graded by comparing choice numbers. Reviews are the learner's own tutor. |
 | Untrusted code runs only in a sandbox | A quiz runs nothing. |
 | Hidden data never leaves | The key and the `why` of unpicked choices stay in the store. `missed` holds hidden tests by index only. |
 | Infrastructure failures record nothing | Unchanged. A quiz check has no infrastructure. |
 | Persistence | `quiz.yaml` is part of the exercise folder, written by the same atomic rename (`commitFolder`). `missed` is an optional field on an append-only event. A quiz save holds the course lock. |
 
-**Older versions.** Events stay readable: the event schema strips unknown fields (`src/store.ts:431`). Courses and exercises don't. Concept objects are strict (`src/schemas.ts:154`) and `CourseRecord` extends them (`:235`), so an older Codemm, such as a terminal CLI older than the app, reports a course with `practice`, `pitfalls` or a quiz as damaged. The release notes say so, as DESIGN §4.5 does for a WASI `track.json`.
+**Older versions.** Events stay readable: the event schema strips unknown fields (`src/store.ts:431`). Courses and exercises don't. Concept objects are strict (`src/schemas.ts:154`) and `CourseRecord` extends them (`:235`), so an older code-learn, such as a terminal CLI older than the app, reports a course with `practice`, `pitfalls` or a quiz as damaged. The release notes say so, as DESIGN §4.5 does for a WASI `track.json`.
 
 ## 5. Changes by module
 

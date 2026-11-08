@@ -1,4 +1,4 @@
-import type { CodemmApi } from '../../shared/api';
+import type { CodeLearnApi } from '../../shared/api';
 
 /**
  * What a screen last loaded, so it can show it at once next time.
@@ -28,13 +28,13 @@ export class Cache<T> {
   }
 }
 
-const caches = new WeakMap<CodemmApi, Map<string, Cache<unknown>>>();
+const caches = new WeakMap<CodeLearnApi, Map<string, Cache<unknown>>>();
 
-/** Lessons as the reader saw them, per Codemm instance: reopening one starts no read (§4.3). */
-export const lessonCache = <T>(api: CodemmApi) => cacheFor<T>(api, 'lessons');
+/** Lessons as the reader saw them, per code-learn instance: reopening one starts no read (§4.3). */
+export const lessonCache = <T>(api: CodeLearnApi) => cacheFor<T>(api, 'lessons');
 
-/** One cache per Codemm instance and name. */
-export function cacheFor<T>(api: CodemmApi, name: string): Cache<T> {
+/** One cache per code-learn instance and name. */
+export function cacheFor<T>(api: CodeLearnApi, name: string): Cache<T> {
   let all = caches.get(api);
   if (!all) caches.set(api, (all = new Map()));
   let cache = all.get(name);

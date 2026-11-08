@@ -1,4 +1,4 @@
-// Downloads for Codemm's installers (DESIGN §3.1, §6.1). In the app they go through Electron's network stack, so the
+// Downloads for code-learn's installers (DESIGN §3.1, §6.1). In the app they go through Electron's network stack, so the
 // system's proxy and certificate store apply, as in a browser. Every redirect hop is checked before it is followed,
 // and each download has a size cap. A download that stalls, or loses the network midway, counts as offline,
 // however long it has run.
@@ -28,7 +28,7 @@ const LEFT = 'The download left the vendor’s site.';
 /** Statuses whose response has no body, which fetch's Response refuses one for. */
 const NULL_BODY = new Set([204, 205, 304]);
 /** Not Electron's browser user agent: cursor.com answers a browser with a web page, not its install script. */
-const USER_AGENT = 'Codemm';
+const USER_AGENT = 'code-learn';
 /** Node's and Chromium's names for a host that can't be reached. */
 const NETWORK =
   /ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ECONNRESET|ETIMEDOUT|ENETUNREACH|EHOSTUNREACH|ENETDOWN|net::ERR_(INTERNET_DISCONNECTED|NAME_NOT_RESOLVED|NAME_RESOLUTION_FAILED|ADDRESS_UNREACHABLE|CONNECTION_[A-Z_]+|NETWORK_[A-Z_]+|TIMED_OUT|PROXY_CONNECTION_FAILED|TUNNEL_CONNECTION_FAILED|EMPTY_RESPONSE)\b/;

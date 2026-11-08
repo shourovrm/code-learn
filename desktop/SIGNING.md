@@ -58,5 +58,5 @@ The release workflow attaches the update feeds (`*.yml`), the Mac zips and the b
 
 ## Checking a signed build
 
-- **macOS:** `codesign --verify --deep --strict --verbose=2 Codemm.app`, then `spctl -a -vv Codemm.app`. Notarized builds say "source=Notarized Developer ID".
-- **Windows:** the installer's Properties, then Digital Signatures, or `Get-AuthenticodeSignature .\Codemm-*.exe`.
+- **macOS:** `codesign --verify --deep --strict --verbose=2 code-learn.app`, then `spctl -a -vv code-learn.app`. Notarized builds say "source=Notarized Developer ID".
+- **Windows:** the installer's Properties, then Digital Signatures, or `Get-AuthenticodeSignature .\code-learn-*.exe`.

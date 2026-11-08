@@ -17,8 +17,8 @@ function packaging(env, platform = process.platform) {
   const winSigned = Object.values(azure).every(Boolean);
   const signed = platform === 'darwin' ? Boolean(env.CSC_LINK) : platform === 'win32' ? winSigned : false;
   return {
-    appId: 'org.codemm.desktop',
-    productName: 'Codemm',
+    appId: 'org.codelearn.desktop',
+    productName: 'code-learn',
     artifactName: '${productName}-${version}-${os}-${arch}.${ext}',
     directories: { output: 'release', buildResources: 'build' },
     // The development mock (src/main/mock.ts) and its demo course never ship (#14).
@@ -36,12 +36,12 @@ function packaging(env, platform = process.platform) {
     ],
     // Auto-update reads GitHub Releases (DESIGN §7.2): the app-update.yml in the app names this repository, and
     // the release workflow attaches the latest*.yml feeds to its draft. The build itself never publishes.
-    publish: { provider: 'github', owner: 'iignaite', repo: 'Codemm' },
+    publish: { provider: 'github', owner: 'iignaite', repo: 'code-learn' },
     // Whether this build is signed: a signed one downloads updates and offers Restart to update; an unsigned one
     // only says a new version is out, with a link to Releases.
-    extraMetadata: { codemm: { signed } },
+    extraMetadata: { codeLearn: { signed } },
     // A build meant to be signed fails rather than ship unsigned: electron-builder otherwise only warns when it finds
-    // no signing identity, and the app would still trust codemm.signed.
+    // no signing identity, and the app would still trust codeLearn.signed.
     forceCodeSigning: signed,
     mac: {
       // Squirrel.Mac updates from the zip; the dmg is for first installs.

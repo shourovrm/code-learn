@@ -15,7 +15,7 @@ function lookup(over: Partial<Lookup> = {}): Lookup {
   };
 }
 
-const state = () => desktopState(tempDir('codemm-connect-'));
+const state = () => desktopState(tempDir('code-learn-connect-'));
 
 // The clock stands still unless a test moves it: a sign-in check runs at most once every 5 s per agent.
 beforeEach(() => void vi.useFakeTimers({ toFake: ['Date'] }));
@@ -291,7 +291,7 @@ describe('connect (§3.1, §3.3)', () => {
       expect((await c.agents()).find((a) => a.id === 'codex')!.state).toBe('connected');
     });
 
-    it('never runs an agent while Codemm is checking its install, or after the check rejected it', async () => {
+    it('never runs an agent while code-learn is checking its install, or after the check rejected it', async () => {
       const t = setup(['codex']);
       const ran: string[] = [];
       const c = connector(lookup({ find: found(t.installedAfter), version: async (id) => (ran.push(`version ${id}`), '0.157.0'), signedIn: async (id) => (ran.push(`signed-in ${id}`), true) }), state(), t.s);
@@ -304,7 +304,7 @@ describe('connect (§3.1, §3.3)', () => {
       expect([ran, t.signIns]).toEqual([[], []]);
       // Nor do jobs, even for the agent chosen before.
       await expect(c.chosen()).rejects.toThrow(NO_AGENT);
-      // Once Codemm starts installing an agent, nothing of it runs until an install is done: any failed attempt keeps it
+      // Once code-learn starts installing an agent, nothing of it runs until an install is done: any failed attempt keeps it
       // blocked, whatever the problem and whichever agent, even a retry that failed offline after the check rejected it.
       t.status.set('claude', { phase: 'failed', problem: 'offline' });
       t.installedAfter.push('claude');
@@ -323,7 +323,7 @@ describe('connect (§3.1, §3.3)', () => {
       expect((await c.agents()).find((a) => a.id === 'codex')!.state).not.toBe('missing');
     });
 
-    it("a running job's sign-in check runs nothing while Codemm is installing its agent again", async () => {
+    it("a running job's sign-in check runs nothing while code-learn is installing its agent again", async () => {
       const t = setup(['codex']);
       const ran: string[] = [];
       const c = connector(lookup({ find: found(t.installedAfter), signedIn: async (id) => (ran.push(`signed-in ${id}`), true) }), state(), t.s);
@@ -344,7 +344,7 @@ describe('connect (§3.1, §3.3)', () => {
       const st = state();
       st.update((s) => ({ ...s, agent: 'codex' }));
       const ran: string[] = [];
-      // The learner's binary goes and Codemm starts installing it again while --version runs.
+      // The learner's binary goes and code-learn starts installing it again while --version runs.
       const version = async () => (t.status.set('codex', { phase: 'checking' }), '0.157.0');
       const c = connector(lookup({ find: found(t.installedAfter), version, signedIn: async (id) => (ran.push(`signed-in ${id}`), true) }), st, t.s);
       expect((await c.agents()).find((a) => a.id === 'codex')!.state).toBe('missing');

@@ -63,7 +63,7 @@ const older = (v: number[], min: number[]) => {
 export function wsl(d: WslDeps) {
   let machine: Promise<Machine> | undefined;
   let restart = false;
-  /** WSL read ready once stays ready while Codemm runs, so a check while Docker starts runs nothing. */
+  /** WSL read ready once stays ready while code-learn runs, so a check while Docker starts runs nothing. */
   let ready = false;
 
   /**
@@ -88,7 +88,7 @@ export function wsl(d: WslDeps) {
     if (m.firmware === false && m.hypervisor === false) return 'virtualization';
     // Where the feature can't be read, no hypervisor running says the Virtual Machine Platform isn't on.
     if (m.vmp === false || (m.vmp === undefined && m.hypervisor === false)) return 'missing';
-    // On but not running: a restart Windows still needs, or else a hypervisor turned off on purpose, which Codemm
+    // On but not running: a restart Windows still needs, or else a hypervisor turned off on purpose, which code-learn
     // leaves to Docker's own message rather than loop the learner through restarts.
     if (m.hypervisor === false) return (await d.run(REG, ['query', REBOOT_PENDING])).code === 0 ? 'restart' : undefined;
     // The Virtual Machine Platform is on but WSL 2.0's package isn't here: an older WSL (Windows' own, or the Store's
@@ -115,7 +115,7 @@ export function wsl(d: WslDeps) {
       if (now !== 'missing' && now !== 'old') return 'done';
       const args = now === 'old' ? '--update' : '--install --no-distribution';
       asking?.();
-      const r = await d.run(POWERSHELL, ['-NoProfile', '-NonInteractive', '-Command', ELEVATED], { env: { CODEMM_FILE: WSL, CODEMM_ARGS: args }, timeoutMs: 60 * 60_000 });
+      const r = await d.run(POWERSHELL, ['-NoProfile', '-NonInteractive', '-Command', ELEVATED], { env: { CODE_LEARN_FILE: WSL, CODE_LEARN_ARGS: args }, timeoutMs: 60 * 60_000 });
       if (r.code === DECLINED) return 'declined';
       if (r.code !== null && RESTART.has(r.code)) restart = true;
       else if (r.code !== 0) return 'failed';

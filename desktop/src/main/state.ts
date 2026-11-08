@@ -1,6 +1,6 @@
 // desktop.json in the app's userData folder (DESIGN §2): the chosen agent, the
 // workspace folder, and the tutor's session per course. It carries format_version and is written
-// atomically, like every Codemm-owned file.
+// atomically, like every code-learn-owned file.
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { AgentId } from '../shared/api';
@@ -8,7 +8,7 @@ import type { AgentId } from '../shared/api';
 export interface DesktopState {
   format_version: 1;
   agent?: AgentId;
-  /** The workspace folder, when it isn't ~/Codemm (O5). */
+  /** The workspace folder, when it isn't ~/code-learn (O5). */
   workspace?: string;
   /** Tutor session or thread ids, keyed `course|agent`. */
   sessions: Record<string, string>;
@@ -24,7 +24,7 @@ export interface DesktopState {
   models?: Partial<Record<AgentId, string>>;
 }
 
-export const workspaceOf = (state: DesktopState, home: string) => state.workspace ?? join(home, 'Codemm');
+export const workspaceOf = (state: DesktopState, home: string) => state.workspace ?? join(home, 'code-learn');
 
 /** The learner's courses, oldest first (§4.13). */
 export const coursesOf = (state: DesktopState): string[] => state.courses ?? (state.approved ? [state.approved] : []);

@@ -13,8 +13,8 @@ describe('connect journey', () => {
 
     expect(await screen.findByRole('heading', { name: 'Connect an agent' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
-    // No promise about billing: Codemm can't tell a plan from an API key.
-    expect(screen.getByText('Codemm uses your agent and your account.')).toBeInTheDocument();
+    // No promise about billing: code-learn can't tell a plan from an API key.
+    expect(screen.getByText('code-learn uses your agent and your account.')).toBeInTheDocument();
     const claude = screen.getByRole('listitem', { name: 'Claude Code' });
     await user.click(within(claude).getByRole('button', { name: 'Connect' }));
     expect(await within(claude).findByText('Connected')).toBeInTheDocument();
@@ -26,18 +26,18 @@ describe('connect journey', () => {
     expect(document.body).not.toHaveTextContent('Claude Code');
   });
 
-  it('shows the window at once while Codemm still looks for the agents, then the way in', async () => {
+  it('shows the window at once while code-learn still looks for the agents, then the way in', async () => {
     const api = createMock();
     let found!: () => void;
     const agents = api.agents;
     api.agents = () => new Promise((done) => (found = () => done(agents())));
     renderApp({ to: 'welcome' }, api);
-    // Not a blank window: Codemm says what it is doing, beside Emm asleep.
-    expect(screen.getByText('Codemm is starting')).toBeInTheDocument();
+    // Not a blank window: code-learn says what it is doing, beside Emm asleep.
+    expect(screen.getByText('code-learn is starting')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Connect an agent' })).not.toBeInTheDocument();
     found();
     expect(await screen.findByRole('button', { name: 'Connect an agent' })).toBeInTheDocument();
-    expect(screen.queryByText('Codemm is starting')).not.toBeInTheDocument();
+    expect(screen.queryByText('code-learn is starting')).not.toBeInTheDocument();
   });
 
   it('goes straight back to the course on a relaunch with one approved and the agent connected', async () => {
@@ -106,7 +106,7 @@ describe('connect journey', () => {
     await user.click(within(codex).getByRole('button', { name: 'Connect' }));
     expect(await within(codex).findByRole('button', { name: 'Sign in' })).toBeInTheDocument();
     expect(codex).not.toHaveTextContent(/terminal|codex login/);
-    // Signed in from a terminal; coming back to Codemm checks again.
+    // Signed in from a terminal; coming back to code-learn checks again.
     options.agents = {};
     window.dispatchEvent(new Event('focus'));
     expect(await within(codex).findByText('Connected')).toBeInTheDocument();
@@ -114,7 +114,7 @@ describe('connect journey', () => {
   });
 
   it('links to each agent\'s install page when none is installed', async () => {
-    // Linux: Codemm doesn't install agents there.
+    // Linux: code-learn doesn't install agents there.
     renderApp({ to: 'connect' }, createMock({ ...scenario('no-agent'), platform: 'linux' }));
     const claude = await screen.findByRole('listitem', { name: 'Claude Code' });
     expect(within(claude).getByText('Not installed')).toBeInTheDocument();
@@ -258,7 +258,7 @@ describe('installing an agent', () => {
     await user.click(within(claude).getByRole('button', { name: 'Install' }));
     expect(await within(claude).findByRole('progressbar', { name: 'Downloading Claude Code' })).toBeInTheDocument();
     await user.click(await within(claude).findByRole('button', { name: 'Sign in' }, { timeout: 4000 }));
-    // Signed in in the agent's own window; coming back to Codemm checks, then moves on as Continue does.
+    // Signed in in the agent's own window; coming back to code-learn checks, then moves on as Continue does.
     window.dispatchEvent(new Event('focus'));
     expect(await screen.findByRole('heading', { name: /^(Check this computer|What do you want to learn\?)$/ })).toBeInTheDocument();
   });
@@ -274,13 +274,13 @@ describe('installing an agent', () => {
   });
 });
 
-describe('an install Codemm could not verify', () => {
+describe('an install code-learn could not verify', () => {
   it('says so and offers Try again, claiming nothing about what ran', async () => {
     const user = userEvent.setup();
     renderApp({ to: 'connect' }, createMock({ ...scenario('agent-install-offline'), agentInstallProblem: 'unverified', platform: 'mac' }));
     const codex = await screen.findByRole('listitem', { name: 'Codex' });
     await user.click(within(codex).getByRole('button', { name: 'Install' }));
-    expect(await within(codex).findByText("Codemm couldn't verify the installation. Try again.", {}, { timeout: 4000 })).toBeInTheDocument();
+    expect(await within(codex).findByText("code-learn couldn't verify the installation. Try again.", {}, { timeout: 4000 })).toBeInTheDocument();
     expect(codex).not.toHaveTextContent(/signature|didn't use/);
     expect(within(codex).getByRole('button', { name: 'Try again' })).toBeInTheDocument();
   });
@@ -302,15 +302,15 @@ describe('a look that fails after one worked', () => {
     const api = createMock();
     const agents = api.agents.bind(api);
     let failing = false;
-    api.agents = () => (failing ? Promise.reject(new Error('codemm:offline')) : agents());
+    api.agents = () => (failing ? Promise.reject(new Error('code-learn:offline')) : agents());
     renderApp({ to: 'connect' }, api);
     expect(await screen.findByRole('listitem', { name: 'Claude Code' })).toBeInTheDocument();
     failing = true;
     window.dispatchEvent(new Event('focus'));
-    expect(await screen.findByText(/Codemm couldn't refresh this/)).toHaveAttribute('role', 'status');
+    expect(await screen.findByText(/code-learn couldn't refresh this/)).toHaveAttribute('role', 'status');
     expect(screen.getByRole('listitem', { name: 'Claude Code' })).toBeInTheDocument();
     failing = false;
     await user.click(screen.getByRole('button', { name: 'Try again' }));
-    await waitFor(() => expect(screen.queryByText(/Codemm couldn't refresh this/)).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText(/code-learn couldn't refresh this/)).not.toBeInTheDocument());
   });
 });

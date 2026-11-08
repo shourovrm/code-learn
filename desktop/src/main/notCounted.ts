@@ -38,5 +38,5 @@ export function rebuildFailure(error: unknown): unknown {
     const reason = notCounted(error)!;
     return new SafeError(RUN_AGAIN[reason] ? `${reason} ${RUN_AGAIN[reason].replace('run again', 'try again')}` : reason);
   }
-  return error instanceof Error && error.name === 'CodemmError' && !kindOf(error) ? new SafeError(NOT_ACCEPTED) : error;
+  return error instanceof Error && error.name === 'CodeLearnError' && !kindOf(error) ? new SafeError(NOT_ACCEPTED) : error;
 }

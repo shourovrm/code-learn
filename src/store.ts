@@ -5,34 +5,34 @@ import {
 import { createHash, randomBytes } from "node:crypto";
 import { homedir } from "node:os";
 import { dirname, join, relative, sep } from "node:path";
-import { CodemmError, infraError } from "./errors.js";
+import { CodeLearnError, infraError } from "./errors.js";
 import { assertId, assertRelativePath, type FileMap, readFileMap, validateFileMap, writeFileMap } from "./files.js";
 import type { JudgeTrack } from "./judge.js";
 import type { LearnerEvent } from "./learner.js";
 import { CourseRecord, ExerciseRecord, LearnerEventSchema, LessonRecord, ProposalRecord, TrackRecord, WorkspaceConfig } from "./schemas.js";
 
-/** Persistence for everything under $CODEMM_HOME and the workspace's codemm.json. */
+/** Persistence for everything under $CODE_LEARN_HOME and the workspace's code-learn.json. */
 
-export const codemmHome = () => process.env.CODEMM_HOME ?? join(homedir(), ".codemm");
+export const codeLearnHome = () => process.env.CODE_LEARN_HOME ?? join(homedir(), ".code-learn");
 
 /**
- * The image tag for a track, named after this Codemm home (8 hex characters of the SHA-256 of its real path), so two
+ * The image tag for a track, named after this code-learn home (8 hex characters of the SHA-256 of its real path), so two
  * homes on one Docker that install the same id@version never overwrite each other's tag.
  */
 export function trackImageTag(id: string, version: number): string {
-  mkdirSync(codemmHome(), { recursive: true });
-  const home = createHash("sha256").update(realpathSync.native(codemmHome())).digest("hex").slice(0, 8);
-  return `codemm-track-${home}-${id}:${version}`;
+  mkdirSync(codeLearnHome(), { recursive: true });
+  const home = createHash("sha256").update(realpathSync.native(codeLearnHome())).digest("hex").slice(0, 8);
+  return `code-learn-track-${home}-${id}:${version}`;
 }
-const tracksDir = () => join(codemmHome(), "tracks");
+const tracksDir = () => join(codeLearnHome(), "tracks");
 const courseDir = (course: string) => {
   assertId("course", course);
-  return join(codemmHome(), "courses", course);
+  return join(codeLearnHome(), "courses", course);
 };
 
 export function parseTrackRef(ref: string): { id: string; version: number } {
   const m = /^([a-z0-9][a-z0-9._-]{0,63})@([1-9][0-9]{0,8})$/.exec(ref);
-  if (!m) throw new CodemmError(`Invalid track "${ref}". Use id@version, for example python@1.`);
+  if (!m) throw new CodeLearnError(`Invalid track "${ref}". Use id@version, for example python@1.`);
   return { id: m[1]!, version: Number(m[2]) };
 }
 export const trackDir = (ref: string) => {
@@ -139,7 +139,7 @@ export async function withLock<T>(path: string, work: () => Promise<T>, waitMs =
       reclaimIfStale(path, seen);
       continue;
     }
-    if (Date.now() > until) throw new CodemmError("Codemm is busy with another change to this course or track. Retry in a moment.");
+    if (Date.now() > until) throw new CodeLearnError("code-learn is busy with another change to this course or track. Retry in a moment.");
     await sleep(100);
   }
   try {
@@ -151,13 +151,13 @@ export async function withLock<T>(path: string, work: () => Promise<T>, waitMs =
 
 // ---------- records ----------
 
-/** Parses one of Codemm's own records. A bad record is reported by file, never by echoing its contents. */
+/** Parses one of code-learn's own records. A bad record is reported by file, never by echoing its contents. */
 function parseRecord<T>(schema: { parse: (v: unknown) => T }, file: string): T {
   try {
     return schema.parse(JSON.parse(readFileSync(file, "utf8")));
   } catch {
-    // A newer Codemm may have written it in a shape this one doesn't know, so removing it is the last resort.
-    throw new CodemmError(`Codemm's record ${file} can't be read: a newer Codemm may have written it, or it's damaged. Update Codemm; if that doesn't help, restore it from a backup, or remove that track, course or exercise.`, "damaged");
+    // A newer code-learn may have written it in a shape this one doesn't know, so removing it is the last resort.
+    throw new CodeLearnError(`code-learn's record ${file} can't be read: a newer code-learn may have written it, or it's damaged. Update code-learn; if that doesn't help, restore it from a backup, or remove that track, course or exercise.`, "damaged");
   }
 }
 
@@ -165,10 +165,10 @@ function parseRecord<T>(schema: { parse: (v: unknown) => T }, file: string): T {
 
 /**
  * Writes `text` to a new temp file beside `path` and returns its path. Never opens an existing file or a symlink.
- * `mode` is before the umask: 0o666 as writeFileSync makes Codemm's own files, 0o644 for learner files.
+ * `mode` is before the umask: 0o666 as writeFileSync makes code-learn's own files, 0o644 for learner files.
  */
 function writeTempBeside(path: string, text: string, mode: number): string {
-  const tmp = join(dirname(path), `.codemm-${process.pid}-${randomBytes(4).toString("hex")}.tmp`);
+  const tmp = join(dirname(path), `.code-learn-${process.pid}-${randomBytes(4).toString("hex")}.tmp`);
   const fd = openSync(tmp, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, mode);
   try {
     writeFileSync(fd, text);
@@ -192,14 +192,14 @@ export function writeTextAtomic(path: string, text: string, mode = 0o666): void 
 
 const writeJsonAtomic = (path: string, value: unknown) => writeTextAtomic(path, `${JSON.stringify(value, null, 2)}\n`);
 
-/** A job's progress file (`codemm mcp --progress`): the exercise gate running, by name only. Replaced whole each time. */
+/** A job's progress file (`code-learn mcp --progress`): the exercise gate running, by name only. Replaced whole each time. */
 export function writeJobProgress(path: string, gate: string): void {
   writeJsonAtomic(path, { format_version: 1, gate });
 }
 
 /** Writes `files` (and optional JSON records) into a fresh folder, then renames it to `target`. */
 export function commitFolder(target: string, files: FileMap, records: Record<string, unknown> = {}): void {
-  if (existsSync(target)) throw new CodemmError(`${target} already exists.`);
+  if (existsSync(target)) throw new CodeLearnError(`${target} already exists.`);
   mkdirSync(dirname(target), { recursive: true });
   const tmp = mkdtempSync(join(dirname(target), ".staging-"));
   try {
@@ -220,7 +220,7 @@ export function readTrack(ref: string): TrackRecord | undefined {
   return parseRecord(TrackRecord, file);
 }
 
-/** The track's own files, without Codemm's track.json. */
+/** The track's own files, without code-learn's track.json. */
 export function readTrackFiles(ref: string): FileMap {
   return readFileMap(trackDir(ref), ["track.json"]);
 }
@@ -238,9 +238,9 @@ export function listTracks(): TrackRecord[] {
 }
 
 /** Where WASI toolchains are stored, each in a folder named by its download's SHA-256 (DESIGN §4.5). */
-export const toolchainsDir = () => join(codemmHome(), "toolchains");
+export const toolchainsDir = () => join(codeLearnHome(), "toolchains");
 export function toolchainDir(sha256: string): string {
-  if (!/^[0-9a-f]{64}$/.test(sha256)) throw new CodemmError(`Invalid toolchain digest "${sha256}".`);
+  if (!/^[0-9a-f]{64}$/.test(sha256)) throw new CodeLearnError(`Invalid toolchain digest "${sha256}".`);
   return join(toolchainsDir(), sha256);
 }
 /** Held while a digest's folder is stored or replaced. */
@@ -259,7 +259,7 @@ export function judgeTrack(track: TrackRecord): Omit<TrackRecord, "image" | "ima
 
 const proposalsDir = (ref: string) => {
   parseTrackRef(ref);
-  return join(codemmHome(), "proposals", ref);
+  return join(codeLearnHome(), "proposals", ref);
 };
 const byCodeUnit = ([a]: [string, string], [b]: [string, string]) => (a < b ? -1 : a > b ? 1 : 0);
 
@@ -288,7 +288,7 @@ export function writeProposal(ref: string, files: FileMap): void {
 
 /** Every proposal with its files. One that another process removes while this reads it is left out. */
 export function listProposals(): { record: ProposalRecord; files: FileMap }[] {
-  const root = join(codemmHome(), "proposals");
+  const root = join(codeLearnHome(), "proposals");
   if (!existsSync(root)) return [];
   return readdirSync(root)
     .filter((ref) => !ref.startsWith("."))
@@ -328,7 +328,7 @@ export function assertFreeSpace(dir: string, min = MIN_FREE_BYTES): void {
   mkdirSync(dir, { recursive: true });
   const { bavail, bsize } = statfsSync(dir);
   if (bavail * bsize < min) {
-    throw infraError(`Not enough disk space. Setup needs ${Math.round(min / 1024 ** 3)} GB free where Codemm keeps its data (${dir}). Free some space, then try again.`, "host-disk");
+    throw infraError(`Not enough disk space. Setup needs ${Math.round(min / 1024 ** 3)} GB free where code-learn keeps its data (${dir}). Free some space, then try again.`, "host-disk");
   }
 }
 
@@ -343,7 +343,7 @@ export function readCourse(course: string): CourseRecord | undefined {
 export const writeCourse = (record: CourseRecord) => writeJsonAtomic(join(courseDir(record.course), "course.json"), record);
 
 export function listCourses(): string[] {
-  const dir = join(codemmHome(), "courses");
+  const dir = join(codeLearnHome(), "courses");
   return existsSync(dir) ? readdirSync(dir).filter((n) => !n.startsWith(".")).sort() : [];
 }
 
@@ -363,8 +363,8 @@ export function listExercises(course: string): ExerciseRecord[] {
 
 export function readExercise(course: string, slug: string): { record: ExerciseRecord; files: FileMap } {
   const dir = exerciseDir(course, slug);
-  if (!existsSync(join(dir, "exercise.json"))) throw new CodemmError(`No exercise "${slug}" in course "${course}".`);
-  // Codemm's generated record is read on its own so it never counts against the author's limits.
+  if (!existsSync(join(dir, "exercise.json"))) throw new CodeLearnError(`No exercise "${slug}" in course "${course}".`);
+  // code-learn's generated record is read on its own so it never counts against the author's limits.
   const record = parseRecord(ExerciseRecord, join(dir, "exercise.json"));
   return { record, files: readFileMap(dir, ["exercise.json"]) };
 }
@@ -389,7 +389,7 @@ export function listLessons(course: string): LessonRecord[] {
 /** The agent's text never changes after saving; the learner's notes sit beside it. */
 export function readLesson(course: string, id: string): { record: LessonRecord; markdown: string; notes: string; examples: FileMap[] } {
   const dir = lessonDir(course, id);
-  if (!existsSync(join(dir, "lesson.json"))) throw new CodemmError(`No lesson "${id}" in course "${course}".`);
+  if (!existsSync(join(dir, "lesson.json"))) throw new CodeLearnError(`No lesson "${id}" in course "${course}".`);
   const record = parseRecord(LessonRecord, join(dir, "lesson.json"));
   return {
     record,
@@ -430,7 +430,7 @@ export function readEvents(course: string): LearnerEvent[] {
     try {
       events.push(LearnerEventSchema.parse(JSON.parse(line)));
     } catch {
-      throw new CodemmError(`The learning log ${file} has an invalid entry on line ${i + 1}. Fix or remove that line, then retry.`, "damaged");
+      throw new CodeLearnError(`The learning log ${file} has an invalid entry on line ${i + 1}. Fix or remove that line, then retry.`, "damaged");
     }
   });
   return events;
@@ -452,7 +452,7 @@ export function appendEvent(course: string, event: LearnerEvent): void {
 
 // ---------- workspace ----------
 
-const workspaceFile = (ws: string) => join(ws, "codemm.json");
+const workspaceFile = (ws: string) => join(ws, "code-learn.json");
 
 export function readWorkspace(ws: string): WorkspaceConfig {
   const file = workspaceFile(ws);
@@ -467,14 +467,14 @@ export function readWorkspace(ws: string): WorkspaceConfig {
 function workspaceLock(ws: string): string {
   mkdirSync(ws, { recursive: true });
   const id = realpathSync.native(ws);
-  return join(codemmHome(), "locks", `ws-${createHash("sha256").update(id).digest("hex").slice(0, 16)}.lock`);
+  return join(codeLearnHome(), "locks", `ws-${createHash("sha256").update(id).digest("hex").slice(0, 16)}.lock`);
 }
 
-/** Serializes changes Codemm makes to one workspace (codemm.json, host setup). */
+/** Serializes changes code-learn makes to one workspace (code-learn.json, host setup). */
 export const withWorkspaceLock = <T>(ws: string, work: () => Promise<T>) => withLock(workspaceLock(ws), work);
 
 /**
- * Read-modify-write of codemm.json, serialized across processes. `change` may take the course lock (workspace, then
+ * Read-modify-write of code-learn.json, serialized across processes. `change` may take the course lock (workspace, then
  * course: nothing takes them the other way round) to record something that must agree with the change.
  */
 export async function updateWorkspace(ws: string, change: (config: WorkspaceConfig) => WorkspaceConfig | Promise<WorkspaceConfig>): Promise<WorkspaceConfig> {
@@ -488,7 +488,7 @@ export async function updateWorkspace(ws: string, change: (config: WorkspaceConf
 /** Fails if `path`'s real location escapes `root` (a symlinked ancestor). */
 function assertInside(root: string, path: string): void {
   const rel = relative(realpathSync(root), realpathSync(path));
-  if (rel === ".." || rel.startsWith(`..${sep}`) || rel.startsWith(sep)) throw new CodemmError(`Refusing to follow a symlink out of ${root}.`);
+  if (rel === ".." || rel.startsWith(`..${sep}`) || rel.startsWith(sep)) throw new CodeLearnError(`Refusing to follow a symlink out of ${root}.`);
 }
 
 /** The absolute path of `ws/rel`, refusing it if any existing component is a symlink. */
@@ -497,7 +497,7 @@ export function refuseSymlinks(ws: string, rel: string): string {
   for (const part of rel.split("/")) {
     current = join(current, part);
     if (existsSync(current) && lstatSync(current).isSymbolicLink()) {
-      throw new CodemmError(`Refusing to write through the symlink at ${current}. Replace it with a real folder or file, then retry.`);
+      throw new CodeLearnError(`Refusing to write through the symlink at ${current}. Replace it with a real folder or file, then retry.`);
     }
   }
   return current;
@@ -538,7 +538,7 @@ export function replaceLearnerFile(ws: string, rel: string, name: string, text: 
   assertRelativePath(name);
   const path = refuseSymlinks(ws, `${rel}/${name}`);
   const current = existsSync(path) ? readLearnerFiles(ws, rel, [name])[name] : undefined;
-  if (current === undefined || digestText(current) !== digest) throw new CodemmError(`Changed outside Codemm. Reload ${name}.`, "changed");
+  if (current === undefined || digestText(current) !== digest) throw new CodeLearnError(`Changed outside code-learn. Reload ${name}.`, "changed");
   writeTextAtomic(path, text, 0o644);
   return digestText(text);
 }
@@ -548,8 +548,8 @@ export function readLearnerFiles(ws: string, rel: string, names: string[]): File
   const out: FileMap = {};
   for (const name of names) {
     const path = join(ws, rel, name);
-    if (!existsSync(path)) throw new CodemmError(`${join(rel, name)} is missing. Restore it, or run get_exercise to recreate the starter.`);
-    if (!lstatSync(path).isFile()) throw new CodemmError(`${join(rel, name)} must be a regular file, not a symlink or folder.`);
+    if (!existsSync(path)) throw new CodeLearnError(`${join(rel, name)} is missing. Restore it, or run get_exercise to recreate the starter.`);
+    if (!lstatSync(path).isFile()) throw new CodeLearnError(`${join(rel, name)} must be a regular file, not a symlink or folder.`);
     assertInside(ws, dirname(path));
     const fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW);
     try {

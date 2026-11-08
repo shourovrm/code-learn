@@ -7,7 +7,7 @@ import { signedInOf } from './signedIn';
 
 /** A stand-in agent whose status command takes `ms` the first time, then `thenMs`, and prints `output`. */
 function slowAgent(output: string, ms: number, thenMs = ms) {
-  const dir = tempDir('codemm-slow-agent-');
+  const dir = tempDir('code-learn-slow-agent-');
   const runs = join(dir, 'runs');
   writeFileSync(runs, '');
   const script = join(dir, 'agent.js');

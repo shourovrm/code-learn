@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import type { CodemmApi } from '../shared/api';
+import type { CodeLearnApi } from '../shared/api';
 import { dispatch } from './ipc';
 
 // Every call resolves to its method name and arguments, so a test can see what got through.
-const echo = new Proxy({} as CodemmApi, { get: (_t, method) => async (...args: unknown[]) => ({ method, args }) });
+const echo = new Proxy({} as CodeLearnApi, { get: (_t, method) => async (...args: unknown[]) => ({ method, args }) });
 
 const concepts = [{ id: 'values', title: 'Values', requires: [] }, { id: 'state', title: 'State', requires: ['values'] }];
-const GOOD: Record<Exclude<keyof CodemmApi, 'onCheckProgress' | 'onJobProgress' | 'onRunOutput'>, unknown[]> = {
+const GOOD: Record<Exclude<keyof CodeLearnApi, 'onCheckProgress' | 'onJobProgress' | 'onRunOutput'>, unknown[]> = {
   agents: [],
   jobProgress: [],
   connect: ['claude'],
@@ -54,7 +54,7 @@ const GOOD: Record<Exclude<keyof CodemmApi, 'onCheckProgress' | 'onJobProgress' 
 };
 
 describe('dispatch', () => {
-  it('passes every valid call through to Codemm', async () => {
+  it('passes every valid call through to code-learn', async () => {
     for (const [method, args] of Object.entries(GOOD)) {
       expect(await dispatch(echo, method, args)).toEqual({ method, args });
     }

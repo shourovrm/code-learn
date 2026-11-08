@@ -32,7 +32,7 @@ describe('updates', () => {
     u.stop();
   });
 
-  it('installs only after Codemm has stopped its jobs and removed its containers', async () => {
+  it('installs only after code-learn has stopped its jobs and removed its containers', async () => {
     const f = fake();
     let finishCleanup!: () => void;
     const cleanup = vi.fn(() => new Promise<void>((r) => (finishCleanup = r)));
@@ -140,52 +140,52 @@ describe('updates', () => {
 
   describe('the Windows signature check, which fails closed', () => {
     const signed = (subject: string, status = 0) => async () => JSON.stringify({ Status: status, SignerCertificate: { Subject: subject } });
-    const file = 'C:\\Users\\me\\AppData\\Local\\codemm-desktop-updater\\pending\\Codemm-1.2.0.exe';
+    const file = 'C:\\Users\\me\\AppData\\Local\\code-learn-desktop-updater\\pending\\code-learn-1.2.0.exe';
 
     it('accepts only a valid signature from the expected publisher, by name or by full name', async () => {
-      expect(await verifyWindowsSignature(['Codemm'], file, signed('CN=Codemm, O=Codemm, C=PH'))).toBeNull();
-      expect(await verifyWindowsSignature(['CN=Codemm, O=Codemm'], file, signed('CN=Codemm, O=Codemm, C=PH'))).toBeNull();
-      expect(await verifyWindowsSignature(['Codemm'], file, signed('CN=Someone Else, O=Codemm'))).toMatch(/signed by someone else/);
-      expect(await verifyWindowsSignature(['Codemm'], file, signed('CN=Codemm', 2))).toMatch(/isn't validly signed/);
+      expect(await verifyWindowsSignature(['code-learn'], file, signed('CN=code-learn, O=code-learn, C=PH'))).toBeNull();
+      expect(await verifyWindowsSignature(['CN=code-learn, O=code-learn'], file, signed('CN=code-learn, O=code-learn, C=PH'))).toBeNull();
+      expect(await verifyWindowsSignature(['code-learn'], file, signed('CN=Someone Else, O=code-learn'))).toMatch(/signed by someone else/);
+      expect(await verifyWindowsSignature(['code-learn'], file, signed('CN=code-learn', 2))).toMatch(/isn't validly signed/);
     });
 
     it('refuses a signer name it cannot read plainly, so nothing inside it passes for the publisher', async () => {
       const refused = [
-        'CN=Someone Else, OU="Other, CN=Codemm, O=Codemm, C=PH, X=tail", C=PH', // quoted text
+        'CN=Someone Else, OU="Other, CN=code-learn, O=code-learn, C=PH, X=tail", C=PH', // quoted text
         'CN=Code\\mm', // a literal backslash, as Windows keeps it
-        'CN=Codemm\\',
-        'CN=Codemm, OU=Other + CN=Someone Else', // a multi-valued part
-        'CN=Codemm, CN=Other', // a key named twice
-        'CN=Codemm, O="Codemm, Inc."', // a quoted comma: refused too, the update is then installed by hand
-        'CN=Codemm\uFEFF', // characters JavaScript would trim but Windows keeps
+        'CN=code-learn\\',
+        'CN=code-learn, OU=Other + CN=Someone Else', // a multi-valued part
+        'CN=code-learn, CN=Other', // a key named twice
+        'CN=code-learn, O="code-learn, Inc."', // a quoted comma: refused too, the update is then installed by hand
+        'CN=code-learn\uFEFF', // characters JavaScript would trim but Windows keeps
         'CN=\uFEFFCodemm',
-        'CN=Codemm\u00A0',
+        'CN=code-learn\u00A0',
         'CN=Сodemm', // a Cyrillic С
       ];
       for (const subject of refused) {
-        expect(await verifyWindowsSignature(['Codemm'], file, signed(subject))).toMatch(/signed by someone else/);
-        expect(await verifyWindowsSignature(['CN=Codemm, O=Codemm, C=PH'], file, signed(subject))).toMatch(/signed by someone else/);
+        expect(await verifyWindowsSignature(['code-learn'], file, signed(subject))).toMatch(/signed by someone else/);
+        expect(await verifyWindowsSignature(['CN=code-learn, O=code-learn, C=PH'], file, signed(subject))).toMatch(/signed by someone else/);
       }
       // An ordinary name matches, with any spacing after its commas.
-      expect(await verifyWindowsSignature(['CN=Codemm, O=Codemm'], file, signed('CN=Codemm,O=Codemm,  C=PH'))).toBeNull();
+      expect(await verifyWindowsSignature(['CN=code-learn, O=code-learn'], file, signed('CN=code-learn,O=code-learn,  C=PH'))).toBeNull();
     });
 
     it("rejects the update when the check can't run or its answer can't be read", async () => {
       const blocked = async () => {
         throw new Error('powershell is disabled by policy');
       };
-      expect(await verifyWindowsSignature(['Codemm'], file, blocked)).toMatch(/couldn't be checked/);
-      expect(await verifyWindowsSignature(['Codemm'], file, async () => 'not json')).toMatch(/couldn't be read/);
-      expect(await verifyWindowsSignature([], file, signed('CN=Codemm'))).toMatch(/no publisher/);
+      expect(await verifyWindowsSignature(['code-learn'], file, blocked)).toMatch(/couldn't be checked/);
+      expect(await verifyWindowsSignature(['code-learn'], file, async () => 'not json')).toMatch(/couldn't be read/);
+      expect(await verifyWindowsSignature([], file, signed('CN=code-learn'))).toMatch(/no publisher/);
     });
 
     it('runs Windows PowerShell by its full path, and passes the file in the environment, never inside the command', async () => {
       let seen: { exe: string; args: string[]; env: Record<string, string | undefined> } | undefined;
-      await verifyWindowsSignature(['Codemm'], "C:\\x\\a';calc;'.exe", async (exe, args, env) => ((seen = { exe, args, env }), JSON.stringify({ Status: 0, SignerCertificate: { Subject: 'CN=Codemm' } })));
+      await verifyWindowsSignature(['code-learn'], "C:\\x\\a';calc;'.exe", async (exe, args, env) => ((seen = { exe, args, env }), JSON.stringify({ Status: 0, SignerCertificate: { Subject: 'CN=code-learn' } })));
       // Not "powershell.exe" by name: another one earlier on PATH could answer for it.
       expect(seen!.exe).toBe('C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe');
       expect(seen!.args.join(' ')).not.toContain('calc');
-      expect(seen!.env.CODEMM_UPDATE_FILE).toBe("C:\\x\\a';calc;'.exe");
+      expect(seen!.env.CODE_LEARN_UPDATE_FILE).toBe("C:\\x\\a';calc;'.exe");
     });
   });
 });

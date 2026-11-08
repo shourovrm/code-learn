@@ -20,7 +20,7 @@ const TERMS: Partial<Record<AgentId, { vendor: string; url: string }>> = {
 };
 
 /**
- * What Codemm can install here: Docker when it isn't installed and practice can't run without it (core §4.5), and an
+ * What code-learn can install here: Docker when it isn't installed and practice can't run without it (core §4.5), and an
  * agent when none is.
  */
 export function missing(computer: Computer, agents: Agent[]) {
@@ -90,7 +90,7 @@ export function Setup() {
     <main className="center">
       <div className="stack wide setup-page">
         <h1 className="h1 a-up">Set up this computer</h1>
-        <p className="sub a-up" style={stagger(1)}>Codemm installs what's missing, each from its maker.</p>
+        <p className="sub a-up" style={stagger(1)}>code-learn installs what's missing, each from its maker.</p>
         <ul className="stack plain">
           {need.docker && (
             <li className="card check a-up" style={stagger(2)} aria-label="Docker Desktop">

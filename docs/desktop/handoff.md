@@ -13,7 +13,7 @@
 
 - `node --test spikes/agent-bridge/*.test.mjs`: all pass.
 - Real runs on the owner's subscriptions, with API-key variables unset, covered Claude Code (haiku) and Codex (gpt-6-luna):
-  - a turn with Codemm tool calls;
+  - a turn with code-learn tool calls;
   - resume;
   - cancellation, with no leftover processes;
   - an isolation run with a canary file outside the workspace.
@@ -58,7 +58,7 @@
 
 ## 2026-10-17 (later): owner decisions O8 and O9
 
-- **O8 = (a).** `AGENTS.md` now reads: "Hidden data never leaves Codemm through Codemm's own outputs (tools, CLI, IPC and diagnostics). An agent with file access can read Codemm's files; Codemm removes that access where the agent allows." Codex ships with the reply filter.
+- **O8 = (a).** `AGENTS.md` now reads: "Hidden data never leaves code-learn through code-learn's own outputs (tools, CLI, IPC and diagnostics). An agent with file access can read code-learn's files; code-learn removes that access where the agent allows." Codex ships with the reply filter.
 - **O9 = confirmed.** Beta builds are unsigned, with open-anyway instructions, and the public 1.0 is signed.
 - Both are recorded as decisions 10 and 11 in DESIGN.md.
 - `docs/DESIGN.md` §1 has no hidden-data sentence, so it is unchanged. The closest are §4.2 "Disclosure" and A5, which already limit themselves to tool output, CLI output and gate diagnostics.
@@ -66,9 +66,9 @@
 
 ## 2026-10-17 (later): trimmed to the approved 1.0 scope
 
-- **DESIGN.md follows the scope ledger** (`~/Documents/Codemm/design/LEDGER.md`).
+- **DESIGN.md follows the scope ledger** (`~/Documents/code-learn/design/LEDGER.md`).
   - The ledger's "Cut or defer" items moved to §12: the lesson gate, usage display, auto-update, review scheduling, research sources, streaming progress, the assist-edit job, Linux installers, Cursor beyond experimental, and the six-pass review. Predict questions and learner edits of lesson text went with them, since lessons are now static text with notes.
   - Lesson caching, roadmap editing and one consent before setup stay.
-- **Added:** D1 for distribution (tag builds, a bundled core, `codemm mcp` through Electron as Node, no Node or npm); the environment matrix in §6.1 (offline or low disk during setup, plan limit, Docker's slow first start, Docker stopping mid-session); and D16, WCAG AA, from the ledger. The acceptance criteria are renumbered D1 to D21.
+- **Added:** D1 for distribution (tag builds, a bundled core, `code-learn mcp` through Electron as Node, no Node or npm); the environment matrix in §6.1 (offline or low disk during setup, plan limit, Docker's slow first start, Docker stopping mid-session); and D16, WCAG AA, from the ledger. The acceptance criteria are renumbered D1 to D21.
 - **docs/DESIGN.md** is synced with #16: the Windows container user 65534, `assertPortablePaths`, and per-OS runtime help.
 - **Spike:** the `evidence/` logs are removed; the three fixtures the contract tests parse remain. Usage parsing is removed, because usage is deferred. 18 tests pass.

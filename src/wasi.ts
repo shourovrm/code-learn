@@ -2,17 +2,17 @@ import { spawn, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { accessSync, chmodSync, constants, existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync } from "node:fs";
 import { delimiter, dirname, join, resolve } from "node:path";
-import { CodemmError, infraError } from "./errors.js";
+import { CodeLearnError, infraError } from "./errors.js";
 import type { WasiToolchain } from "./judge.js";
 import type { RunFolder } from "./runs.js";
-import { codemmHome, processAlive } from "./store.js";
+import { codeLearnHome, processAlive } from "./store.js";
 
 /**
  * The WASI engine (DESIGN §4.5): wasmtime runs a WASI track's code, with no Docker, VM or admin rights. The only
- * place Codemm starts wasmtime. Every run gets the same flags, whatever the track asked for.
+ * place code-learn starts wasmtime. Every run gets the same flags, whatever the track asked for.
  */
 
-/** The wasmtime major version Codemm passes its flags to. */
+/** The wasmtime major version code-learn passes its flags to. */
 const WASMTIME_MAJOR = 50;
 const VERSION_MS = 10_000;
 const COMPILE_MS = 5 * 60_000;
@@ -45,7 +45,7 @@ type Wasmtime = { bin: string; version: string };
 
 /** wasmtime and its version ("50.0.0"), or undefined when it isn't there or doesn't answer `--version` within 10 s. */
 function findWasmtime(): Wasmtime | undefined {
-  const bin = onPath(process.env.CODEMM_WASMTIME || "wasmtime");
+  const bin = onPath(process.env.CODE_LEARN_WASMTIME || "wasmtime");
   if (!bin) return undefined;
   // The binary's size and time too, so a wasmtime replaced in place is asked again rather than run with the old answer.
   let key: string;
@@ -65,27 +65,27 @@ function findWasmtime(): Wasmtime | undefined {
 }
 let found: { key: string; wasmtime: Wasmtime } | undefined;
 
-/** wasmtime's path: CODEMM_WASMTIME (the desktop app's bundled copy), else `wasmtime` on PATH; undefined when neither runs. */
+/** wasmtime's path: CODE_LEARN_WASMTIME (the desktop app's bundled copy), else `wasmtime` on PATH; undefined when neither runs. */
 export const wasmtimePath = (): string | undefined => findWasmtime()?.bin;
 
-const NO_WASMTIME = `wasmtime isn't installed, and WASI tracks run on it. Install wasmtime ${WASMTIME_MAJOR}, or set CODEMM_WASMTIME to its path, then retry.`;
+const NO_WASMTIME = `wasmtime isn't installed, and WASI tracks run on it. Install wasmtime ${WASMTIME_MAJOR}, or set CODE_LEARN_WASMTIME to its path, then retry.`;
 
-/** wasmtime at the version Codemm needs, or the infrastructure error `no-wasmtime`. */
+/** wasmtime at the version code-learn needs, or the infrastructure error `no-wasmtime`. */
 export function wasmtime(): Wasmtime {
   const w = findWasmtime();
   if (!w) throw infraError(NO_WASMTIME, "no-wasmtime");
   if (Number(w.version.split(".")[0]) !== WASMTIME_MAJOR) {
-    throw infraError(`This computer's wasmtime is version ${w.version}, and Codemm needs wasmtime ${WASMTIME_MAJOR}. Install it, or set CODEMM_WASMTIME to it, then retry.`, "no-wasmtime");
+    throw infraError(`This computer's wasmtime is version ${w.version}, and code-learn needs wasmtime ${WASMTIME_MAJOR}. Install it, or set CODE_LEARN_WASMTIME to it, then retry.`, "no-wasmtime");
   }
   return w;
 }
 
 /** Where a toolchain's module is kept compiled for one wasmtime version: outside the toolchain folder, never mapped. */
-export const compiledPath = (sha256: string, version: string) => join(codemmHome(), "toolchains", "compiled", `${sha256}-${version}.cwasm`);
+export const compiledPath = (sha256: string, version: string) => join(codeLearnHome(), "toolchains", "compiled", `${sha256}-${version}.cwasm`);
 
 /**
  * Compiles a toolchain's module for this wasmtime (DESIGN §4.5), so no case pays for compiling. Written to a temp file,
- * then renamed. A module that doesn't compile is the toolchain's fault (a plain CodemmError); a full disk, a slow
+ * then renamed. A module that doesn't compile is the toolchain's fault (a plain CodeLearnError); a full disk, a slow
  * computer or no wasmtime are this computer's.
  */
 export async function compileModule(toolchain: WasiToolchain): Promise<string> {
@@ -99,7 +99,7 @@ export async function compileModule(toolchain: WasiToolchain): Promise<string> {
     const last = r.output.trim().split("\n").at(-1)?.trim().slice(0, 300) ?? "";
     if (r.timedOut) throw infraError("Compiling the track's toolchain took more than 5 minutes, so nothing was recorded. Close other programs, then retry.", "check-timeout");
     if (/no space left|os error (?:28|112)\b|not enough space/i.test(r.output)) throw infraError(`The disk is full, so the track's toolchain couldn't be compiled (${last}). Free some space, then retry.`, "host-disk");
-    if (r.exit !== 0) throw new CodemmError(`The toolchain's module didn't compile with wasmtime ${w.version} (${last || `exit ${r.exit}`}).`);
+    if (r.exit !== 0) throw new CodeLearnError(`The toolchain's module didn't compile with wasmtime ${w.version} (${last || `exit ${r.exit}`}).`);
     try {
       renameSync(temp, out);
     } catch (e) {
@@ -112,7 +112,7 @@ export async function compileModule(toolchain: WasiToolchain): Promise<string> {
   }
 }
 
-/** Removes the temp files of compiles whose Codemm process is gone (`<out>.<pid>-<random>.tmp`), as run folders are. */
+/** Removes the temp files of compiles whose code-learn process is gone (`<out>.<pid>-<random>.tmp`), as run folders are. */
 function removeAbandonedCompiles(dir: string): void {
   for (const name of readdirSync(dir)) {
     const owner = /\.(\d+)-[0-9a-f]{8}\.tmp$/.exec(name)?.[1];
@@ -131,7 +131,7 @@ export function checkWasi(toolchain: WasiToolchain): WasiEngine & { ready: boole
   const w = wasmtime();
   const isDir = (p: string) => existsSync(p) && statSync(p).isDirectory();
   const whole = isDir(toolchain.root) && existsSync(join(toolchain.root, toolchain.module)) && Object.values(toolchain.dirs).every((rel) => isDir(join(toolchain.root, rel)));
-  if (!whole) throw new CodemmError("This track's language files are missing, so nothing was recorded. Rebuild the track in Codemm, then try again.", "image-missing");
+  if (!whole) throw new CodeLearnError("This track's language files are missing, so nothing was recorded. Rebuild the track in code-learn, then try again.", "image-missing");
   const compiled = compiledPath(toolchain.sha256, w.version);
   return { bin: w.bin, compiled, ready: existsSync(compiled) };
 }
@@ -200,7 +200,7 @@ const writableByUs = (path: string) => {
 };
 
 const sealFailed = (e: unknown) =>
-  infraError(`Codemm couldn't make its files read-only on this disk (${(e as Error).message.slice(0, 200)}), so nothing was recorded. Keep Codemm's home on a disk with file permissions (not FAT or exFAT), then retry.`, "wasi-seal");
+  infraError(`code-learn couldn't make its files read-only on this disk (${(e as Error).message.slice(0, 200)}), so nothing was recorded. Keep code-learn's home on a disk with file permissions (not FAT or exFAT), then retry.`, "wasi-seal");
 
 /**
  * Seals everything under `dir`, but not `dir` itself, read-only (DESIGN §4.5): files 0444 and folders 0555. On
@@ -223,7 +223,7 @@ export function sealReadOnly(dir: string): void {
       // access(2), not the mode: root writes whatever the mode says, and a disk without permissions (FAT, exFAT) can
       // accept the change and keep nothing. Windows reports its deny entry instead.
       if (process.platform !== "win32" && (entry.isDirectory() || entry.isFile()) && writableByUs(path)) {
-        throw new Error(`${entry.name} stayed writable${process.getuid?.() === 0 ? " (Codemm is running as root; run it as yourself)" : ""}`);
+        throw new Error(`${entry.name} stayed writable${process.getuid?.() === 0 ? " (code-learn is running as root; run it as yourself)" : ""}`);
       }
     }
   } catch (e) {
@@ -264,7 +264,7 @@ export function removeSealed(folder: RunFolder): void {
 export type WasiStart = WasiRun & { input?: Buffer; outputCap: number; killMs?: number };
 /**
  * `stdout` keeps at most `outputCap` bytes and `stderr` its first 4 KB, without wasmtime's report of a trap. `exit` is
- * 137 when Codemm killed it. `timedOut`: the host killed it, or it failed after its time limit had passed.
+ * 137 when code-learn killed it. `timedOut`: the host killed it, or it failed after its time limit had passed.
  */
 export type WasiResult = { exit: number; stdout: Buffer; stderr: string; flooded: boolean; timedOut: boolean };
 /** Output as it arrives, within the output cap. A handler that throws is dropped; the run goes on. */
@@ -332,7 +332,7 @@ export function startWasi(run: WasiStart, output: WasiOutput = {}): StartedWasi 
     child.on("error", (e) => {
       ended = true;
       clearTimeout(timer);
-      reject(infraError(`wasmtime couldn't start (${e.message.slice(0, 200)}), so nothing was recorded. Run \`codemm doctor\`.`, "no-wasmtime"));
+      reject(infraError(`wasmtime couldn't start (${e.message.slice(0, 200)}), so nothing was recorded. Run \`code-learn doctor\`.`, "no-wasmtime"));
     });
     child.on("close", (code) => {
       ended = true;

@@ -82,15 +82,15 @@ describe("portable author input", () => {
   });
 
   it("is enforced when a track or an exercise is saved, before anything runs", async () => {
-    process.env.CODEMM_HOME = tempDir("codemm-home-");
+    process.env.CODE_LEARN_HOME = tempDir("code-learn-home-");
     await expect(saveTrack({ "track.yaml": "id: x\n", "run.sh:x": "" })).rejects.toThrow(/Invalid path/);
-    await expect(saveExercise(tempDir("codemm-ws-"), { "exercise.yaml": "", "notes.": "" })).rejects.toThrow(/Invalid path/);
+    await expect(saveExercise(tempDir("code-learn-ws-"), { "exercise.yaml": "", "notes.": "" })).rejects.toThrow(/Invalid path/);
   });
 });
 
 describe("readFileMap", () => {
   it("reads a directory tree into a file map", () => {
-    const dir = tempDir("codemm-files-");
+    const dir = tempDir("code-learn-files-");
     mkdirSync(join(dir, "solution"));
     writeFileSync(join(dir, "README.md"), "hi");
     writeFileSync(join(dir, "solution", "main.c"), "x");
@@ -99,26 +99,26 @@ describe("readFileMap", () => {
 
   // Windows has no FIFOs (Git for Windows' mkfifo makes a plain file).
   it.skipIf(process.platform === "win32")("refuses FIFOs and other special files without reading them", () => {
-    const dir = tempDir("codemm-files-");
+    const dir = tempDir("code-learn-files-");
     execFileSync("mkfifo", [join(dir, "pipe")]);
     expect(() => readFileMap(dir)).toThrow(/regular file/i);
   });
 
   it("stops at the limits while walking instead of reading everything first", () => {
-    const dir = tempDir("codemm-files-");
+    const dir = tempDir("code-learn-files-");
     writeFileSync(join(dir, "big"), Buffer.alloc(2_000_000));
     expect(() => readFileMap(dir)).toThrow(/1 MB/);
   });
 
   it("can leave out generated records so they don't count against author limits", () => {
-    const dir = tempDir("codemm-files-");
+    const dir = tempDir("code-learn-files-");
     writeFileSync(join(dir, "exercise.json"), "x".repeat(2_000_000));
     writeFileSync(join(dir, "README.md"), "hi");
     expect(readFileMap(dir, ["exercise.json"])).toEqual({ "README.md": "hi" });
   });
 
   it("refuses symlinks so input can't point outside its folder", () => {
-    const dir = tempDir("codemm-files-");
+    const dir = tempDir("code-learn-files-");
     symlinkSync("/etc/hosts", join(dir, "hosts"));
     expect(() => readFileMap(dir)).toThrow(/symlink/i);
   });

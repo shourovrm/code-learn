@@ -1,8 +1,8 @@
 import { lstatSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { CodemmError } from "./errors.js";
+import { CodeLearnError } from "./errors.js";
 
-/** Relative path → UTF-8 contents. How agents hand Codemm a track or an exercise. */
+/** Relative path → UTF-8 contents. How agents hand code-learn a track or an exercise. */
 export type FileMap = Record<string, string>;
 
 export const ID_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
@@ -11,7 +11,7 @@ const MAX_BYTES = 1_048_576;
 
 export function assertId(kind: string, value: string): void {
   if (!ID_PATTERN.test(value) || value.includes("..")) {
-    throw new CodemmError(`Invalid ${kind} "${value}". Use 1-64 lowercase letters, digits, ".", "_" or "-", starting with a letter or digit.`);
+    throw new CodeLearnError(`Invalid ${kind} "${value}". Use 1-64 lowercase letters, digits, ".", "_" or "-", starting with a letter or digit.`);
   }
 }
 
@@ -28,7 +28,7 @@ export const describePath = (path: string) => {
 export function assertRelativePath(path: string): void {
   const parts = path.split("/");
   const ok = path.length > 0 && !path.includes("\\") && !path.includes("\0") && parts.every((p) => p !== "" && p !== "." && p !== "..");
-  if (!ok) throw new CodemmError(`Invalid path ${describePath(path)}. Use a relative path with "/" separators and no "." or ".." parts.`);
+  if (!ok) throw new CodeLearnError(`Invalid path ${describePath(path)}. Use a relative path with "/" separators and no "." or ".." parts.`);
 }
 
 /**
@@ -38,7 +38,7 @@ export function assertRelativePath(path: string): void {
 export function assertPortablePaths(map: FileMap): FileMap {
   for (const path of Object.keys(map)) {
     if (path.includes(":") || path.split("/").some((p) => /[. ]$/.test(p))) {
-      throw new CodemmError(`Invalid path ${describePath(path)}. Names may not contain ":" or end in "." or a space.`);
+      throw new CodeLearnError(`Invalid path ${describePath(path)}. Names may not contain ":" or end in "." or a space.`);
     }
   }
   return map;
@@ -46,24 +46,24 @@ export function assertPortablePaths(map: FileMap): FileMap {
 
 export function validateFileMap(map: FileMap): FileMap {
   const entries = Object.entries(map);
-  if (entries.length > MAX_FILES) throw new CodemmError(`Too many files (${entries.length}). The limit is ${MAX_FILES}.`);
+  if (entries.length > MAX_FILES) throw new CodeLearnError(`Too many files (${entries.length}). The limit is ${MAX_FILES}.`);
   let bytes = 0;
   const seen = new Set<string>();
   for (const [path, contents] of entries) {
     assertRelativePath(path);
     // Paths that differ only by case would overwrite each other on macOS and Windows.
-    if (seen.has(path.toLowerCase())) throw new CodemmError(`Two files differ only by case (${describePath(path)}). Rename one.`);
+    if (seen.has(path.toLowerCase())) throw new CodeLearnError(`Two files differ only by case (${describePath(path)}). Rename one.`);
     seen.add(path.toLowerCase());
-    if (typeof contents !== "string") throw new CodemmError(`File ${describePath(path)} must be text.`);
+    if (typeof contents !== "string") throw new CodeLearnError(`File ${describePath(path)} must be text.`);
     bytes += Buffer.byteLength(contents);
   }
-  if (bytes > MAX_BYTES) throw new CodemmError(`Files total ${bytes} bytes. The limit is 1 MB.`);
+  if (bytes > MAX_BYTES) throw new CodeLearnError(`Files total ${bytes} bytes. The limit is 1 MB.`);
   return map;
 }
 
 /**
  * Reads a folder into a file map, enforcing the limits while walking. Only regular files
- * and folders are allowed. `exclude` names top-level files (Codemm's own records) to skip.
+ * and folders are allowed. `exclude` names top-level files (code-learn's own records) to skip.
  */
 export function readFileMap(dir: string, exclude: string[] = []): FileMap {
   const map: FileMap = {};
@@ -74,16 +74,16 @@ export function readFileMap(dir: string, exclude: string[] = []): FileMap {
       const relPath = rel ? `${rel}/${name}` : name;
       if (!rel && exclude.includes(name)) continue;
       const stat = lstatSync(join(dir, relPath));
-      if (stat.isSymbolicLink()) throw new CodemmError(`${describePath(relPath)} is a symlink. Copy the file in instead.`);
+      if (stat.isSymbolicLink()) throw new CodeLearnError(`${describePath(relPath)} is a symlink. Copy the file in instead.`);
       if (stat.isDirectory()) {
         walk(relPath);
         continue;
       }
-      if (!stat.isFile()) throw new CodemmError(`${describePath(relPath)} isn't a regular file.`);
+      if (!stat.isFile()) throw new CodeLearnError(`${describePath(relPath)} isn't a regular file.`);
       count += 1;
       bytes += stat.size;
-      if (count > MAX_FILES) throw new CodemmError(`Too many files (over ${MAX_FILES}).`);
-      if (bytes > MAX_BYTES) throw new CodemmError(`Files total over 1 MB. The limit is 1 MB.`);
+      if (count > MAX_FILES) throw new CodeLearnError(`Too many files (over ${MAX_FILES}).`);
+      if (bytes > MAX_BYTES) throw new CodeLearnError(`Files total over 1 MB. The limit is 1 MB.`);
       map[relPath] = readFileSync(join(dir, relPath), "utf8");
     }
   };

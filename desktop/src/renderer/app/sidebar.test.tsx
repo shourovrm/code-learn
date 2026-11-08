@@ -35,7 +35,7 @@ describe('update notice', () => {
       let status: Awaited<ReturnType<typeof api.update>> = { kind: 'none' };
       api.update = async () => status;
       renderApp({ to: 'tracks' }, api);
-      const region = await within(sidebar()).findByRole('status', { name: 'Codemm updates' });
+      const region = await within(sidebar()).findByRole('status', { name: 'code-learn updates' });
       expect(region).toBeEmptyDOMElement();
       status = { kind: 'downloading', version: '1.2.0' };
       await vi.advanceTimersByTimeAsync(31_000);
@@ -95,7 +95,7 @@ describe('narrow windows', () => {
     narrowWindow();
     try {
       renderApp({ to: 'tracks' }, createMock({ update: { kind: 'available', version: '1.2.0', url: 'https://github.com/iignaite/Codemm/releases/tag/v1.2.0' } }));
-      const region = await within(sidebar()).findByRole('status', { name: 'Codemm updates' });
+      const region = await within(sidebar()).findByRole('status', { name: 'code-learn updates' });
       await vi.waitFor(() => expect(region).toHaveTextContent('A new version is available.'));
       expect(within(region).getByRole('link', { name: 'Update' })).toHaveAttribute('href', 'https://github.com/iignaite/Codemm/releases/tag/v1.2.0');
     } finally {
@@ -128,7 +128,7 @@ describe('narrow windows', () => {
       const api = createMock({ update: { kind: 'ready', version: '1.2.0' } });
       const restart = vi.spyOn(api, 'restartToUpdate');
       renderApp({ to: 'tracks' }, api);
-      const region = await within(sidebar()).findByRole('status', { name: 'Codemm updates' });
+      const region = await within(sidebar()).findByRole('status', { name: 'code-learn updates' });
       await userEvent.setup().click(await within(region).findByRole('button', { name: 'Restart' }));
       expect(region).toHaveTextContent('A new version is ready.');
       expect(restart).toHaveBeenCalled();

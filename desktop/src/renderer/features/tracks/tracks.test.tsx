@@ -5,7 +5,7 @@ import { OFFLINE, REPAIR } from '../../../shared/api';
 import { mockWithCourse, renderApp } from '../../test-utils';
 
 describe('tracks', () => {
-  it('lists what Codemm has set up, rebuilds a track, and starts something new', async () => {
+  it('lists what code-learn has set up, rebuilds a track, and starts something new', async () => {
     const user = userEvent.setup();
     const { api } = await mockWithCourse();
     renderApp({ to: 'tracks' }, api);
@@ -68,7 +68,7 @@ describe('tracks', () => {
       throw new Error(`${REPAIR}\nRestore the course folder.`);
     };
     await user.click(within(react).getByRole('button', { name: 'Rebuild' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent("Codemm's records need a repair.");
+    expect(await screen.findByRole('alert')).toHaveTextContent("code-learn's records need a repair.");
   });
 
   it('says a rebuild failed on the banner when the learner has left the page by then', async () => {

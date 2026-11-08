@@ -66,15 +66,15 @@ jobs:
           # The installer may finish in a child process: wait for the app to appear wherever it installs.
           $app = $null
           foreach ($i in 1..60) {
-            $app = Get-ChildItem "$env:LOCALAPPDATA\Programs" -Recurse -Filter Codemm.exe -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+            $app = Get-ChildItem "$env:LOCALAPPDATA\Programs" -Recurse -Filter code-learn.exe -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
             if ($app) { break }
             Start-Sleep -Seconds 2
           }
-          if (-not $app) { throw "Codemm.exe wasn't installed" }
+          if (-not $app) { throw "code-learn.exe wasn't installed" }
           Write-Host "Installed at $app"
           Start-Sleep -Seconds 5
-          Stop-Process -Name Codemm -Force -ErrorAction SilentlyContinue
-          "CODEMM_INSTALLED=$app" >> $env:GITHUB_ENV
+          Stop-Process -Name code-learn -Force -ErrorAction SilentlyContinue
+          "CODE_LEARN_INSTALLED=$app" >> $env:GITHUB_ENV
           # A learner's PATH: Windows itself and Docker, with no Node, npm or Git.
           $path = 'C:\Windows\System32;C:\Windows;C:\Windows\System32\WindowsPowerShell\v1.0'
           $docker = Get-Command docker -ErrorAction SilentlyContinue
@@ -84,10 +84,10 @@ jobs:
         if: runner.os == 'macOS'
         shell: bash
         run: |
-          hdiutil attach installer/*.dmg -nobrowse -mountpoint /Volumes/Codemm-install
-          cp -R /Volumes/Codemm-install/Codemm.app /Applications/
-          hdiutil detach /Volumes/Codemm-install
-          echo "CODEMM_INSTALLED=/Applications/Codemm.app/Contents/MacOS/Codemm" >> "$GITHUB_ENV"
+          hdiutil attach installer/*.dmg -nobrowse -mountpoint /Volumes/code-learn-install
+          cp -R /Volumes/code-learn-install/code-learn.app /Applications/
+          hdiutil detach /Volumes/code-learn-install
+          echo "CODE_LEARN_INSTALLED=/Applications/code-learn.app/Contents/MacOS/code-learn" >> "$GITHUB_ENV"
           echo "INSTALL_PATH=/usr/bin:/bin:/usr/sbin:/sbin" >> "$GITHUB_ENV"
       - name: Run the installed app
         working-directory: desktop

@@ -51,10 +51,10 @@ jobs:
         shell: bash
         run: |
           if [ "$RUNNER_OS" = macOS ]; then
-            app="$(ls -d release/mac-arm64/Codemm.app release/mac/Codemm.app 2>/dev/null | head -1)"
-            export CODEMM_PACKAGED="$PWD/$app/Contents/MacOS/Codemm" CODEMM_RESOURCES="$PWD/$app/Contents/Resources"
+            app="$(ls -d release/mac-arm64/code-learn.app release/mac/code-learn.app 2>/dev/null | head -1)"
+            export CODE_LEARN_PACKAGED="$PWD/$app/Contents/MacOS/code-learn" CODE_LEARN_RESOURCES="$PWD/$app/Contents/Resources"
           else
-            export CODEMM_PACKAGED="$PWD/release/win-unpacked/Codemm.exe" CODEMM_RESOURCES="$PWD/release/win-unpacked/resources"
+            export CODE_LEARN_PACKAGED="$PWD/release/win-unpacked/code-learn.exe" CODE_LEARN_RESOURCES="$PWD/release/win-unpacked/resources"
           fi
           npm run test:packaged
       # Each Mac app carries its own chip's wasmtime (scripts/fetch-wasmtime.mjs, fetched by npm run dist), signed with it.
@@ -62,14 +62,14 @@ jobs:
         if: runner.os == 'macOS'
         shell: bash
         run: |
-          for app in release/mac*/Codemm.app; do
+          for app in release/mac*/code-learn.app; do
             wasmtime="$app/Contents/Resources/wasmtime/wasmtime"
-            [ "$(lipo -archs "$app/Contents/MacOS/Codemm")" = "$(lipo -archs "$wasmtime")" ] || { echo "$app carries another chip's wasmtime."; exit 1; }
+            [ "$(lipo -archs "$app/Contents/MacOS/code-learn")" = "$(lipo -archs "$wasmtime")" ] || { echo "$app carries another chip's wasmtime."; exit 1; }
             codesign --verify --strict --verbose=2 "$wasmtime"
           done
       - uses: actions/upload-artifact@v4
         with:
-          name: codemm-desktop-${{ runner.os }}
+          name: code-learn-desktop-${{ runner.os }}
           path: |
             desktop/release/*.dmg
             desktop/release/*.exe

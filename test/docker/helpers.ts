@@ -10,11 +10,11 @@ export const FIXTURES = join(import.meta.dirname, "..", "fixtures");
 
 /**
  * Docker tests run when a runtime that runs Linux containers is up (GitHub's Windows runners have
- * Docker with Windows containers only). CI sets CODEMM_REQUIRE_DOCKER=1 so they can never be skipped there.
+ * Docker with Windows containers only). CI sets CODE_LEARN_REQUIRE_DOCKER=1 so they can never be skipped there.
  */
-const info = spawnSync(process.env.CODEMM_CONTAINER_CLI ?? "docker", RUNTIME_INFO, { encoding: "utf8" });
+const info = spawnSync(process.env.CODE_LEARN_CONTAINER_CLI ?? "docker", RUNTIME_INFO, { encoding: "utf8" });
 export const dockerUp = runtimeProblem({ exit: info.status ?? -1, output: `${info.stdout}${info.stderr}` }) === undefined;
-if (!dockerUp && process.env.CODEMM_REQUIRE_DOCKER === "1") throw new Error("CODEMM_REQUIRE_DOCKER=1 but no container runtime is running.");
+if (!dockerUp && process.env.CODE_LEARN_REQUIRE_DOCKER === "1") throw new Error("CODE_LEARN_REQUIRE_DOCKER=1 but no container runtime is running.");
 
 export function fixtureTrack(name: string) {
   const dir = join(FIXTURES, "tracks", name);
@@ -22,7 +22,7 @@ export function fixtureTrack(name: string) {
 }
 
 export async function buildFixture(name: string): Promise<string> {
-  const tag = `codemm-test-${name}:1`;
+  const tag = `code-learn-test-${name}:1`;
   const r = await buildImage(join(FIXTURES, "tracks", name), tag);
   if (!r.ok) throw new Error(`fixture build failed:\n${r.log}`);
   return tag;
@@ -39,19 +39,19 @@ export const inputsOnly = (tests: FileMap): FileMap => Object.fromEntries(Object
 export { subMap };
 
 /**
- * Routes Codemm's container calls through a wrapper that notes each bind mount's host folder, then runs the real
+ * Routes code-learn's container calls through a wrapper that notes each bind mount's host folder, then runs the real
  * docker. `mounts()` lists those folders; `stop()` puts the plain CLI back.
  */
 export function recordMounts(): { mounts(): string[]; stop(): void } {
-  const dir = tempDir("codemm-mounts-");
+  const dir = tempDir("code-learn-mounts-");
   const log = join(dir, "mounts.log");
   const wrapper = join(dir, "docker");
-  writeFileSync(wrapper, `#!/bin/sh\nfor a; do case "$a" in type=bind,*) echo "$a" >> '${log}' ;; esac; done\nexec ${process.env.CODEMM_CONTAINER_CLI ?? "docker"} "$@"\n`);
+  writeFileSync(wrapper, `#!/bin/sh\nfor a; do case "$a" in type=bind,*) echo "$a" >> '${log}' ;; esac; done\nexec ${process.env.CODE_LEARN_CONTAINER_CLI ?? "docker"} "$@"\n`);
   chmodSync(wrapper, 0o755);
-  const before = process.env.CODEMM_CONTAINER_CLI;
-  process.env.CODEMM_CONTAINER_CLI = wrapper;
+  const before = process.env.CODE_LEARN_CONTAINER_CLI;
+  process.env.CODE_LEARN_CONTAINER_CLI = wrapper;
   return {
     mounts: () => (existsSync(log) ? readFileSync(log, "utf8").trim().split("\n") : []).map((m) => /^type=bind,source=(.*),target=/.exec(m)![1]!),
-    stop: () => (before === undefined ? delete process.env.CODEMM_CONTAINER_CLI : (process.env.CODEMM_CONTAINER_CLI = before)),
+    stop: () => (before === undefined ? delete process.env.CODE_LEARN_CONTAINER_CLI : (process.env.CODE_LEARN_CONTAINER_CLI = before)),
   };
 }

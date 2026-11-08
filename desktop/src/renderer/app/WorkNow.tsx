@@ -1,7 +1,7 @@
-// Codemm's long jobs, from every screen (§4.11): what each one is and its stage, under the main navigation. A screen
+// code-learn's long jobs, from every screen (§4.11): what each one is and its stage, under the main navigation. A screen
 // that shows a job's own bar owns it (ui/shownJobs.ts), so the sidebar shows only the others.
 import { useEffect, useLayoutEffect, useRef } from 'react';
-import type { CodemmApi, CourseView, Goal, JobProgress } from '../../shared/api';
+import type { CodeLearnApi, CourseView, Goal, JobProgress } from '../../shared/api';
 import { JOB_STAGES } from '../../shared/progress';
 import { EmmFill } from '../ui/EmmFill';
 import { fillOf, QUIET_MS, RETRYING, useNow } from '../ui/JobBar';
@@ -47,13 +47,13 @@ function stageOf(p: JobProgress, quiet: boolean): string {
 }
 
 /** The course editor on the saved draft, which holds every edit made so far; the course map once there is none. */
-export async function editorRoute(api: CodemmApi): Promise<Route> {
+export async function editorRoute(api: CodeLearnApi): Promise<Route> {
   const draft = await api.draft();
   return draft ? { to: 'course', roadmap: draft } : { to: 'learn' };
 }
 
 /** The place a job belongs to. */
-async function placeOf(p: JobProgress, course: Course, api: CodemmApi): Promise<Route> {
+async function placeOf(p: JobProgress, course: Course, api: CodeLearnApi): Promise<Route> {
   switch (p.kind) {
     case 'research':
     case 'review':
@@ -97,7 +97,7 @@ export function WorkNow({ course, slim = false }: { course: Course; slim?: boole
   const jobs = listed(useJobs((p) => course?.activities !== false || (p.kind !== 'setup' && p.kind !== 'author'), [course?.activities]), useShownJobs());
   if (jobs.length === 0) return null;
   return (
-    <ul className="work" aria-label="Codemm is working">
+    <ul className="work" aria-label="code-learn is working">
       {jobs.map((job) => (
         <li key={job.progress.job}>
           <WorkJob job={job} course={course} slim={slim} />

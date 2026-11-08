@@ -7,7 +7,7 @@ import { compiledPath, prepareWasi, removeSealed, sealReadOnly, startWasi, unsea
 import { tempDir } from "./temp.js";
 import { fixture, wasmtimeUp } from "./wasi-engine.js";
 
-/** The WASI engine (DESIGN §4.5): the only place Codemm starts wasmtime. */
+/** The WASI engine (DESIGN §4.5): the only place code-learn starts wasmtime. */
 
 afterEach(() => vi.unstubAllEnvs());
 const posix = process.platform !== "win32";
@@ -84,14 +84,14 @@ describe("sealReadOnly and unseal", () => {
 
 describe("the checks before a set", () => {
   it("need wasmtime: without it, the infrastructure error that records nothing", () => {
-    vi.stubEnv("CODEMM_WASMTIME", join(tempDir(), "no-wasmtime"));
+    vi.stubEnv("CODE_LEARN_WASMTIME", join(tempDir(), "no-wasmtime"));
     expect(() => wasmtime()).toThrow(expect.objectContaining({ code: "no-wasmtime", kind: "docker" }));
   });
 
   it.runIf(posix)("need wasmtime 50, not another version", () => {
     const fake = join(tempDir(), "wasmtime");
     writeFileSync(fake, "#!/bin/sh\necho 'wasmtime 49.0.1 (abc 2026-01-01)'\n", { mode: 0o755 });
-    vi.stubEnv("CODEMM_WASMTIME", fake);
+    vi.stubEnv("CODE_LEARN_WASMTIME", fake);
     expect(() => wasmtime()).toThrow(expect.objectContaining({ code: "no-wasmtime", message: expect.stringMatching(/49\.0\.1.*wasmtime 50/) }));
   });
 
@@ -110,7 +110,7 @@ describe("the checks before a set", () => {
     expect(statSync(engine.compiled).mtimeMs).toBe(at);
   });
 
-  it.skipIf(!wasmtimeUp)("remove the temp files of compiles whose Codemm process is gone", async () => {
+  it.skipIf(!wasmtimeUp)("remove the temp files of compiles whose code-learn process is gone", async () => {
     const t = fixture("cat", { sha256: `sweep-${Date.now()}` });
     const dir = dirname(compiledPath(t.sha256, wasmtime().version));
     mkdirSync(dir, { recursive: true });
@@ -245,11 +245,11 @@ describe.skipIf(!wasmtimeUp)("startWasi", () => {
   it.runIf(posix)("starts wasmtime with an empty environment", async () => {
     const fake = join(tempDir(), "wasmtime");
     writeFileSync(fake, "#!/bin/sh\nenv\n", { mode: 0o755 });
-    vi.stubEnv("CODEMM_SECRET_FOR_TEST", "leaked");
+    vi.stubEnv("CODE_LEARN_SECRET_FOR_TEST", "leaked");
     vi.stubEnv("WASMTIME_BACKTRACE_DETAILS", "1");
     const s = await start("cat");
     const r = await startWasi({ ...s, engine: { ...s.engine, bin: fake } }).done;
-    expect(r.stdout.toString()).not.toMatch(/CODEMM_SECRET_FOR_TEST|WASMTIME_|HOME=/);
+    expect(r.stdout.toString()).not.toMatch(/CODE_LEARN_SECRET_FOR_TEST|WASMTIME_|HOME=/);
   });
 
   it("without an input, keeps stdin open for typed text until `end`", async () => {

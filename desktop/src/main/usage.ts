@@ -1,6 +1,6 @@
 // usage.json in the app's userData folder (DESIGN §4.12): what the agent CLIs reported using, per course and job
-// kind. Codemm reads only what the CLIs already print; it never calls a model or reads a credential. It carries
-// format_version and is written atomically, like every Codemm-owned file.
+// kind. code-learn reads only what the CLIs already print; it never calls a model or reads a credential. It carries
+// format_version and is written atomically, like every code-learn-owned file.
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { CourseUsage, UsageTotals } from '../shared/api';

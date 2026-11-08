@@ -1,4 +1,4 @@
-// Builds the live CodemmApi (DESIGN §2): the bundled core in-process, agents
+// Builds the live CodeLearnApi (DESIGN §2): the bundled core in-process, agents
 // and Docker found on this computer, and agent jobs whose MCP server is the
 // bundled core run with this app as Node (§2, §7).
 import { app, net } from 'electron';
@@ -20,7 +20,7 @@ import { electronFetch, electronGet } from './download';
 import type { CoreApp } from './core/types';
 import { createLive, type Live } from './live';
 import type { Log } from './log';
-import { codemmServer } from './server';
+import { codeLearnServer } from './server';
 import { agentSignIn, nodeSignInDeps } from './signIn';
 import { desktopState, workspaceOf } from './state';
 import { usageStore } from './usage';
@@ -38,7 +38,7 @@ export interface Places {
 export function liveApi({ coreDir, wasmtimeDir, userData, log }: Places): Live {
   // Core's WASI engine, in-process and in the agent's server (server.ts), runs WASI tracks on the bundled wasmtime.
   const wasmtime = wasmtimeIn(wasmtimeDir, process.platform);
-  if (wasmtime) process.env.CODEMM_WASMTIME = wasmtime;
+  if (wasmtime) process.env.CODE_LEARN_WASMTIME = wasmtime;
   // The bundled core (scripts/bundle-core.mjs), loaded in-process.
   const core = require(join(coreDir, 'dist', 'app.cjs')) as CoreApp;
   // A WASI track's toolchain downloads through Chromium's network stack too: school networks need the system's proxy
@@ -76,7 +76,7 @@ export function liveApi({ coreDir, wasmtimeDir, userData, log }: Places): Live {
   // WSL 2, which Docker Desktop runs on in Windows: read while the engine is down, set up on Install's click.
   const windowsWsl = wsl(desktopDeps);
   const desktop = dockerDesktop(desktopDeps, desktopDeps.platform === 'win32' ? windowsWsl : undefined);
-  // What an install left when it failed, was declined, or Codemm quit midway.
+  // What an install left when it failed, was declined, or code-learn quit midway.
   void desktop.removeLeftovers();
   const computer = computerCheck({
     find: findDocker,
@@ -98,7 +98,7 @@ export function liveApi({ coreDir, wasmtimeDir, userData, log }: Places): Live {
     // (core wasi.ts): the bundled one, else one on PATH, at the major version core needs.
     wasi: async () => {
       if (find('podman')) return false;
-      const bin = process.env.CODEMM_WASMTIME ? { path: process.env.CODEMM_WASMTIME, js: false } : find('wasmtime');
+      const bin = process.env.CODE_LEARN_WASMTIME ? { path: process.env.CODE_LEARN_WASMTIME, js: false } : find('wasmtime');
       return Boolean(bin && (await ask(bin, ['--version'], ({ code, output }) => code === 0 && /^wasmtime 50\./.test(output))));
     },
     now: () => Date.now(),
@@ -117,8 +117,8 @@ export function liveApi({ coreDir, wasmtimeDir, userData, log }: Places): Live {
     log,
     dockerReady: () => waitWhileStarting(computer, () => new Promise((r) => setTimeout(r, 3000))),
     docker: { ...desktop, restartWindows: () => restartWindows(desktopDeps) },
-    server: codemmServer({ runtime, coreDir, ws, env: process.env }),
-    // On Windows, what installers added to the registry's PATH since Codemm started (§3.1): agents, and Docker for
+    server: codeLearnServer({ runtime, coreDir, ws, env: process.env }),
+    // On Windows, what installers added to the registry's PATH since code-learn started (§3.1): agents, and Docker for
     // Check this computer and core's docker calls, rely on it. A steady clock: one set back would hold off the next read.
     livePath: livePath({ platform: process.platform, env: process.env, run: nodeRun, now: () => performance.now() }),
   });

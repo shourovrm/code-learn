@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { createLog } from './log';
 import { tempDir } from './testing/temp';
 
-const dir = () => tempDir('codemm-log-');
+const dir = () => tempDir('code-learn-log-');
 
 describe('the app log', () => {
   it('writes one line per event, with only short, redacted values', () => {
@@ -15,7 +15,7 @@ describe('the app log', () => {
     log('job-end', { kind: 'tutor', ok: false, ms: 1200 });
     log('error', {
       message: [
-        `Failed in ${join(homedir(), 'Codemm', 'exercises', 'x')}`,
+        `Failed in ${join(homedir(), 'code-learn', 'exercises', 'x')}`,
         'Authorization: Bearer abc.def.ghi',
         'api_key=sk-ant-api03-SECRETSECRETSECRETSECRET',
         'token ghp_0123456789abcdefghijABCDEFGHIJ012345',
@@ -23,7 +23,7 @@ describe('the app log', () => {
         'x'.repeat(500),
       ].join('\n'),
     });
-    const text = readFileSync(join(d, 'codemm.log'), 'utf8');
+    const text = readFileSync(join(d, 'code-learn.log'), 'utf8');
     const lines = text.trim().split('\n');
     expect(lines).toHaveLength(2);
     expect(lines[0]).toMatch(/^\d{4}-\d\d-\d\dT\S+ job-end kind=tutor ok=false ms=1200$/);
@@ -37,7 +37,7 @@ describe('the app log', () => {
     const d = dir();
     const log = createLog(d, 1000);
     for (let i = 0; i < 100; i++) log('job-start', { kind: 'lesson', n: i });
-    expect(readdirSync(d).sort()).toEqual(['codemm.1.log', 'codemm.log']);
+    expect(readdirSync(d).sort()).toEqual(['code-learn.1.log', 'code-learn.log']);
     for (const f of readdirSync(d)) expect(readFileSync(join(d, f)).length).toBeLessThanOrEqual(1100);
   });
 

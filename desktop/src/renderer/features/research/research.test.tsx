@@ -39,7 +39,7 @@ describe('research progress', () => {
     act(() => tell({ kind: 'search', query: 'react roadmap 2026' }));
     act(() => tell({ kind: 'read', url: 'roadmap.sh/react' }));
     act(() => tell({ kind: 'step', label: 'Saving the roadmap' }));
-    const list = screen.getByRole('list', { name: 'What Codemm is looking at' });
+    const list = screen.getByRole('list', { name: 'What code-learn is looking at' });
     expect(within(list).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Saving the roadmap', 'Reading roadmap.sh/react', 'Searching react roadmap 2026']);
     expect(screen.getByText('3 steps')).toBeInTheDocument();
     // Older steps stay readable (WCAG AA): no row is faded; the latest one stands out by its color instead.
@@ -91,7 +91,7 @@ describe('research that fails', () => {
     await screen.findByRole('heading', { name: 'Researching React' });
     failing = true;
     const panel = await screen.findByRole('alert', {}, { timeout: 3000 });
-    expect(within(panel).getByRole('heading', { name: "Codemm couldn't finish the research." })).toBeInTheDocument();
+    expect(within(panel).getByRole('heading', { name: "code-learn couldn't finish the research." })).toBeInTheDocument();
     expect(panel).toHaveTextContent("You're offline. Connect to the internet, then try again.");
     // Offline isn't the agent's doing, so there's no Check your agent (#68).
     expect(within(panel).queryByRole('button', { name: 'Check your agent' })).not.toBeInTheDocument();
@@ -124,7 +124,7 @@ describe('research that fails', () => {
     };
     renderApp({ to: 'research', goal }, api);
     const panel = await screen.findByRole('alert');
-    expect(within(panel).getByRole('heading', { name: "Codemm couldn't finish the research." })).toBeInTheDocument();
+    expect(within(panel).getByRole('heading', { name: "code-learn couldn't finish the research." })).toBeInTheDocument();
     expect(panel).toHaveTextContent("You're offline.");
   });
 });

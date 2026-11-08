@@ -1,6 +1,6 @@
 // Installs and opens Docker Desktop for the learner (DESIGN §6.1), on a macOS or Windows that Docker supports. The
 // installer comes only from Docker's own download host, over https, and runs only if Docker signed it. On Windows,
-// WSL's own setup comes first when WSL needs it (wsl.ts). Codemm never accepts Docker's terms or types a password:
+// WSL's own setup comes first when WSL needs it (wsl.ts). code-learn never accepts Docker's terms or types a password:
 // Docker's own window and Windows' permission prompt do that. Every command is an argument array, never a shell.
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
@@ -15,14 +15,14 @@ import type { wsl } from './wsl';
 
 export interface DesktopDeps {
   platform: NodeJS.Platform;
-  /** This computer's own chip (nativeArch), not the one this build of Codemm emulates. */
+  /** This computer's own chip (nativeArch), not the one this build of code-learn emulates. */
   arch: string;
   /** %ProgramFiles% and %LOCALAPPDATA% on Windows, where Docker Desktop installs for all users and for one. */
   programFiles?: string;
   localAppData?: string;
   /** The learner's home, whose ~/Applications can hold Docker.app on macOS. */
   home?: string;
-  /** The OS temp folder, where tempDir() makes Codemm's download folders. */
+  /** The OS temp folder, where tempDir() makes code-learn's download folders. */
   tempRoot: string;
   tempDir(): string;
   freeBytes(dir: string): Promise<number>;
@@ -46,7 +46,7 @@ export interface DesktopDeps {
 }
 
 const GiB = 1024 ** 3;
-/** After Codemm opens or installs Docker, how long a silent Docker counts as starting (computer.ts uses the same). */
+/** After code-learn opens or installs Docker, how long a silent Docker counts as starting (computer.ts uses the same). */
 export const STARTING_MS = 3 * 60_000;
 const MAC_APP = '/Applications/Docker.app';
 /** Apple's own tools by absolute path: one earlier on PATH can't stand in for them. */
@@ -66,14 +66,14 @@ const WINDOWS_UPDATE = 'ms-settings:windowsupdate';
 /** Docker, Inc's Apple Developer team. */
 const DOCKER_TEAM = /^TeamIdentifier=9BNSXJN65R$/m;
 /**
- * Codemm's own folders an install can leave behind: a staging folder in Applications (placeApp), and a download
+ * code-learn's own folders an install can leave behind: a staging folder in Applications (placeApp), and a download
  * folder in the temp folder (tempDir) that a Mac's manual install kept. How old one is before it counts as left.
  */
-const STAGING = /^\.codemm-docker-[0-9a-f]{8}$/;
-const DOWNLOAD = /^codemm-docker-[A-Za-z0-9]{6}$/;
+const STAGING = /^\.code-learn-docker-[0-9a-f]{8}$/;
+const DOWNLOAD = /^code-learn-docker-[A-Za-z0-9]{6}$/;
 const STALE_MS = 60 * 60_000;
-/** The path arrives as $env:CODEMM_FILE, so nothing outside this text is ever parsed as PowerShell. */
-const SIGNATURE = '$s = Get-AuthenticodeSignature -LiteralPath $env:CODEMM_FILE; "$($s.Status)|$($s.SignerCertificate.Subject)"';
+/** The path arrives as $env:CODE_LEARN_FILE, so nothing outside this text is ever parsed as PowerShell. */
+const SIGNATURE = '$s = Get-AuthenticodeSignature -LiteralPath $env:CODE_LEARN_FILE; "$($s.Status)|$($s.SignerCertificate.Subject)"';
 /**
  * Docker's own per-user install, its default since 4.83.0 (release notes, 2026-07-20): its installer asks for no
  * administrator (its manifest is asInvoker), so there's no permission prompt, and --quiet hides its window and
@@ -167,7 +167,7 @@ export function dockerDesktop(d: DesktopDeps, w?: Pick<ReturnType<typeof wsl>, '
 
   /** Copies into a staging folder on the same disk, then moves it in place: a failed copy never leaves a broken Docker. */
   async function placeApp(app: string) {
-    const staging = `/Applications/.codemm-docker-${randomBytes(4).toString('hex')}`;
+    const staging = `/Applications/.code-learn-docker-${randomBytes(4).toString('hex')}`;
     try {
       if (!ok(await d.run(DITTO, [app, path.join(staging, 'Docker.app')]))) throw new Stop('manual');
       // Someone else installed Docker meanwhile: keep theirs.
@@ -205,7 +205,7 @@ export function dockerDesktop(d: DesktopDeps, w?: Pick<ReturnType<typeof wsl>, '
 
   /**
    * WSL's setup first, while the learner who clicked is there for Windows' permission prompt; then Docker Desktop,
-   * unless one is installed (Codemm never reinstalls over it). Windows restarts before Docker opens if WSL needs it.
+   * unless one is installed (code-learn never reinstalls over it). Windows restarts before Docker opens if WSL needs it.
    */
   async function windows(folder: () => string) {
     let restart = false;
@@ -220,13 +220,13 @@ export function dockerDesktop(d: DesktopDeps, w?: Pick<ReturnType<typeof wsl>, '
       const exe = path.join(dir, 'DockerDesktopInstaller.exe');
       await fetchTo(`https://desktop.docker.com/win/main/${chip}/Docker%20Desktop%20Installer.exe`, exe, dir, 8 * GiB);
       status = { phase: 'checking' };
-      const signature = await d.run(POWERSHELL, ['-NoProfile', '-NonInteractive', '-Command', SIGNATURE], { env: { CODEMM_FILE: exe } });
+      const signature = await d.run(POWERSHELL, ['-NoProfile', '-NonInteractive', '-Command', SIGNATURE], { env: { CODE_LEARN_FILE: exe } });
       if (!ok(signature) || !dockerSigned(signature.output)) throw new Stop('unverified');
       status = { phase: 'installing' };
       let result = await d.run(exe, WIN_INSTALL, { timeoutMs: 60 * 60_000 });
       if (result.code === ELEVATION_REQUIRED || result.failedToStart === 'EACCES') {
         status = { phase: 'admin' };
-        result = await d.run(POWERSHELL, ['-NoProfile', '-NonInteractive', '-Command', ELEVATED], { env: { CODEMM_FILE: exe, CODEMM_ARGS: WIN_INSTALL_ALL_USERS }, timeoutMs: 60 * 60_000 });
+        result = await d.run(POWERSHELL, ['-NoProfile', '-NonInteractive', '-Command', ELEVATED], { env: { CODE_LEARN_FILE: exe, CODE_LEARN_ARGS: WIN_INSTALL_ALL_USERS }, timeoutMs: 60 * 60_000 });
         if (result.code === DECLINED) throw new Stop('declined');
       }
       if (result.code !== null && RESTART.has(result.code)) restart = true;
@@ -289,7 +289,7 @@ export function dockerDesktop(d: DesktopDeps, w?: Pick<ReturnType<typeof wsl>, '
     windowsUpdate: () => (d.platform === 'win32' ? d.launch(EXPLORER, [WINDOWS_UPDATE]) : Promise.resolve()),
     /** Docker Desktop's own app is here: a docker command alone (Homebrew's, say) isn't Docker Desktop. */
     installed: () => desktops.some((p) => d.exists(p)),
-    /** Docker Desktop's app is running, opened by Codemm or the learner, whether or not its engine answers yet. */
+    /** Docker Desktop's app is running, opened by code-learn or the learner, whether or not its engine answers yet. */
     async running() {
       // An unanchored pattern: it matches ~/Applications/Docker.app too.
       if (d.platform === 'darwin') return ok(await d.run(PGREP, ['-f', '/Applications/Docker.app/']));
@@ -297,8 +297,8 @@ export function dockerDesktop(d: DesktopDeps, w?: Pick<ReturnType<typeof wsl>, '
       return false;
     },
     /**
-     * Removes what an install kept for a Mac's manual step, or left when Codemm quit midway: only Codemm's own folders, over
-     * an hour old (a younger one may be another Codemm's install). A Mac's staging copy of Docker is about 2 GB, so rm
+     * Removes what an install kept for a Mac's manual step, or left when code-learn quit midway: only code-learn's own folders, over
+     * an hour old (a younger one may be another code-learn's install). A Mac's staging copy of Docker is about 2 GB, so rm
      * removes it, not the app's own process.
      */
     async removeLeftovers() {
@@ -306,7 +306,7 @@ export function dockerDesktop(d: DesktopDeps, w?: Pick<ReturnType<typeof wsl>, '
         try {
           return d.list(dir).filter((n) => name.test(n)).map((n) => path.join(dir, n)).filter((p) => d.now() - d.modifiedAt(p) > STALE_MS);
         } catch {
-          // Can't be read: nothing of Codemm's can be found there either.
+          // Can't be read: nothing of code-learn's can be found there either.
           return [];
         }
       };
@@ -314,7 +314,7 @@ export function dockerDesktop(d: DesktopDeps, w?: Pick<ReturnType<typeof wsl>, '
       if (d.platform !== 'darwin') return;
       for (const staging of left('/Applications', STAGING)) await d.run(RM, ['-rf', staging]);
     },
-    /** When Codemm last opened or installed Docker: a Docker that doesn't answer yet is starting. */
+    /** When code-learn last opened or installed Docker: a Docker that doesn't answer yet is starting. */
     startedAt: () => started,
     /** The current install, for tests and quitting. */
     done: () => running,
@@ -347,7 +347,7 @@ export function nodeDesktopDeps({ get, arch }: Network): DesktopDeps {
     localAppData: process.env.LOCALAPPDATA,
     home: homedir(),
     tempRoot: tmpdir(),
-    tempDir: () => mkdtempSync(join(tmpdir(), 'codemm-docker-')),
+    tempDir: () => mkdtempSync(join(tmpdir(), 'code-learn-docker-')),
     freeBytes: async (dir) => {
       const s = statfsSync(dir);
       return s.bavail * s.bsize;

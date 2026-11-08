@@ -7,7 +7,7 @@ import { expect as baseExpect, test } from './launch';
 const expect = baseExpect.configure({ timeout: 15_000 });
 
 // D16: WCAG AA on every screen, the journey by keyboard alone, and reduced motion.
-// Runs the built app with the mock (CODEMM_MOCK), like smoke.spec.ts.
+// Runs the built app with the mock (CODE_LEARN_MOCK), like smoke.spec.ts.
 
 const AA = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 
@@ -45,7 +45,7 @@ async function connect(page: Page) {
 /** The mock's own API, through the preload bridge: finishes every topic, like a learner would. */
 async function masterEverything(page: Page) {
   await page.evaluate(async () => {
-    const call = (method: string, ...args: unknown[]) => (window as never as { codemm: { invoke: (m: string, a: unknown[]) => Promise<any> } }).codemm.invoke(method, args);
+    const call = (method: string, ...args: unknown[]) => (window as never as { codeLearn: { invoke: (m: string, a: unknown[]) => Promise<any> } }).codeLearn.invoke(method, args);
     for (let course = await call('course'); course.topics.some((t: { state: string }) => t.state !== 'mastered'); course = await call('course')) {
       const now = course.topics.find((t: { state: string }) => t.state === 'now');
       if (!now) continue;
@@ -308,7 +308,7 @@ test('the setup consent fits the window at 200% zoom, scrolls, and keeps its act
   await app.close();
 });
 
-test('the activity reflows at 200% zoom: editor, Check and Codemm stay usable', async ({ launch }) => {
+test('the activity reflows at 200% zoom: editor, Check and code-learn stay usable', async ({ launch }) => {
   const { app, page } = await launch();
   await toRoadmap(page);
   await button(page, 'Approve').click();
@@ -328,7 +328,7 @@ test('the activity reflows at 200% zoom: editor, Check and Codemm stay usable', 
   const results = page.getByRole('region', { name: 'Results' });
   await results.scrollIntoViewIfNeeded();
   await expect(results.getByRole('heading', { name: '2 of 4 passed' })).toBeInViewport();
-  const ask = page.getByRole('textbox', { name: 'Ask Codemm' });
+  const ask = page.getByRole('textbox', { name: 'Ask code-learn' });
   await ask.scrollIntoViewIfNeeded();
   await expect(ask).toBeInViewport();
   await zoom(app, 1);
@@ -437,9 +437,9 @@ test('at 1280 px and narrower, the side columns narrow so the editor keeps its r
   await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(1200, 800));
   await toActivity(page);
   const statement = await page.locator('.stmt').boundingBox();
-  const codemm = await page.getByRole('complementary', { name: 'Codemm' }).boundingBox();
+  const codeLearn = await page.getByRole('complementary', { name: 'code-learn' }).boundingBox();
   expect(statement!.width).toBeLessThanOrEqual(281);
-  expect(codemm!.width).toBeLessThanOrEqual(281);
+  expect(codeLearn!.width).toBeLessThanOrEqual(281);
   await app.close();
 });
 
@@ -576,7 +576,7 @@ test('the terminal pane passes WCAG AA checks and works with the keyboard alone'
   await expect(page.getByRole('textbox', { name: 'Terminal for Greet by name input' })).toBeFocused();
   await expect(page.getByRole('region', { name: 'Terminal for Greet by name' })).toContainText('left');
   await audit(page, 'terminal, running');
-  await page.screenshot({ path: process.env.CODEMM_SCREENSHOT ?? test.info().outputPath('terminal.png') });
+  await page.screenshot({ path: process.env.CODE_LEARN_SCREENSHOT ?? test.info().outputPath('terminal.png') });
   await page.keyboard.type('Ada');
   await page.keyboard.press('Enter');
   await expect(log).toContainText('Hello, Ada!');

@@ -19,7 +19,7 @@ export function nameOf(path: string): string {
 
 /**
  * The code as highlight.js colors it, when it knows `name` (a file's extension, a fence's info string) as one of its
- * languages or their aliases: the code escaped, with class names only. Codemm names no language; anything else stays
+ * languages or their aliases: the code escaped, with class names only. code-learn names no language; anything else stays
  * plain (undefined).
  */
 export function colorize(hljs: HLJSApi, name: string, text: string): string | undefined {

@@ -16,7 +16,7 @@ const fixtures = join(import.meta.dirname, "fixtures");
 const track = () => readFileMap(join(fixtures, "tracks", "shell-io"));
 
 beforeEach(() => {
-  vi.stubEnv("CODEMM_HOME", tempDir("codemm-home-"));
+  vi.stubEnv("CODE_LEARN_HOME", tempDir("code-learn-home-"));
 });
 
 afterEach(() => {
@@ -32,7 +32,7 @@ describe("doctor", () => {
       ok: false,
       detail: `No container runtime found. ${runtimeHelp()}`,
     });
-    expect(checks.find((c) => c.name === "Codemm home")?.ok).toBe(true);
+    expect(checks.find((c) => c.name === "code-learn home")?.ok).toBe(true);
     expect(checks.map((c) => c.name)).not.toContain("network isolation");
   });
 
@@ -49,20 +49,20 @@ describe("doctor", () => {
 describe.runIf(posix)("building a track image", () => {
   it("returns the ID its own build produced, never whatever the shared tag points at later", async () => {
     fakeDocker("builds");
-    const built = await buildImage(tempDir("codemm-context-"), "codemm-track-shell-io:1");
+    const built = await buildImage(tempDir("code-learn-context-"), "code-learn-track-shell-io:1");
     expect(built).toMatchObject({ ok: true, imageId: "sha256:built" });
   });
 
   it("reports each build step as a count, and nothing of the build's output", async () => {
     fakeDocker("builds");
     const steps: unknown[] = [];
-    await buildImage(tempDir("codemm-context-"), "codemm-track-shell-io:1", undefined, (step) => steps.push(step));
+    await buildImage(tempDir("code-learn-context-"), "code-learn-track-shell-io:1", undefined, (step) => steps.push(step));
     expect(steps).toEqual([{ done: 1, total: 3 }, { done: 2, total: 3 }, { done: 3, total: 3 }]);
   });
 
   it("keeps building when a step listener throws", async () => {
     fakeDocker("builds");
-    const built = await buildImage(tempDir("codemm-context-"), "codemm-track-shell-io:1", undefined, () => {
+    const built = await buildImage(tempDir("code-learn-context-"), "code-learn-track-shell-io:1", undefined, () => {
       throw new Error("listener bug");
     });
     expect(built).toMatchObject({ ok: true, imageId: "sha256:built" });
@@ -70,7 +70,7 @@ describe.runIf(posix)("building a track image", () => {
 
   it("blames the runtime, not the track, when a build reports no image ID", async () => {
     fakeDocker("no-iid");
-    const built = await buildImage(tempDir("codemm-context-"), "codemm-track-shell-io:1");
+    const built = await buildImage(tempDir("code-learn-context-"), "code-learn-track-shell-io:1");
     expect(built).toMatchObject({ ok: false, problem: { kind: "docker", message: expect.stringMatching(/didn't report the image ID.*not a problem with the track files/s) } });
   });
 });
@@ -85,7 +85,7 @@ describe.runIf(posix)("installing a track", () => {
     const failure = app.saveTrack(track());
     await expect(failure).rejects.toThrow(message);
     // The desktop tells these apart by kind, not by reading the English.
-    await expect(failure).rejects.toMatchObject({ name: "CodemmError", kind });
+    await expect(failure).rejects.toMatchObject({ name: "CodeLearnError", kind });
     await expect(failure).rejects.not.toThrow(/Gate/);
     expect(app.listTracks()).toEqual([]);
   });
@@ -111,7 +111,7 @@ describe.runIf(posix)("installing a track", () => {
   it("calls a Docker failure while inspecting the built image a Docker problem, not a gate failure", async () => {
     fakeDocker("inspect-fails");
     const failure = app.saveTrack(track());
-    await expect(failure).rejects.toMatchObject({ name: "CodemmError", kind: "docker" });
+    await expect(failure).rejects.toMatchObject({ name: "CodeLearnError", kind: "docker" });
     await expect(failure).rejects.not.toThrow(/Gate/);
   });
 
@@ -206,7 +206,7 @@ describe.runIf(posix)("a track image without /bin/sh", () => {
     const ws = await installedExercise();
     fakeDocker("nosh");
     const failure = await app.checkExercise(ws).catch((e: Error) => e);
-    expect(failure).toMatchObject({ name: "CodemmError", kind: undefined, code: undefined, message: expect.stringMatching(/^The track image can't run \/bin\/sh \(exit 127\)/) });
+    expect(failure).toMatchObject({ name: "CodeLearnError", kind: undefined, code: undefined, message: expect.stringMatching(/^The track image can't run \/bin\/sh \(exit 127\)/) });
     expect(store.readEvents("shell")).toEqual([]);
   });
 });
@@ -232,10 +232,10 @@ describe.runIf(posix)("a check whose program is killed", () => {
 
 /** A workspace whose exercise is installed (with a fake image) and edited, ready to check. */
 async function installedExercise(): Promise<string> {
-  const ws = tempDir("codemm-ws-");
+  const ws = tempDir("code-learn-ws-");
   const spec = parseTrackYaml(track()["track.yaml"]!);
   store.commitFolder(store.trackDir("shell-io@1"), track(), {
-    "track.json": { format_version: 1, ...spec, image: "codemm-track-shell-io:1", imageId: "sha256:fake", installedAt: new Date().toISOString() },
+    "track.json": { format_version: 1, ...spec, image: "code-learn-track-shell-io:1", imageId: "sha256:fake", installedAt: new Date().toISOString() },
   });
   await app.saveRoadmap(ws, "shell", readFileSync(join(fixtures, "roadmaps", "shell-io.yaml"), "utf8"));
   const exercise = readFileMap(join(fixtures, "exercises", "io-max"));

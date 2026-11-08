@@ -1,6 +1,6 @@
 // What a failure may say outside the main process (DESIGN §2.2, D4). A raw
 // error, such as a file system error, can name a hidden file, so only these
-// pass: Codemm's error codes, core's learner-safe CodemmError, and the
+// pass: code-learn's error codes, core's learner-safe CodeLearnError, and the
 // desktop's own SafeError. Everything else says INTERNAL, and the log gets
 // the error's kind and Node code, never its message.
 import { AGENT_FAILED, CHANGED, NO_AGENT, OFFLINE, PLAN_LIMIT, SIGNED_OUT, UNSTOPPABLE } from '../shared/api';
@@ -15,7 +15,7 @@ export const INTERNAL = "That didn't work. Try again.";
 const CODES = [SIGNED_OUT, NO_AGENT, PLAN_LIMIT, OFFLINE, AGENT_FAILED, CHANGED, UNSTOPPABLE];
 
 const codeOf = (e: Error) => CODES.find((c) => e.message === c);
-const fromCore = (e: Error) => e.name === 'CodemmError';
+const fromCore = (e: Error) => e.name === 'CodeLearnError';
 
 export function safeError(e: unknown): Error {
   if (!(e instanceof Error)) return new Error(INTERNAL);
@@ -27,7 +27,7 @@ export function safeError(e: unknown): Error {
 export function errorFields(e: unknown): Fields {
   if (!(e instanceof Error)) return { kind: 'thrown' };
   const code = codeOf(e);
-  if (code) return { kind: 'codemm', code };
+  if (code) return { kind: 'code-learn', code };
   const errno = (e as NodeJS.ErrnoException).code;
   return {
     kind: fromCore(e) ? 'core' : e instanceof SafeError ? 'desktop' : 'internal',

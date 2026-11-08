@@ -14,7 +14,7 @@ const NPM_NODE_SHIM = (target: string) =>
   `endLocal & goto #_undefined_# 2>NUL || title %COMSPEC% & "%_prog%"  "%dp0%\\${target}" %*\r\n`;
 
 function tree() {
-  const root = tempDir('codemm-find-');
+  const root = tempDir('code-learn-find-');
   const at = (...p: string[]) => join(root, ...p);
   return { root, at };
 }
@@ -192,8 +192,8 @@ describe('find (§3.1)', () => {
     const mac = tree();
     const bin = mac.at('home', 'Applications', 'Docker.app', 'Contents', 'Resources', 'bin');
     mkdirSync(bin, { recursive: true });
-    writeFileSync(join(bin, 'codemm-fake-engine'), 'binary');
-    expect(find('codemm-fake-engine', posix('/usr/bin', mac.at('home')))).toEqual({ path: join(bin, 'codemm-fake-engine'), js: false });
+    writeFileSync(join(bin, 'code-learn-fake-engine'), 'binary');
+    expect(find('code-learn-fake-engine', posix('/usr/bin', mac.at('home')))).toEqual({ path: join(bin, 'code-learn-fake-engine'), js: false });
   });
 
   it("knows where Docker Desktop installs, for all users and for one: its app, and the folder of its CLI and credential helpers", () => {
@@ -216,8 +216,8 @@ describe('find (§3.1)', () => {
       const { at } = tree();
       mkdirSync(at('home', ...where), { recursive: true });
       // Any name will do: the folders don't depend on it, and a real `docker` on this machine would be found first.
-      writeFileSync(at('home', ...where, 'codemm-fake-engine'), 'binary');
-      expect(find('codemm-fake-engine', posix('/usr/bin', at('home')))).toEqual({ path: at('home', ...where, 'codemm-fake-engine'), js: false });
+      writeFileSync(at('home', ...where, 'code-learn-fake-engine'), 'binary');
+      expect(find('code-learn-fake-engine', posix('/usr/bin', at('home')))).toEqual({ path: at('home', ...where, 'code-learn-fake-engine'), js: false });
     }
   });
 
@@ -230,7 +230,7 @@ describe('find (§3.1)', () => {
   });
 
   it("gives Docker's calls the folders its credential helpers live in, as well as the one it was found in", () => {
-    const dir = realpathSync(tempDir('codemm-docker-'));
+    const dir = realpathSync(tempDir('code-learn-docker-'));
     const cellar = join(dir, 'Cellar', 'docker', 'bin');
     const desktop = join(dir, 'Docker.app', 'Contents', 'Resources', 'bin');
     mkdirSync(cellar, { recursive: true });
@@ -244,7 +244,7 @@ describe('find (§3.1)', () => {
   });
 
   it("adds Docker's folders to a PATH once, keeping what was there", () => {
-    const dir = realpathSync(tempDir('codemm-path-'));
+    const dir = realpathSync(tempDir('code-learn-path-'));
     writeFileSync(join(dir, 'docker'), '');
     const path = ['/usr/bin', '/bin'].join(delimiter);
     const once = withDockerFolders(path, join(dir, 'docker'), []);
@@ -253,13 +253,13 @@ describe('find (§3.1)', () => {
   });
 
   it('searches only the given folders when a test sets them: the journey\'s "no Docker" run', () => {
-    const dir = realpathSync(tempDir('codemm-only-'));
+    const dir = realpathSync(tempDir('code-learn-only-'));
     writeFileSync(join(dir, 'docker'), '#!/bin/sh\n');
     chmodSync(join(dir, 'docker'), 0o755);
     const w: Where = { platform: 'darwin', path: '', home: '/nowhere', searchDirs: [] };
     expect(find('docker', w)).toBeNull();
     expect(find('docker', { ...w, searchDirs: [dir] })).toEqual({ path: join(dir, 'docker'), js: false });
-    expect(here({ CODEMM_TEST_SEARCH_DIRS: [dir, '/also'].join(delimiter) }).searchDirs).toEqual([dir, '/also']);
+    expect(here({ CODE_LEARN_TEST_SEARCH_DIRS: [dir, '/also'].join(delimiter) }).searchDirs).toEqual([dir, '/also']);
     expect(here({}).searchDirs).toBeUndefined();
   });
 });

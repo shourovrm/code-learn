@@ -5,8 +5,8 @@ import { removeTempDirs, tempDir } from "./temp.js";
 
 describe("tempDir", () => {
   it("makes a fresh folder each time, and removeTempDirs removes every one with its contents", () => {
-    const a = tempDir("codemm-a-");
-    const b = tempDir("codemm-a-");
+    const a = tempDir("code-learn-a-");
+    const b = tempDir("code-learn-a-");
     expect(a).not.toBe(b);
     writeFileSync(join(a, "f"), "x");
     removeTempDirs();

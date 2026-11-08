@@ -31,7 +31,7 @@ describe('check this computer', () => {
   });
 
   describe('without Docker, on the WASI engine (core §4.5)', () => {
-    const LINE = 'Codemm can run practice on this computer without Docker, for programs that read input and print output. For everything else, install Docker.';
+    const LINE = 'code-learn can run practice on this computer without Docker, for programs that read input and print output. For everything else, install Docker.';
 
     it('says practice runs here without Docker and offers Continue, with installing Docker still an option', async () => {
       const user = open({ docker: 'missing', platform: 'mac', wasi: true });
@@ -71,7 +71,7 @@ describe('check this computer', () => {
       options.docker = 'ready';
       window.dispatchEvent(new Event('focus'));
       expect(await screen.findByText('This computer is ready.')).toBeInTheDocument();
-      expect(screen.getByText('Codemm runs your code in Docker, on this computer.')).toBeInTheDocument();
+      expect(screen.getByText('code-learn runs your code in Docker, on this computer.')).toBeInTheDocument();
       expect(screen.queryByText(LINE)).not.toBeInTheDocument();
     });
   });
@@ -151,9 +151,9 @@ describe('check this computer', () => {
     expect(await within(installed).findByText("You're offline. Connect to the internet, then try again.")).toBeInTheDocument();
     expect(within(installed).getByRole('button', { name: 'Try again' })).toBeInTheDocument();
     problem = 'unverified';
-    expect(await within(installed).findByText("The download wasn't signed by Docker, so Codemm deleted it.")).toBeInTheDocument();
+    expect(await within(installed).findByText("The download wasn't signed by Docker, so code-learn deleted it.")).toBeInTheDocument();
     problem = 'restart';
-    expect(await within(installed).findByText('Restart Windows, then open Codemm again.')).toBeInTheDocument();
+    expect(await within(installed).findByText('Restart Windows, then open code-learn again.')).toBeInTheDocument();
     expect(within(installed).queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
     void user;
   });
@@ -376,15 +376,15 @@ describe('a look that fails after one worked', () => {
     const api = createMock({ docker: 'missing', platform: 'mac' });
     const computer = api.computer.bind(api);
     let failing = false;
-    api.computer = () => (failing ? Promise.reject(new Error('codemm:offline')) : computer());
+    api.computer = () => (failing ? Promise.reject(new Error('code-learn:offline')) : computer());
     renderApp({ to: 'computer', then: welcome }, api);
     expect(await screen.findByRole('listitem', { name: 'Docker is installed' })).toBeInTheDocument();
     failing = true;
     await user.click(screen.getByRole('button', { name: 'Check now' }));
-    expect(await screen.findByText(/Codemm couldn't refresh this/)).toHaveAttribute('role', 'status');
+    expect(await screen.findByText(/code-learn couldn't refresh this/)).toHaveAttribute('role', 'status');
     expect(screen.getByRole('listitem', { name: 'Docker is installed' })).toBeInTheDocument();
     failing = false;
     await user.click(screen.getByRole('button', { name: 'Try again' }));
-    await waitFor(() => expect(screen.queryByText(/Codemm couldn't refresh this/)).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText(/code-learn couldn't refresh this/)).not.toBeInTheDocument());
   });
 });

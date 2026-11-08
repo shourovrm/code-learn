@@ -13,12 +13,12 @@ interface Props {
   onEdit: () => void;
   onRename: (title: string) => void;
   onRemove?: () => void;
-  /** Asks Codemm to split this topic into the smaller skills it needs. */
+  /** Asks code-learn to split this topic into the smaller skills it needs. */
   onDeeper?: () => void;
   onMove?: (to: number) => void;
   onDragStart?: () => void;
   onDrop?: () => void;
-  /** Codemm is changing the roadmap: nothing can be edited until it's done. */
+  /** code-learn is changing the roadmap: nothing can be edited until it's done. */
   locked?: boolean;
 }
 

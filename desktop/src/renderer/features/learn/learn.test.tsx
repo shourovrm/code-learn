@@ -113,7 +113,7 @@ describe('choose journey', () => {
     await api.connect('claude');
     renderApp({ to: 'research', goal: { topic: 'React', known: '', depth: 'standard', practice: 'code' } }, api);
     expect(await screen.findByText("Your agent's plan limit is reached. Try again later.")).toBeInTheDocument();
-    expect(screen.queryByText("Couldn't reach Codemm.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Couldn't reach codeLearn.")).not.toBeInTheDocument();
   });
 
   it('says when research found the computer offline, with no Check your agent', async () => {
@@ -134,7 +134,7 @@ describe('choose journey', () => {
     api.research = (goal) => (failed ? research(goal) : ((failed = true), Promise.resolve({ state: 'failed' as const })));
     renderApp({ to: 'research', goal: { topic: 'React', known: '', depth: 'standard', practice: 'code' } }, api);
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent("Codemm couldn't finish the research.");
+    expect(alert).toHaveTextContent("code-learn couldn't finish the research.");
     expect(within(alert).getByRole('button', { name: 'Check your agent' })).toBeInTheDocument();
     await user.click(within(alert).getByRole('button', { name: 'Try again' }));
     expect(await screen.findByRole('button', { name: 'Approve' })).toBeInTheDocument();

@@ -1,8 +1,8 @@
 import { useId } from 'react';
-import logo from '../../../../docs/brand/codemm-logo.svg';
-import logoOnNavy from '../../../../docs/brand/codemm-logo-dark.svg';
+import logo from '../../../../docs/brand/code-learn-logo.svg';
+import logoOnNavy from '../../../../docs/brand/code-learn-logo-dark.svg';
 
-/** The Codemm chevron alone. */
+/** The code-learn chevron alone. */
 export function Mark({ size = 24 }: { size?: number }) {
   const id = useId();
   return (
@@ -20,5 +20,5 @@ export function Mark({ size = 24 }: { size?: number }) {
 
 /** The brand logo (the wordmark is outlined, so it needs no font). */
 export function Logo({ height, onNavy = false, className }: { height: number; onNavy?: boolean; className?: string }) {
-  return <img className={className} src={onNavy ? logoOnNavy : logo} alt="Codemm" height={height} />;
+  return <img className={className} src={onNavy ? logoOnNavy : logo} alt="code-learn" height={height} />;
 }

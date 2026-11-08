@@ -15,7 +15,7 @@ vi.mock("node:crypto", async (importOriginal) => {
 });
 
 let ws: string;
-beforeEach(() => { vi.stubEnv("CODEMM_HOME", tempDir()); ws = tempDir(); });
+beforeEach(() => { vi.stubEnv("CODE_LEARN_HOME", tempDir()); ws = tempDir(); });
 afterEach(() => vi.unstubAllEnvs());
 const setup = () => app.saveRoadmap(ws, "quiz", quizRoadmap);
 const saved = async (slug = "first") => { await app.saveExercise(ws, quizFiles(slug)); return app.getExercise(ws, slug); };

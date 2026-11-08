@@ -14,7 +14,7 @@ import { tempDir } from "./temp.js";
 const fixtures = join(import.meta.dirname, "fixtures");
 
 beforeEach(() => {
-  vi.stubEnv("CODEMM_HOME", tempDir("codemm-home-"));
+  vi.stubEnv("CODE_LEARN_HOME", tempDir("code-learn-home-"));
 });
 
 afterEach(() => {
@@ -53,7 +53,7 @@ describe.runIf(posix)("check progress", () => {
   it.runIf(process.getuid?.() !== 0)("records nothing when the workspace can't be updated, so \"not counted\" stays true and a retry counts once", async () => {
     const ws = await installedExercise();
     fakeDocker("streams");
-    // A read-only workspace folder: grading still runs (it writes only inside exercises/), but codemm.json can't be
+    // A read-only workspace folder: grading still runs (it writes only inside exercises/), but code-learn.json can't be
     // written, as on a full disk.
     chmodSync(ws, 0o555);
     try {
@@ -210,10 +210,10 @@ describe.runIf(posix)("exercise gate progress", () => {
 
 /** A workspace whose unit exercise is installed with a fake image and the given test inventory. */
 async function unitExercise(hidden = ["t"], visible = ["t"]) {
-  const ws = tempDir("codemm-ws-");
+  const ws = tempDir("code-learn-ws-");
   const track = readFileMap(join(fixtures, "tracks", "shell-unit"));
   store.commitFolder(store.trackDir("shell-unit@1"), track, {
-    "track.json": { format_version: 1, ...parseTrackYaml(track["track.yaml"]!), image: "codemm-track-shell-unit:1", imageId: "sha256:fake", installedAt: new Date().toISOString() },
+    "track.json": { format_version: 1, ...parseTrackYaml(track["track.yaml"]!), image: "code-learn-track-shell-unit:1", imageId: "sha256:fake", installedAt: new Date().toISOString() },
   });
   await app.saveRoadmap(ws, "units", "goal: Units\ntrack: shell-unit@1\nstyle: unit\nconcepts:\n  - { id: sh.loops, title: Loops, requires: [] }\n");
   store.commitFolder(store.exerciseDir("units", "maxof"), readFileMap(join(fixtures, "exercises", "unit-max")), {
@@ -225,11 +225,11 @@ async function unitExercise(hidden = ["t"], visible = ["t"]) {
 
 /** A workspace whose io exercise (1 visible, 3 hidden tests) is installed with a fake image and edited. */
 async function installedExercise(): Promise<string> {
-  const ws = tempDir("codemm-ws-");
+  const ws = tempDir("code-learn-ws-");
   const track = readFileMap(join(fixtures, "tracks", "shell-io"));
   const spec = parseTrackYaml(track["track.yaml"]!);
   store.commitFolder(store.trackDir("shell-io@1"), track, {
-    "track.json": { format_version: 1, ...spec, image: "codemm-track-shell-io:1", imageId: "sha256:fake", installedAt: new Date().toISOString() },
+    "track.json": { format_version: 1, ...spec, image: "code-learn-track-shell-io:1", imageId: "sha256:fake", installedAt: new Date().toISOString() },
   });
   await app.saveRoadmap(ws, "shell", readFileSync(join(fixtures, "roadmaps", "shell-io.yaml"), "utf8"));
   store.commitFolder(store.exerciseDir("shell", "max-of-line"), readFileMap(join(fixtures, "exercises", "io-max")), {

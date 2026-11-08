@@ -9,13 +9,13 @@ import { join } from 'node:path';
 
 // D17: the learning journey on an installed app with REAL agents, run by hand on a
 // developer's machine, never in CI. It drives the UI only. As the learner, it takes the
-// fixed answer from the course's own reference solution in the temp CODEMM_HOME. Every
+// fixed answer from the course's own reference solution in the temp CODE_LEARN_HOME. Every
 // screen and every waiting state is screenshotted, and every step is timed. Evidence:
 // docs/desktop/journey-mac.md.
 //
-//   CODEMM_JOURNEY=<dir>    the run's own folders: home/ (CODEMM_HOME), ws/ (workspace),
+//   CODE_LEARN_JOURNEY=<dir>    the run's own folders: home/ (CODE_LEARN_HOME), ws/ (workspace),
 //                           userData/ (Electron profile and logs), bin/ (the agents' launchers)
-//   CODEMM_APP=<exe>        the installed app's executable
+//   CODE_LEARN_APP=<exe>        the installed app's executable
 //   JOURNEY_AGENT=claude|codex, JOURNEY_MODEL=<model id, chosen in the connect screen's Model select>,
 //   JOURNEY_LABEL=<name>
 //   JOURNEY_TOPIC=<goal>    what to learn (default "Python functions"); JOURNEY_KNOWN=<what's known>;
@@ -27,8 +27,8 @@ import { join } from 'node:path';
 //                           (`fakes` runs on a set-up course with e2e/fake-claude.cjs as Claude Code)
 //   JOURNEY_FLOW=<comma list> extras for `full`: edits, reopen, show-me, stuck, pages, relaunch,
 //                           relaunch-setup, switch=<agent>, new-course
-const dir = process.env.CODEMM_JOURNEY;
-const exe = process.env.CODEMM_APP;
+const dir = process.env.CODE_LEARN_JOURNEY;
+const exe = process.env.CODE_LEARN_APP;
 const agent = process.env.JOURNEY_AGENT ?? 'claude';
 const part = process.env.JOURNEY_PART ?? 'full';
 const model = process.env.JOURNEY_MODEL;
@@ -41,15 +41,15 @@ const switchTo = [...flow].find((f) => f.startsWith('switch='))?.slice('switch='
 const NAMES: Record<string, string> = { claude: 'Claude Code', codex: 'Codex', cursor: 'Cursor' };
 const MIN = 60_000;
 
-test.skip(!dir || !exe, 'set CODEMM_JOURNEY and CODEMM_APP to run the real-agent journey');
+test.skip(!dir || !exe, 'set CODE_LEARN_JOURNEY and CODE_LEARN_APP to run the real-agent journey');
 test.setTimeout(240 * MIN);
 
 // ---------- isolation ----------
 
-/** The learner's real Codemm folders, which a journey must never touch. */
-const REAL_DATA = [join(homedir(), '.codemm'), join(homedir(), 'Codemm')];
-const REAL_PROFILE = join(homedir(), 'Library', 'Application Support', 'Codemm', 'desktop.json');
-const REAL_LOG = join(homedir(), 'Library', 'Logs', 'Codemm', 'codemm.log');
+/** The learner's real code-learn folders, which a journey must never touch. */
+const REAL_DATA = [join(homedir(), '.code-learn'), join(homedir(), 'code-learn')];
+const REAL_PROFILE = join(homedir(), 'Library', 'Application Support', 'code-learn', 'desktop.json');
+const REAL_LOG = join(homedir(), 'Library', 'Logs', 'code-learn', 'code-learn.log');
 
 /**
  * What a run must leave unchanged: every path and size under the real data folders, the real
@@ -214,7 +214,7 @@ async function waitingStates() {
   await waiting('tutor-answering', page.locator('[role="log"][aria-busy="true"]'));
   await waiting('stalled', page.getByRole('alert'));
   // A setup proposal can arrive late, for example after a relaunch mid-setup.
-  const consent = page.getByRole('dialog', { name: /^Set up .* on this computer\?$|^Codemm has another way/ });
+  const consent = page.getByRole('dialog', { name: /^Set up .* on this computer\?$|^code-learn has another way/ });
   // The setup-failure parts approve their own proposal at the right moment.
   if (!['low-disk', 'docker-setup', 'offline-setup'].includes(part) && (await visible(consent))) {
     await shot('consent-late');
@@ -247,7 +247,7 @@ const visible = (l: Locator) => l.first().isVisible().catch(() => false);
 
 // ---------- the learner's answers ----------
 
-/** The newest exercise the author job saved, in the temp CODEMM_HOME. */
+/** The newest exercise the author job saved, in the temp CODE_LEARN_HOME. */
 function newestExercise(): string {
   const courses = join(dir!, 'home', 'courses');
   const all = readdirSync(courses).flatMap((c) => {
@@ -260,7 +260,7 @@ function newestExercise(): string {
 async function files(): Promise<string[]> {
   const tabs = page.getByRole('tablist', { name: 'Files' }).getByRole('tab');
   if (await tabs.count()) return tabs.allInnerTexts();
-  return [(await page.getByRole('textbox').filter({ hasNot: page.getByPlaceholder('Ask Codemm') }).first().getAttribute('aria-label')) ?? ''];
+  return [(await page.getByRole('textbox').filter({ hasNot: page.getByPlaceholder('Ask code-learn') }).first().getAttribute('aria-label')) ?? ''];
 }
 
 async function write(path: string, text: string) {
@@ -365,13 +365,13 @@ async function runWithInput(): Promise<string> {
 
 async function ask(how: 'Hint' | 'Show me' | string): Promise<string> {
   const log = page.getByRole('log');
-  const idle = async () => (await log.getAttribute('aria-busy').catch(() => null)) !== 'true' && !/Codemm is thinking/.test(await log.locator(':scope > *').last().innerText().catch(() => ''));
-  // One question at a time: while Codemm answers, Send is off and Enter does nothing.
+  const idle = async () => (await log.getAttribute('aria-busy').catch(() => null)) !== 'true' && !/code-learn is thinking/.test(await log.locator(':scope > *').last().innerText().catch(() => ''));
+  // One question at a time: while code-learn answers, Send is off and Enter does nothing.
   await until('the tutor to be free', idle, 8 * MIN);
   const before = await log.locator(':scope > *').count();
   if (how === 'Hint' || how === 'Show me') await button(how).click();
   else {
-    await page.getByRole('textbox', { name: 'Ask Codemm' }).fill(how);
+    await page.getByRole('textbox', { name: 'Ask code-learn' }).fill(how);
     await button('Send').click();
   }
   await until('a tutor answer', async () => (await log.locator(':scope > *').count()) >= before + 2 && (await idle()), 8 * MIN);
@@ -450,11 +450,11 @@ async function passActivity(name: string) {
 }
 
 async function launch(env: Record<string, string>) {
-  // `update` runs the unpackaged app (the packaged one ignores CODEMM_UPDATE_FEED): Electron with the desktop folder.
+  // `update` runs the unpackaged app (the packaged one ignores CODE_LEARN_UPDATE_FEED): Electron with the desktop folder.
   // JOURNEY_MOCK=<scenario> also runs it unpackaged, on the mock: a quick check of the driver's selectors, no agents.
   const unpacked = part === 'update' || process.env.JOURNEY_MOCK !== undefined ? [process.env.JOURNEY_DESKTOP ?? process.cwd()] : [];
-  if (process.env.JOURNEY_MOCK !== undefined) env = { ...env, CODEMM_MOCK: process.env.JOURNEY_MOCK };
-  // The run's own workspace (O5): without it in the profile, the app uses the learner's real ~/Codemm.
+  if (process.env.JOURNEY_MOCK !== undefined) env = { ...env, CODE_LEARN_MOCK: process.env.JOURNEY_MOCK };
+  // The run's own workspace (O5): without it in the profile, the app uses the learner's real ~/code-learn.
   const profile = join(dir!, 'userData', 'desktop.json');
   const state = existsSync(profile) ? JSON.parse(readFileSync(profile, 'utf8')) : { format_version: 1, sessions: {} };
   if (!state.workspace) {
@@ -476,9 +476,9 @@ async function launch(env: Record<string, string>) {
 let walkTimer: ReturnType<typeof setInterval> | undefined;
 let walking = false;
 
-const LABEL = "Codemm — automated test run, please don't use";
+const LABEL = "code-learn — automated test run, please don't use";
 
-/** Marks the driver's window so nobody mistakes it for their own Codemm: its title, and a thin banner (driver-only). */
+/** Marks the driver's window so nobody mistakes it for their own code-learn: its title, and a thin banner (driver-only). */
 async function labelWindow() {
   await app.evaluate(({ BrowserWindow }, title) => {
     for (const w of BrowserWindow.getAllWindows()) {
@@ -496,7 +496,7 @@ async function labelWindow() {
       background: '#b42318', color: '#fff', font: '600 12px system-ui, sans-serif', textAlign: 'center', padding: '3px 0',
     });
     document.body.appendChild(banner);
-    // The window hides the OS title bar, so Codemm's own bar is the title people see.
+    // The window hides the OS title bar, so code-learn's own bar is the title people see.
     const bar = document.querySelector('.tbar');
     if (bar) {
       bar.setAttribute('data-title', bar.textContent ?? '');
@@ -534,25 +534,25 @@ const docker = (command: 'stop' | 'start') => execFileSync('docker', ['desktop',
 // ---------- the journey ----------
 
 test(`journey: ${label}`, async () => {
-  const env: Record<string, string> = { ...(process.env as Record<string, string>), CODEMM_HOME: join(dir!, 'home'), PATH: `${join(dir!, 'bin')}:/usr/bin:/bin:/usr/sbin:/sbin` };
-  for (const key of ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_CODE_OAUTH_TOKEN', 'OPENAI_API_KEY', 'CODEX_API_KEY', 'ELECTRON_RUN_AS_NODE', 'CODEMM_JOURNEY', 'CODEMM_APP', 'NODE_OPTIONS']) delete env[key];
+  const env: Record<string, string> = { ...(process.env as Record<string, string>), CODE_LEARN_HOME: join(dir!, 'home'), PATH: `${join(dir!, 'bin')}:/usr/bin:/bin:/usr/sbin:/sbin` };
+  for (const key of ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_CODE_OAUTH_TOKEN', 'OPENAI_API_KEY', 'CODEX_API_KEY', 'ELECTRON_RUN_AS_NODE', 'CODE_LEARN_JOURNEY', 'CODE_LEARN_APP', 'NODE_OPTIONS']) delete env[key];
   if (part === 'first-run') {
     // No agent anywhere (a fresh HOME: the app installs into it), Docker hidden (simulated), downloads in the run.
     env.PATH = '/usr/bin:/bin:/usr/sbin:/sbin';
     env.HOME = join(dir!, 'empty-home');
     // Only the fresh HOME's agent folders, where the app's installs land: Docker's (/usr/local/bin, /Applications)
     // stay hidden. An empty list would hide the installed agents too.
-    env.CODEMM_TEST_SEARCH_DIRS = [join(env.HOME, '.local', 'bin'), join(env.HOME, '.claude', 'local')].join(':');
+    env.CODE_LEARN_TEST_SEARCH_DIRS = [join(env.HOME, '.local', 'bin'), join(env.HOME, '.claude', 'local')].join(':');
     env.TMPDIR = join(dir!, 'tmp');
     for (const d of [env.HOME, env.TMPDIR]) mkdirSync(d, { recursive: true });
   }
   let feedServer: ReturnType<typeof createServer> | undefined;
   if (part === 'update') {
     // A local feed offering 99.0.0, the way smoke.spec.ts does: the unsigned dev app only says a version is out.
-    const feed = ['version: 99.0.0', 'files:', '  - url: Codemm-99.0.0-mac-arm64.zip', '    sha512: AAAA', '    size: 1', 'path: Codemm-99.0.0-mac-arm64.zip', 'sha512: AAAA', "releaseDate: '2026-10-01T00:00:00.000Z'", ''].join('\n');
+    const feed = ['version: 99.0.0', 'files:', '  - url: code-learn-99.0.0-mac-arm64.zip', '    sha512: AAAA', '    size: 1', 'path: code-learn-99.0.0-mac-arm64.zip', 'sha512: AAAA', "releaseDate: '2026-10-01T00:00:00.000Z'", ''].join('\n');
     feedServer = createServer((req, res) => (new URL(req.url ?? '/', 'http://feed').pathname.endsWith('.yml') ? res.writeHead(200, { 'content-type': 'text/yaml' }).end(feed) : res.writeHead(404).end()));
     await new Promise<void>((r) => feedServer!.listen(0, '127.0.0.1', r));
-    env.CODEMM_UPDATE_FEED = `http://127.0.0.1:${(feedServer.address() as AddressInfo).port}/`;
+    env.CODE_LEARN_UPDATE_FEED = `http://127.0.0.1:${(feedServer.address() as AddressInfo).port}/`;
   }
   if (part === 'no-agent') {
     // Neither PATH nor the usual install folders (under HOME) hold an agent.
@@ -562,13 +562,13 @@ test(`journey: ${label}`, async () => {
   }
   const fake = join(dir!, 'fake-mode');
   // Simulated: Docker Desktop stays installed, but this run's lookup sees only PATH, which holds just the agents.
-  if (part === 'no-docker') env.CODEMM_TEST_SEARCH_DIRS = '';
+  if (part === 'no-docker') env.CODE_LEARN_TEST_SEARCH_DIRS = '';
   // Simulated: this run's track build uses a buildx builder with no network (made by the runner).
-  if (part === 'offline-setup') env.BUILDX_BUILDER = 'codemm-offline-sim';
+  if (part === 'offline-setup') env.BUILDX_BUILDER = 'code-learn-offline-sim';
   if (part === 'fakes' || part === 'fake-research') {
     env.PATH = `${join(dir!, 'bin-fake')}:/usr/bin:/bin:/usr/sbin:/sbin`;
-    env.CODEMM_FAKE_FILE = fake;
-    env.CODEMM_REAL_CLAUDE = readFileSync(join(dir!, 'real-claude'), 'utf8').trim();
+    env.CODE_LEARN_FAKE_FILE = fake;
+    env.CODE_LEARN_REAL_CLAUDE = readFileSync(join(dir!, 'real-claude'), 'utf8').trim();
   }
   const untouched = snapshot();
   await launch(env);
@@ -614,18 +614,18 @@ test(`journey: ${label}`, async () => {
           if (await visible(row.getByRole('alert'))) throw new Error(`Install failed: ${await row.getByRole('alert').innerText()}`);
           return (await visible(row.getByText('Connected'))) || (await visible(row.getByRole('button', { name: /^(Connect|Sign in)$/ })));
         }, 10 * MIN);
-        const state = (await visible(row.getByRole('button', { name: 'Sign in' }))) ? 'installed, signed out (Codemm never signs in)' : 'installed, ready to connect';
+        const state = (await visible(row.getByRole('button', { name: 'Sign in' }))) ? 'installed, signed out (code-learn never signs in)' : 'installed, ready to connect';
         if (await visible(row.getByRole('button', { name: 'Connect', exact: true }))) await row.getByRole('button', { name: 'Connect', exact: true }).click();
         await shot(`installed-${name === 'Codex' ? 'codex' : 'claude'}`);
         return `${phases.join(' / ')}: ${state}${(await visible(row.getByText('Connected'))) ? '; connected' : ''}`;
       });
     }
     await step('docker-offer', async () => {
-      // Both installed agents may be signed out, and Codemm never signs in: then the owner's own Claude Code
+      // Both installed agents may be signed out, and code-learn never signs in: then the owner's own Claude Code
       // (already signed in) goes on PATH, so Continue opens, still with Docker hidden.
       if (!(await button('Continue').isEnabled().catch(() => false))) {
         await app.close();
-        // The owner's Claude Code reads its sign-in from the real HOME; Codemm's own data stays in the run's folders.
+        // The owner's Claude Code reads its sign-in from the real HOME; code-learn's own data stays in the run's folders.
         env.PATH = `${join(dir!, 'bin')}:/usr/bin:/bin:/usr/sbin:/sbin`;
         env.HOME = homedir();
         await launch(env);
@@ -648,7 +648,7 @@ test(`journey: ${label}`, async () => {
       await shot('docker-downloading');
       // There is no Cancel: closing the app stops the download, and the partial file goes with the run's own temp folder.
       await app.close();
-      const partial = readdirSync(env.TMPDIR).filter((f) => f.startsWith('codemm-docker-'));
+      const partial = readdirSync(env.TMPDIR).filter((f) => f.startsWith('code-learn-docker-'));
       for (const f of partial) rmSync(join(env.TMPDIR, f), { recursive: true, force: true });
       expect(existsSync('/Applications/Docker.app')).toBe(true);
       await launch(env);
@@ -662,7 +662,7 @@ test(`journey: ${label}`, async () => {
         if (await visible(button('Start learning'))) await tap(button('Start learning'));
         return visible(goal);
       }, MIN);
-      const notice = page.getByRole('status', { name: 'Codemm updates' });
+      const notice = page.getByRole('status', { name: 'code-learn updates' });
       await until('the update notice', async () => /new version is available/i.test(await notice.innerText().catch(() => '')), 2 * MIN);
       await shot('update-notice');
       const link = await notice.getByRole('link').getAttribute('href');
@@ -673,7 +673,7 @@ test(`journey: ${label}`, async () => {
     await step('repair', async () => {
       await toMap().catch(() => undefined);
       const alert = page.getByRole('alert');
-      await expect(alert).toContainText("Codemm's records need a repair.", { timeout: 2 * MIN });
+      await expect(alert).toContainText("code-learn's records need a repair.", { timeout: 2 * MIN });
       return (await alert.innerText()).replace(/\s+/g, ' ');
     });
   } else if (part === 'fakes') {
@@ -744,7 +744,7 @@ test(`journey: ${label}`, async () => {
       const events = join(dir!, 'home', 'courses', course, 'events.jsonl');
       const before = readFileSync(events, 'utf8');
       writeFileSync(events, `${before}{damaged\n`);
-      const stale = page.getByRole('status').filter({ hasText: "Codemm couldn't refresh this." });
+      const stale = page.getByRole('status').filter({ hasText: "code-learn couldn't refresh this." });
       await until('the stale banner', async () => {
         await page.evaluate(() => window.dispatchEvent(new Event('focus')));
         return visible(stale);
@@ -813,7 +813,7 @@ test(`journey: ${label}`, async () => {
     });
     await step(part, async () => {
       await button('Approve').click();
-      const consent = page.getByRole('dialog', { name: /^Set up .* on this computer\?$|^Codemm has another way/ });
+      const consent = page.getByRole('dialog', { name: /^Set up .* on this computer\?$|^code-learn has another way/ });
       await until('the setup consent', () => visible(consent), 20 * MIN);
       await consent.getByRole('button', { name: 'Set up', exact: true }).click();
       if (part === 'docker-setup') {
@@ -937,15 +937,15 @@ test(`journey: ${label}`, async () => {
           await button('Remove Practice review').click();
           did.push('added and removed a topic');
           await addRows('remove');
-          // Go deeper on the first topic: Codemm splits it into smaller skills.
+          // Go deeper on the first topic: code-learn splits it into smaller skills.
           const deeperBefore = await page.getByRole('button', { name: /^Rename / }).count();
           await page.getByRole('button', { name: /^Go deeper on / }).first().click();
           await until('the deeper roadmap', async () => (await page.getByRole('button', { name: /^Rename / }).count()) !== deeperBefore, 10 * MIN);
           did.push(`went deeper on the first: ${deeperBefore} → ${await page.getByRole('button', { name: /^Rename / }).count()} topics`);
           await addRows('go-deeper');
-          // Ask Codemm for a change.
+          // Ask code-learn for a change.
           const before = await page.getByRole('button', { name: /^Rename / }).count();
-          await page.getByRole('textbox', { name: 'Ask Codemm for changes' }).fill('Add a short topic on docstrings at the end.');
+          await page.getByRole('textbox', { name: 'Ask code-learn for changes' }).fill('Add a short topic on docstrings at the end.');
           await button('Apply').click();
           await until('the roadmap change', async () => (await page.getByRole('button', { name: /^Rename / }).count()) !== before || (await visible(page.getByRole('status'))), 10 * MIN);
           did.push(`asked for a change: ${before} → ${await page.getByRole('button', { name: /^Rename / }).count()} topics`);
@@ -955,7 +955,7 @@ test(`journey: ${label}`, async () => {
       });
       await step('consent-setup', async () => {
         await button('Approve').click();
-        const consent = page.getByRole('dialog', { name: /^Set up .* on this computer\?$|^Codemm has another way/ });
+        const consent = page.getByRole('dialog', { name: /^Set up .* on this computer\?$|^code-learn has another way/ });
         const busy = page.getByText(/^(Preparing setup for|Setting up) /);
         const approved: string[] = [];
         let idle = 0;
@@ -1191,5 +1191,5 @@ test(`journey: ${label}`, async () => {
   if (walkTimer) clearInterval(walkTimer);
   await app.close();
   // Isolation: the run used its own folders only. Anything that wrote to the real ones is a bug.
-  expect(snapshot(), "the run changed the learner's real Codemm data, profile or log").toEqual(untouched);
+  expect(snapshot(), "the run changed the learner's real code-learn data, profile or log").toEqual(untouched);
 });

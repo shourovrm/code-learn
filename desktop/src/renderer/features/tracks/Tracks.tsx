@@ -13,7 +13,7 @@ import { stagger } from '../../ui/motion';
 import { Limit } from '../../ui/Limit';
 import { LIMITS } from '../../../shared/limits';
 
-/** What Codemm has set up. Anything else is one request away. */
+/** What code-learn has set up. Anything else is one request away. */
 export function Tracks() {
   const api = useApi();
   const { go, fail } = useRouter();
@@ -41,7 +41,7 @@ export function Tracks() {
       setRebuilt(ref);
     } catch (e) {
       // A damaged record has its banner, and so has a failure after the learner left: no card is there to say it.
-      // Any other failure is said on the card: what happened and what to do, as far as Codemm knows.
+      // Any other failure is said on the card: what happened and what to do, as far as code-learn knows.
       const problem = problemOf(e);
       if (problem === 'repair' || problem === 'connect' || !here.current) fail(e);
       else {

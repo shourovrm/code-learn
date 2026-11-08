@@ -101,7 +101,7 @@ describe('WSL for Docker Desktop on Windows (§6.1)', () => {
     expect(await f.w.state()).toBe('old');
     expect(commands(f.calls).some((c) => c.startsWith(WSL))).toBe(false);
     expect(await f.w.setUp()).toBe('done');
-    expect(f.calls.find((c) => c.args[3] === ELEVATED)!.env).toEqual({ CODEMM_FILE: WSL, CODEMM_ARGS: '--update' });
+    expect(f.calls.find((c) => c.args[3] === ELEVATED)!.env).toEqual({ CODE_LEARN_FILE: WSL, CODE_LEARN_ARGS: '--update' });
   });
 
   it("needs an update below 2.1.5, and setup when Windows' Virtual Machine Platform is off", async () => {
@@ -114,9 +114,9 @@ describe('WSL for Docker Desktop on Windows (§6.1)', () => {
     expect(await fake({ machine: 'True|False|2' }).w.state()).toBe('missing');
     // Where the feature can't be read, no running hypervisor says the same.
     expect(await fake({ machine: 'True|False|' }).w.state()).toBe('missing');
-    // On but not running: a restart Windows still needs, as when Codemm was reopened before it.
+    // On but not running: a restart Windows still needs, as when code-learn was reopened before it.
     expect(await fake({ machine: 'True|False|1', rebootPending: true }).w.state()).toBe('restart');
-    // With no restart pending, a hypervisor turned off on purpose: Codemm claims nothing rather than loop restarts.
+    // With no restart pending, a hypervisor turned off on purpose: code-learn claims nothing rather than loop restarts.
     expect(await fake({ machine: 'True|False|1' }).w.state()).toBeUndefined();
     // Setup comes before an update: the update doesn't turn the Virtual Machine Platform on.
     expect(await fake({ machine: 'True|False|2', version: { code: 0, output: VERSION('2.0.14.0') } }).w.state()).toBe('missing');
@@ -169,7 +169,7 @@ describe('WSL for Docker Desktop on Windows (§6.1)', () => {
     const elevate = f.calls.find((c) => c.args[3] === ELEVATED)!;
     expect(elevate.file).toBe(POWERSHELL);
     // What runs reaches PowerShell as environment variables, never inside the command text.
-    expect(elevate.env).toEqual({ CODEMM_FILE: WSL, CODEMM_ARGS: '--install --no-distribution' });
+    expect(elevate.env).toEqual({ CODE_LEARN_FILE: WSL, CODE_LEARN_ARGS: '--install --no-distribution' });
     // Until Windows restarts, that's what's left.
     expect(await f.w.state()).toBe('restart');
   });
@@ -187,7 +187,7 @@ describe('WSL for Docker Desktop on Windows (§6.1)', () => {
   it('updates an old WSL, and needs no restart when the hypervisor already runs', async () => {
     const f = fake({ version: { code: 0, output: VERSION('2.0.14.0') }, elevated: 0 });
     expect(await f.w.setUp()).toBe('done');
-    expect(f.calls.find((c) => c.args[3] === ELEVATED)!.env).toEqual({ CODEMM_FILE: WSL, CODEMM_ARGS: '--update' });
+    expect(f.calls.find((c) => c.args[3] === ELEVATED)!.env).toEqual({ CODE_LEARN_FILE: WSL, CODE_LEARN_ARGS: '--update' });
     expect(await f.w.state()).toBe('ready');
   });
 

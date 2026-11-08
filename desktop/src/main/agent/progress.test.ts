@@ -17,22 +17,22 @@ describe('job progress (§4.11)', () => {
     expect(t.snapshot()).toMatchObject({ stage: 1, elapsedMs: 2000, idleMs: 0 });
   });
 
-  it("reaches the save stage when the job's save is called, and shows Codemm's steps", () => {
+  it("reaches the save stage when the job's save is called, and shows code-learn's steps", () => {
     const t = jobTracker('author', { id: 'job-1' });
     t.event({ type: 'session', id: 's1' });
-    t.event({ type: 'tool_call', id: 'c1', name: 'codemm.next_step' });
+    t.event({ type: 'tool_call', id: 'c1', name: 'code-learn.next_step' });
     t.event({ type: 'progress', step: { kind: 'step', label: 'Checking the next step' } });
     t.event({ type: 'tool_result', id: 'c1', error: false });
     // Once it has its target, the author writes.
     expect(t.snapshot()).toMatchObject({ stage: 1, steps: [{ kind: 'step', label: 'Writing the exercise' }, { kind: 'step', label: 'Checking the next step' }] });
-    t.event({ type: 'tool_call', id: 'c2', name: 'codemm.save_exercise' });
-    t.event({ type: 'progress', step: { kind: 'step', label: 'Codemm is checking the exercise' } });
-    expect(t.snapshot()).toMatchObject({ stage: 2, count: 3, steps: [{ kind: 'step', label: 'Codemm is checking the exercise' }, { kind: 'step', label: 'Writing the exercise' }, { kind: 'step', label: 'Checking the next step' }] });
+    t.event({ type: 'tool_call', id: 'c2', name: 'code-learn.save_exercise' });
+    t.event({ type: 'progress', step: { kind: 'step', label: 'code-learn is checking the exercise' } });
+    expect(t.snapshot()).toMatchObject({ stage: 2, count: 3, steps: [{ kind: 'step', label: 'code-learn is checking the exercise' }, { kind: 'step', label: 'Writing the exercise' }, { kind: 'step', label: 'Checking the next step' }] });
   });
 
-  it("isn't the agent thinking while one of Codemm's tools runs", () => {
+  it("isn't the agent thinking while one of code-learn's tools runs", () => {
     const t = jobTracker('author', { id: 'job-1' });
-    t.event({ type: 'tool_call', id: 'c1', name: 'codemm.save_exercise' });
+    t.event({ type: 'tool_call', id: 'c1', name: 'code-learn.save_exercise' });
     expect(t.snapshot().thinking).toBe(false);
     t.event({ type: 'tool_result', id: 'c1', error: false });
     expect(t.snapshot().thinking).toBe(true);
@@ -49,10 +49,10 @@ describe('job progress (§4.11)', () => {
 
   it('goes back to writing after a failed save, and says it is trying again', () => {
     const t = jobTracker('lesson', { id: 'job-1' });
-    t.event({ type: 'tool_call', id: 'c1', name: 'codemm.save_lesson' });
+    t.event({ type: 'tool_call', id: 'c1', name: 'code-learn.save_lesson' });
     t.event({ type: 'tool_result', id: 'c1', error: true, text: 'bad' });
     expect(t.snapshot()).toMatchObject({ stage: 1, retry: { attempt: 2, of: 3 } });
-    t.event({ type: 'tool_call', id: 'c2', name: 'codemm.save_lesson' });
+    t.event({ type: 'tool_call', id: 'c2', name: 'code-learn.save_lesson' });
     t.event({ type: 'tool_result', id: 'c2', error: true });
     expect(t.snapshot().retry).toEqual({ attempt: 3, of: 3 });
   });
@@ -60,7 +60,7 @@ describe('job progress (§4.11)', () => {
   it('goes back to the second stage when a roadmap save is rejected, with no bounded retry', () => {
     for (const kind of ['research', 'roadmap', 'review'] as const) {
       const t = jobTracker(kind, { id: 'job-1' });
-      t.event({ type: 'tool_call', id: 'c1', name: 'codemm.save_roadmap' });
+      t.event({ type: 'tool_call', id: 'c1', name: 'code-learn.save_roadmap' });
       t.event({ type: 'tool_result', id: 'c1', error: true });
       expect(t.snapshot()).toMatchObject({ stage: 1 });
       expect(t.snapshot().retry).toBeUndefined();
@@ -70,18 +70,18 @@ describe('job progress (§4.11)', () => {
   it('counts failed saves afresh after a relaunch, as the runner does', () => {
     const t = jobTracker('author', { id: 'job-1' });
     for (const id of ['c1', 'c2', 'c3']) {
-      t.event({ type: 'tool_call', id, name: 'codemm.save_exercise' });
+      t.event({ type: 'tool_call', id, name: 'code-learn.save_exercise' });
       t.event({ type: 'tool_result', id, error: true });
     }
     t.relaunch();
-    t.event({ type: 'tool_call', id: 'c4', name: 'codemm.save_exercise' });
+    t.event({ type: 'tool_call', id: 'c4', name: 'code-learn.save_exercise' });
     t.event({ type: 'tool_result', id: 'c4', error: true });
     expect(t.snapshot().retry).toEqual({ attempt: 2, of: 3 });
   });
 
   it('starts over on a relaunch, as attempt 2 of 2', () => {
     const t = jobTracker('research', { id: 'job-1' });
-    t.event({ type: 'tool_call', id: 'c1', name: 'codemm.save_roadmap' });
+    t.event({ type: 'tool_call', id: 'c1', name: 'code-learn.save_roadmap' });
     t.relaunch();
     expect(t.snapshot()).toMatchObject({ stage: 0, retry: { attempt: 2, of: 2 }, thinking: true });
   });
@@ -115,17 +115,17 @@ describe('job progress (§4.11)', () => {
   it('a setup job stays on proposing; the build and its checks come later', () => {
     const t = jobTracker('setup', { id: 'job-1' });
     t.event({ type: 'session', id: 's1' });
-    t.event({ type: 'tool_call', id: 'c1', name: 'codemm.save_track' });
+    t.event({ type: 'tool_call', id: 'c1', name: 'code-learn.save_track' });
     expect(t.snapshot().stage).toBe(0);
   });
 
-  it("follows Codemm's own work, such as a setup's build, which isn't the agent thinking", () => {
+  it("follows code-learn's own work, such as a setup's build, which isn't the agent thinking", () => {
     const t = jobTracker('setup', { id: 'job-1' });
     t.reach(1);
     expect(t.snapshot()).toMatchObject({ stage: 1, thinking: false });
   });
 
-  it("says what Codemm itself does at a stage until it moves on: a WASI track's language downloading (core §4.5)", () => {
+  it("says what code-learn itself does at a stage until it moves on: a WASI track's language downloading (core §4.5)", () => {
     const t = jobTracker('setup', { id: 'job-1' });
     t.event({ type: 'progress', step: { kind: 'step', label: 'Proposing the setup' } });
     t.reach(1, undefined, 'Downloading the language');
@@ -134,7 +134,7 @@ describe('job progress (§4.11)', () => {
     expect(t.snapshot()).toMatchObject({ stage: 2, steps: [{ kind: 'step', label: 'Proposing the setup' }] });
   });
 
-  it("carries a real fraction for Codemm's own work: a build's steps", () => {
+  it("carries a real fraction for code-learn's own work: a build's steps", () => {
     const t = jobTracker('setup', { id: 'job-1' });
     t.reach(1, { done: 3, total: 7 });
     expect(t.snapshot()).toMatchObject({ stage: 1, part: { done: 3, total: 7 } });
@@ -148,9 +148,9 @@ describe('job progress (§4.11)', () => {
 
   it("shows which exercise gate runs, as a step and 1 to 3 of 3, until the save's result", () => {
     const t = jobTracker('author', { id: 'job-1' });
-    t.event({ type: 'tool_call', id: 'c1', name: 'codemm.save_exercise' });
+    t.event({ type: 'tool_call', id: 'c1', name: 'code-learn.save_exercise' });
     t.gate('starter');
-    expect(t.snapshot()).toMatchObject({ stage: 2, part: { done: 2, total: 3 }, steps: [{ kind: 'step', label: "Codemm is checking that the exercise isn't solved yet" }], thinking: false });
+    expect(t.snapshot()).toMatchObject({ stage: 2, part: { done: 2, total: 3 }, steps: [{ kind: 'step', label: "code-learn is checking that the exercise isn't solved yet" }], thinking: false });
     t.gate('starter');
     expect(t.snapshot().count).toBe(1);
     t.event({ type: 'tool_result', id: 'c1', error: true });
@@ -161,7 +161,7 @@ describe('job progress (§4.11)', () => {
     const t = jobTracker('author', { id: 'job-1' });
     t.gate('mutants');
     expect(t.snapshot().part).toBeUndefined();
-    t.event({ type: 'tool_call', id: 'c1', name: 'codemm.save_exercise' });
+    t.event({ type: 'tool_call', id: 'c1', name: 'code-learn.save_exercise' });
     expect(t.saving()).toBe(true);
     t.relaunch();
     expect(t.saving()).toBe(false);

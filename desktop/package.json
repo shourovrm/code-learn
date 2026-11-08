@@ -1,11 +1,11 @@
 {
-  "name": "codemm-desktop",
-  "productName": "Codemm",
+  "name": "code-learn-desktop",
+  "productName": "code-learn",
   "version": "1.0.0-beta.10",
   "private": true,
-  "description": "Codemm desktop app",
+  "description": "code-learn desktop app",
   "license": "MIT",
-  "author": "Codemm contributors",
+  "author": "code-learn contributors",
   "homepage": "https://github.com/iignaite/Codemm",
   "main": "out/main/boot.js",
   "engines": {

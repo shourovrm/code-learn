@@ -3,7 +3,7 @@
 # (the connection drops mid-check but the daemon answers again), oom (the memory limit kills the container's
 # PID 1: exit 137 with no frames, the daemon stays up and records an oom event) or killed (an outside
 # `docker kill` after one case was reported: exit 137 with no oom event).
-# It answers only the commands Codemm sends, with Docker 27's wording, using shell builtins only.
+# It answers only the commands code-learn sends, with Docker 27's wording, using shell builtins only.
 daemon_down="Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?"
 case "$1" in
   --version) echo "Docker version 27.4.0, build fake" ;;
@@ -44,7 +44,7 @@ case "$1" in
   run)
     # Run scenarios act out the Run driver: its markers go to stderr, around the program's own output.
     # interactive: asks for a name and greets it. waits/ignores: run until killed (no end marker).
-    m() { printf '\n@@codemm-run %s\n' "$*" >&2; }
+    m() { printf '\n@@code-learn-run %s\n' "$*" >&2; }
     # nospace: the container can't even start, because Docker's disk is full (a Run or a check alike).
     [ "$FAKE_DOCKER" = nospace ] && { echo "docker: Error response from daemon: mkdir /var/lib/docker/overlay2/x: no space left on device." >&2; exit 125; }
     # nosh: an image without /bin/sh, which every run starts with.
@@ -70,8 +70,8 @@ case "$1" in
     if [ "$FAKE_DOCKER" = streams ] || [ "$FAKE_DOCKER" = echoes ]; then
       tests=""
       build=""
-      for a in "$@"; do case "$a" in *target=/work/tests,*) tests="${a#*source=}"; tests="${tests%%,target=*}" ;; CODEMM_BUILD=*) build=1 ;; esac; done
-      if [ -n "$build" ]; then /bin/sleep 0.2; printf '\n@@codemm build build 0 0\n'; fi
+      for a in "$@"; do case "$a" in *target=/work/tests,*) tests="${a#*source=}"; tests="${tests%%,target=*}" ;; CODE_LEARN_BUILD=*) build=1 ;; esac; done
+      if [ -n "$build" ]; then /bin/sleep 0.2; printf '\n@@code-learn build build 0 0\n'; fi
       found=""
       for f in "$tests"/*.in; do
         [ -e "$f" ] || continue
@@ -79,11 +79,11 @@ case "$1" in
         n="${f##*/}"; n="${n%.in}"
         if [ "$FAKE_DOCKER" = echoes ]; then
           text=$(/bin/cat "$f") # ASCII, so its length is its size in bytes
-          printf '\n@@codemm case %s 1 %s\n%s' "$n" "${#text}" "$text"
-          printf '\n@@codemm stderr %s 1 %s\n%s' "$n" "${#text}" "$text"
+          printf '\n@@code-learn case %s 1 %s\n%s' "$n" "${#text}" "$text"
+          printf '\n@@code-learn stderr %s 1 %s\n%s' "$n" "${#text}" "$text"
         else
-          printf '\n@@codemm case %s 0 2\n0\n' "$n"
-          printf '\n@@codemm stderr %s 0 0\n' "$n"
+          printf '\n@@code-learn case %s 0 2\n0\n' "$n"
+          printf '\n@@code-learn stderr %s 0 0\n' "$n"
         fi
         /bin/sleep 0.2 # PATH holds only this fake in tests
       done
@@ -91,8 +91,8 @@ case "$1" in
       if [ -z "$found" ]; then
         r='{"tests":[{"name":"t","status":"pass"}]}'
         if [ "$FAKE_DOCKER" = echoes ]; then r="{\"tests\":[{\"name\":\"t\",\"status\":\"fail\",\"message\":\"$(/bin/cat "$tests"/* | /usr/bin/tr -d '\n"\\')\"}]}"; fi
-        printf '\n@@codemm report report 0 %s\n%s' "${#r}" "$r"
-        printf '\n@@codemm log log 0 0\n'
+        printf '\n@@code-learn report report 0 %s\n%s' "${#r}" "$r"
+        printf '\n@@code-learn log log 0 0\n'
       fi
       exit 0
     fi
@@ -106,11 +106,11 @@ case "$1" in
       for f in "$tests"/*.in; do
         [ -e "$f" ] || continue
         found=1; n="${f##*/}"; n="${n%.in}"
-        printf '\n@@codemm case %s 137 0\n' "$n"
-        printf '\n@@codemm stderr %s 137 7\nKilled\n' "$n"
-        [ "$FAKE_DOCKER" = casekill ] && printf '\n@@codemm timeout %s 137 0\n' "$n"
+        printf '\n@@code-learn case %s 137 0\n' "$n"
+        printf '\n@@code-learn stderr %s 137 7\nKilled\n' "$n"
+        [ "$FAKE_DOCKER" = casekill ] && printf '\n@@code-learn timeout %s 137 0\n' "$n"
       done
-      if [ -z "$found" ]; then printf '\n@@codemm report report 137 0\n'; printf '\n@@codemm log log 137 6\nKilled'; fi
+      if [ -z "$found" ]; then printf '\n@@code-learn report report 137 0\n'; printf '\n@@code-learn log log 137 6\nKilled'; fi
       exit 0
     fi
     # leaks-build / leaks: a run that prints the source it was given, as a compiler error or a traceback does.
@@ -121,8 +121,8 @@ case "$1" in
       r='{"tests":[]}'
       log=$(printf 'RUN  v3.2.7 /work\n%.0s' 1 2 3; printf 'No test files found, exiting with code 1')
       [ "$FAKE_DOCKER" = notests-disk ] && log="write /tmp/cache: no space left on device"
-      printf '\n@@codemm report report 1 %s\n%s' "${#r}" "$r"
-      printf '\n@@codemm log log 1 %s\n%s' "${#log}" "$log"
+      printf '\n@@code-learn report report 1 %s\n%s' "${#r}" "$r"
+      printf '\n@@code-learn log log 1 %s\n%s' "${#log}" "$log"
       exit 0
     fi
     # leaks-start: code writes the source to stderr before any frame, then the runtime fails with exit 125.
@@ -132,45 +132,45 @@ case "$1" in
     fi
     if [ "$FAKE_DOCKER" = leaks-build ] || [ "$FAKE_DOCKER" = leaks ]; then
       tests=""; src=""; build=""
-      for a in "$@"; do case "$a" in *target=/work/tests,*) tests="${a#*source=}"; tests="${tests%%,target=*}" ;; *target=/work/src,*) src="${a#*source=}"; src="${src%%,target=*}" ;; CODEMM_BUILD=*) build=1 ;; esac; done
+      for a in "$@"; do case "$a" in *target=/work/tests,*) tests="${a#*source=}"; tests="${tests%%,target=*}" ;; *target=/work/src,*) src="${a#*source=}"; src="${src%%,target=*}" ;; CODE_LEARN_BUILD=*) build=1 ;; esac; done
       text=$(/bin/cat "$src"/* | /usr/bin/tr -d '\n"\\') # ASCII, so its length is its size in bytes
-      if [ "$FAKE_DOCKER" = leaks-build ] && [ -n "$build" ]; then printf '\n@@codemm build build 1 %s\n%s' "${#text}" "$text"; exit 0; fi
-      if [ -n "$build" ]; then printf '\n@@codemm build build 0 0\n'; fi
+      if [ "$FAKE_DOCKER" = leaks-build ] && [ -n "$build" ]; then printf '\n@@code-learn build build 1 %s\n%s' "${#text}" "$text"; exit 0; fi
+      if [ -n "$build" ]; then printf '\n@@code-learn build build 0 0\n'; fi
       found=""
       for f in "$tests"/*.in; do
         [ -e "$f" ] || continue
         found=1
         n="${f##*/}"; n="${n%.in}"
-        printf '\n@@codemm case %s 1 0\n' "$n"
-        printf '\n@@codemm stderr %s 1 %s\n%s' "$n" "${#text}" "$text"
+        printf '\n@@code-learn case %s 1 0\n' "$n"
+        printf '\n@@code-learn stderr %s 1 %s\n%s' "$n" "${#text}" "$text"
       done
       # A case under a name no input has, as a forged frame would carry.
-      if [ -n "$found" ]; then printf '\n@@codemm case CANARY-CASE 1 0\n'; printf '\n@@codemm stderr CANARY-CASE 1 0\n'; fi
+      if [ -n "$found" ]; then printf '\n@@code-learn case CANARY-CASE 1 0\n'; printf '\n@@code-learn stderr CANARY-CASE 1 0\n'; fi
       if [ -z "$found" ]; then
         r="{\"tests\":[{\"name\":\"t\",\"status\":\"fail\",\"message\":\"$text\"}]}"
-        printf '\n@@codemm report report 0 %s\n%s' "${#r}" "$r"
-        printf '\n@@codemm log log 0 0\n'
+        printf '\n@@code-learn report report 0 %s\n%s' "${#r}" "$r"
+        printf '\n@@code-learn log log 0 0\n'
       fi
       exit 0
     fi
     # srcout: each io case prints the last line of the program's source, so programs that end alike grade alike.
     if [ "$FAKE_DOCKER" = srcout ]; then
-      for a in "$@"; do case "$a" in *target=/work/tests,*) tests="${a#*source=}"; tests="${tests%%,target=*}" ;; *target=/work/src,*) src="${a#*source=}"; src="${src%%,target=*}" ;; CODEMM_BUILD=*) build=1 ;; esac; done
+      for a in "$@"; do case "$a" in *target=/work/tests,*) tests="${a#*source=}"; tests="${tests%%,target=*}" ;; *target=/work/src,*) src="${a#*source=}"; src="${src%%,target=*}" ;; CODE_LEARN_BUILD=*) build=1 ;; esac; done
       for f in "$src"/*; do while IFS= read -r l; do last=$l; done < "$f"; done
-      if [ -n "$build" ]; then printf '\n@@codemm build build 0 0\n'; fi
+      if [ -n "$build" ]; then printf '\n@@code-learn build build 0 0\n'; fi
       for f in "$tests"/*.in; do
         [ -e "$f" ] || continue
         n="${f##*/}"; n="${n%.in}"
-        printf '\n@@codemm case %s 0 %s\n%s\n' "$n" "$((${#last} + 1))" "$last"
-        printf '\n@@codemm stderr %s 0 0\n' "$n"
+        printf '\n@@code-learn case %s 0 %s\n%s\n' "$n" "$((${#last} + 1))" "$last"
+        printf '\n@@code-learn stderr %s 0 0\n' "$n"
       done
       exit 0
     fi
     # An outside kill can land after the driver already reported a case.
-    case "$FAKE_DOCKER" in oom|oom-late) exit 137 ;; killed) printf '\n@@codemm case 01 0 2\n3\n'; exit 137 ;; esac
+    case "$FAKE_DOCKER" in oom|oom-late) exit 137 ;; killed) printf '\n@@code-learn case 01 0 2\n3\n'; exit 137 ;; esac
     # One frame gets out, then the connection drops. With "stops" the daemon stays down.
     case "$FAKE_DOCKER" in stops) : > "$0.stopped" ;; drops) ;; *) exit 1 ;; esac
-    printf '\n@@codemm build build 0 0\n'
+    printf '\n@@code-learn build build 0 0\n'
     echo "error waiting for container: unexpected EOF" >&2
     exit 125 ;;
   rm) exit 0 ;;

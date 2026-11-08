@@ -1,4 +1,4 @@
-import { CodemmError } from "./errors.js";
+import { CodeLearnError } from "./errors.js";
 
 type Kind = "value" | "multi" | "flag";
 type Spec = { args: [min: number, max: number]; options: Record<string, Kind>; usage: string };
@@ -34,7 +34,7 @@ export function parseCli(argv: string[]): Parsed {
   const [first, ...rest] = argv as [string, ...string[]];
   // Own keys only: "constructor" and the like are on every object's prototype.
   const name = Object.hasOwn(aliases, first) ? aliases[first]! : first;
-  if (!Object.hasOwn(COMMANDS, name)) throw new CodemmError(`Unknown command "${name}". Run codemm help.`);
+  if (!Object.hasOwn(COMMANDS, name)) throw new CodeLearnError(`Unknown command "${name}". Run code-learn help.`);
   const command = name as Command;
   const spec: Spec = COMMANDS[command];
 
@@ -49,22 +49,22 @@ export function parseCli(argv: string[]): Parsed {
     const eq = token.indexOf("=");
     const name = token.slice(2, eq < 0 ? undefined : eq);
     const kind = spec.options[name];
-    if (!kind) throw new CodemmError(`Unknown option --${name} for codemm ${command}. Usage: codemm ${spec.usage}`);
+    if (!kind) throw new CodeLearnError(`Unknown option --${name} for code-learn ${command}. Usage: code-learn ${spec.usage}`);
     let value: string | undefined;
     if (kind === "flag") {
-      if (eq >= 0) throw new CodemmError(`--${name} doesn't take a value.`);
+      if (eq >= 0) throw new CodeLearnError(`--${name} doesn't take a value.`);
       value = "true";
     } else {
       value = eq >= 0 ? token.slice(eq + 1) : rest[++i];
-      if (value === undefined || value === "" || (eq < 0 && value.startsWith("--"))) throw new CodemmError(`--${name} needs a value.`);
+      if (value === undefined || value === "" || (eq < 0 && value.startsWith("--"))) throw new CodeLearnError(`--${name} needs a value.`);
     }
-    if (kind !== "multi" && options[name]) throw new CodemmError(`--${name} was given twice.`);
+    if (kind !== "multi" && options[name]) throw new CodeLearnError(`--${name} was given twice.`);
     options[name] = [...(options[name] ?? []), value];
   }
   const [min, max] = spec.args;
   if (args.length < min || args.length > max) {
     const expected = max === 0 ? `${command} takes no arguments` : `${command} needs ${min === max ? min : `${min} to ${max}`} argument${max === 1 ? "" : "s"}`;
-    throw new CodemmError(`${expected}. Usage: codemm ${spec.usage}`);
+    throw new CodeLearnError(`${expected}. Usage: code-learn ${spec.usage}`);
   }
   return { command, args, options };
 }

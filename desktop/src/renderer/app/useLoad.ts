@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 /**
- * How often screens re-read Codemm while it is still working, re-check this computer, look for agents (one installed,
+ * How often screens re-read code-learn while it is still working, re-check this computer, look for agents (one installed,
  * removed or signed in elsewhere), and re-read a settled course.
  */
 export const timing = { pollMs: 500, recheckMs: 5000, agentsMs: 3000, idleMs: 600_000 };

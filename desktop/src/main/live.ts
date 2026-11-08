@@ -1,4 +1,4 @@
-// The CodemmApi over the real core and the learner's own agent (DESIGN §2–§6).
+// The CodeLearnApi over the real core and the learner's own agent (DESIGN §2–§6).
 // Main calls core `app` functions in-process; agent jobs run through the
 // bridge; everything returned goes through views.ts.
 import { mkdirSync } from 'node:fs';
@@ -15,7 +15,7 @@ import {
   type AgentId,
   type CheckProgress,
   type JobProgress,
-  type CodemmApi,
+  type CodeLearnApi,
   type Computer,
   type Concept,
   type CourseView,
@@ -45,15 +45,15 @@ export interface LiveDeps {
   connect: ReturnType<typeof connector>;
   computer: () => Promise<Computer>;
   state: ReturnType<typeof desktopState>;
-  /** The learner's workspace, ~/Codemm by default (O5). */
+  /** The learner's workspace, ~/code-learn by default (O5). */
   ws: string;
   /** The MCP server one job's agent starts, bound to its course and tools (§2, §4.6), and for an author, its gate file (§4.11). */
   server: (course: string | undefined, tools: string[], progress?: string) => McpServer;
-  /** A Codemm-owned folder for the gate files author jobs' servers write (§4.11). */
+  /** A code-learn-owned folder for the gate files author jobs' servers write (§4.11). */
   progressDir?: string;
   /** The app's own executable, which runs Node-script agents. */
   runtime?: string;
-  /** A Codemm-owned folder for agents that read their config from the working directory (Cursor). */
+  /** A code-learn-owned folder for agents that read their config from the working directory (Cursor). */
   agentDir?: string;
   runJob?: (job: Job) => Promise<JobOutcome>;
   /** What the agents reported using, per course and job kind (usage.ts). */
@@ -71,7 +71,7 @@ export interface LiveDeps {
   docker?: { install(): void; open(): Promise<void>; windowsUpdate(): Promise<void>; restartWindows(): Promise<void> };
 }
 
-export interface Live extends CodemmApi {
+export interface Live extends CodeLearnApi {
   /** Stops every agent job with its process group, then removes leftover containers (§5). */
   stop(): Promise<void>;
 }
@@ -158,7 +158,7 @@ export function createLive(d: LiveDeps): Live {
   /** Per course, the kind of background work whose stall it is. */
   const stalledWork = new Map<string, NonNullable<CourseView['stalledWork']>>();
   let tutorTurnCount = 0;
-  /** Set once an agent survived its cancel: no agent starts again until Codemm quits (§3.1). */
+  /** Set once an agent survived its cancel: no agent starts again until code-learn quits (§3.1). */
   let unstoppable = false;
   /** Set once quitting starts: nothing new runs (§5). */
   let stopping = false;
@@ -175,7 +175,7 @@ export function createLive(d: LiveDeps): Live {
   const whenReady = <T>(track: string | undefined, operation: () => Promise<T>): Promise<T> =>
     tracked(
       (!track || onWasi(track) ? Promise.resolve() : dockerReady()).then(() => {
-        if (stopping) throw new SafeError('Codemm is quitting.');
+        if (stopping) throw new SafeError('code-learn is quitting.');
         return operation();
       }),
     );
@@ -334,9 +334,9 @@ export function createLive(d: LiveDeps): Live {
       launched = true;
       // A cancelled job, or background work queued behind its course's stall, never launches.
       if (stop.signal.aborted || (lane === 'bg' && course !== undefined && stalls.has(course))) return { ok: false, problem: 'failed', text: [] };
-      // Nor does any job while an agent Codemm couldn't stop may still run (§3.1).
+      // Nor does any job while an agent code-learn couldn't stop may still run (§3.1).
       if (unstoppable) return { ok: false, problem: 'unstoppable', text: [] };
-      // The agent, and the Codemm server it starts, inherit PATH as it is now.
+      // The agent, and the code-learn server it starts, inherit PATH as it is now.
       await livePath();
       const { id, exe, model } = await d.connect.chosen();
       // Again after the lookup: another job may have found its agent unstoppable meanwhile.
@@ -500,7 +500,7 @@ export function createLive(d: LiveDeps): Live {
 
   /**
    * Starts the background work the course needs: a setup proposal, the current topic's lesson and
-   * activity, for a course (the one on screen by default). Codemm's own steps call it, so reopening a lesson or an
+   * activity, for a course (the one on screen by default). code-learn's own steps call it, so reopening a lesson or an
    * activity starts no agent (D9). The one read that calls it is a course read that finds a review the clock made due
    * (core §7).
    */
@@ -846,7 +846,7 @@ export function createLive(d: LiveDeps): Live {
       // Tracked and guarded like every container operation: quitting waits for it, its failure handling included, and
       // one still waiting for its turn or for Docker when quitting starts never runs. Builds take turns across courses.
       mine.installing = tracked(queue('builds')(() => {
-        // Codemm builds and checks the approved files once its turn comes: the setup's later stages (§4.11).
+        // code-learn builds and checks the approved files once its turn comes: the setup's later stages (§4.11).
         const t = (tracker = jobTracker('setup'));
         trackers.set(`install:${ref}`, { tracker: t, audience: { track: ref } });
         t.reach(1);
@@ -987,7 +987,7 @@ export function createLive(d: LiveDeps): Live {
       const outcome = await turn;
       // Checked against this turn's course, whatever course is approved by now.
       const filter = hidden(course);
-      return outcome.text.map((t) => ({ from: 'codemm' as const, text: shown(t, filter) }));
+      return outcome.text.map((t) => ({ from: 'code-learn' as const, text: shown(t, filter) }));
     },
 
     async skip(concept) {

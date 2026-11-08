@@ -1,4 +1,4 @@
-import { CodemmError } from "../errors.js";
+import { CodeLearnError } from "../errors.js";
 import { MASTERED, coveredConcepts, replay } from "../learner.js";
 import { assertRuntime } from "../sandbox.js";
 import * as store from "../store.js";
@@ -34,7 +34,7 @@ export async function skip(ws: string, concept: string, bound?: string): Promise
   const courseId = activeCourse(ws, bound).course;
   await store.withLock(store.courseLockPath(courseId), async () => {
     const course = store.readCourse(courseId)!;
-    if (!course.concepts.some((c) => c.id === concept)) throw new CodemmError(`"${concept}" is not in the roadmap for ${courseId}.`);
+    if (!course.concepts.some((c) => c.id === concept)) throw new CodeLearnError(`"${concept}" is not in the roadmap for ${courseId}.`);
     store.appendEvent(courseId, { format_version: 1, kind: "skip", at: new Date().toISOString(), concept });
   });
 }

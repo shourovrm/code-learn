@@ -1,7 +1,7 @@
-// Test fakes for the live CodemmApi: an in-memory core with the shapes and
+// Test fakes for the live CodeLearnApi: an in-memory core with the shapes and
 // rules the desktop relies on, and agent jobs that act like their agents.
 import { join } from 'node:path';
-import type { CodemmApi, CourseView } from '../../shared/api';
+import type { CodeLearnApi, CourseView } from '../../shared/api';
 import type { Job, JobOutcome } from '../agent/jobs';
 import { connector } from '../connect';
 import { nextLesson } from '../../../../src/learner';
@@ -19,9 +19,9 @@ type FakeRoadmap = { course: string; title?: string; goal: string; track?: strin
 
 const DOCKER_DOWN = "The container runtime isn't running. Start Docker Desktop and wait until it says it's running, then retry.";
 
-/** An error as core throws it: a CodemmError, with its kind when it has one (src/errors.ts). */
-/** A CodemmError as core throws it: with its kind, and for this computer's problems its code (core src/errors.ts INFRA). */
-export const coreError = (message: string, kind?: CoreErrorKind, code?: string) => Object.assign(new Error(message), { name: 'CodemmError', ...(kind ? { kind } : {}), ...(code ? { code } : {}) });
+/** An error as core throws it: a CodeLearnError, with its kind when it has one (src/errors.ts). */
+/** A CodeLearnError as core throws it: with its kind, and for this computer's problems its code (core src/errors.ts INFRA). */
+export const coreError = (message: string, kind?: CoreErrorKind, code?: string) => Object.assign(new Error(message), { name: 'CodeLearnError', ...(kind ? { kind } : {}), ...(code ? { code } : {}) });
 
 /** A program that asks for a name and greets it; stops when killed. */
 function greeter(output: (text: string, stream: 'stdout' | 'stderr') => void, options?: { onStart?: (stage: 'build' | 'run', limitMs: number) => void }): CoreProgramRun {
@@ -151,7 +151,7 @@ export function fakeCore() {
     getExercise: async (_ws, slug, bound) => {
       c.bound.push(bound);
       c.current = slug;
-      return { course: roadmapOf(bound).course, exercise: slug!, path: '/Users/me/Codemm/exercises/x', style: 'io', concepts: [c.exercises.get(slug!)!.concept], difficulty: 1, files: ['main.c'], statement: '# Count up\n\nPrint one.', visibleTests: [{ name: 'prints one', input: '', expected: '1' }], run: './main' };
+      return { course: roadmapOf(bound).course, exercise: slug!, path: '/Users/me/code-learn/exercises/x', style: 'io', concepts: [c.exercises.get(slug!)!.concept], difficulty: 1, files: ['main.c'], statement: '# Count up\n\nPrint one.', visibleTests: [{ name: 'prints one', input: '', expected: '1' }], run: './main' };
     },
     testExercise: async (_ws, slug, bound, onProgress) => {
       c.bound.push(bound);
@@ -219,7 +219,7 @@ export function fakeCore() {
     writeLearnerFile: async (_ws, slug, _path, text, digest, bound) => {
       c.bound.push(bound);
       const ex = c.exercises.get(slug)!;
-      if (ex.digest !== digest) throw coreError('Changed outside Codemm since it was loaded.', 'changed');
+      if (ex.digest !== digest) throw coreError('Changed outside code-learn since it was loaded.', 'changed');
       ex.file = text;
       ex.digest = String(Number(digest) + 1).padStart(64, '0');
       return { digest: ex.digest };
@@ -243,7 +243,7 @@ function openConcept(c: { mastered: Set<string>; skipped: Set<string> }, concept
   return open.find((x) => !c.skipped.has(x.id)) ?? open[0];
 }
 
-/** Fake agent jobs: each does what its job's agent would do through Codemm's tools. An override can fall back to `usual`. */
+/** Fake agent jobs: each does what its job's agent would do through code-learn's tools. An override can fall back to `usual`. */
 type Act = (job: Job, usual: () => Partial<JobOutcome> | Promise<Partial<JobOutcome>>) => Partial<JobOutcome> | Promise<Partial<JobOutcome>>;
 
 export function fakeJobs(c: ReturnType<typeof fakeCore>['c'], over: Partial<Record<Job['kind'], Act>> = {}) {
@@ -300,7 +300,7 @@ export function fakeJobs(c: ReturnType<typeof fakeCore>['c'], over: Partial<Reco
 export function live(over: Partial<Record<Job['kind'], Act>> = {}, deps: Partial<LiveDeps> = {}) {
   const { c, app } = fakeCore();
   const jobs = fakeJobs(c, over);
-  const dir = tempDir('codemm-live-');
+  const dir = tempDir('code-learn-live-');
   const state = desktopState(dir);
   const lookup = { find: (bin: string) => ({ path: `/bin/${bin}`, js: false }), signedIn: async () => true, version: async () => '2.1.283' };
   const connect = connector(lookup, state);
@@ -309,14 +309,14 @@ export function live(over: Partial<Record<Job['kind'], Act>> = {}, deps: Partial
     connect,
     computer: async () => ({ platform: 'mac', checks: [], ready: true }),
     state,
-    ws: '/Users/me/Codemm',
+    ws: '/Users/me/code-learn',
     agentDir: '/userData/agents',
     server: (course, tools, progress) => ({ command: '/app', args: ['core/cli.mjs', 'mcp', ...(course ? ['--course', course] : []), '--tools', tools.join(','), ...(progress ? ['--progress', progress] : [])] }),
     runJob: jobs.runJob,
     log: createLog(dir),
     ...deps,
   });
-  return { api, c, app, jobs, connect, dir, logFile: join(dir, 'codemm.log') };
+  return { api, c, app, jobs, connect, dir, logFile: join(dir, 'code-learn.log') };
 }
 
 /** Reads until `done` holds, for up to 2 s, then fails. A read that throws fails at once. */
@@ -330,7 +330,7 @@ export async function settle<T>(read: () => Promise<T>, done: (value: T) => bool
   }
 }
 
-export async function until(api: CodemmApi, done: (c: CourseView) => boolean) {
+export async function until(api: CodeLearnApi, done: (c: CourseView) => boolean) {
   return (await settle(() => api.course(), (c) => c !== null && done(c), 'The course'))!;
 }
 

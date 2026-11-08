@@ -7,7 +7,7 @@ const BUSY = { proposing: 'Preparing setup for', installing: 'Setting up' } as c
 
 /**
  * Setup's progress on the course map while the track sets up, as on the topic page (§4.11): the agent proposing, then
- * Codemm building and checking. A proposing agent may still be ending its turn while the install runs, so each state
+ * code-learn building and checking. A proposing agent may still be ending its turn while the install runs, so each state
  * follows its own job. Nothing once setup waits for consent, is ready or failed: the topic page handles those.
  */
 export function SetupProgress({ course }: { course: CourseView }) {

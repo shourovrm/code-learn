@@ -3,14 +3,14 @@ import { createHash, randomBytes } from "node:crypto";
 import { existsSync, lstatSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, type Stats } from "node:fs";
 import { open } from "node:fs/promises";
 import { basename, join } from "node:path";
-import { CodemmError, infraError, type InfraCode } from "./errors.js";
+import { CodeLearnError, infraError, type InfraCode } from "./errors.js";
 import type { WasiSpec } from "./schemas.js";
 import * as store from "./store.js";
 import { sealReadOnly, unseal } from "./wasi.js";
 
 /**
  * A WASI track's toolchain (DESIGN §4.5): downloaded over https, hashed as it arrives, unpacked with the system's tools,
- * sealed read-only and stored once per digest under $CODEMM_HOME/toolchains/. A plain CodemmError is the track's
+ * sealed read-only and stored once per digest under $CODE_LEARN_HOME/toolchains/. A plain CodeLearnError is the track's
  * problem (gates report it as gate "toolchain"), as is a zip on a Linux computer with nothing to unpack it, which a
  * .tar.gz link avoids; this computer's network or disk throws with its infrastructure code.
  */
@@ -49,7 +49,7 @@ export async function ensureToolchain(wasi: Source, { replace = false, ...limits
   const parent = store.toolchainsDir();
   // First, and so before the free-space check: what crashed installs left may be what fills the disk.
   removeAbandonedInstalls(parent);
-  // A folder damaged outside Codemm (its module or a dirs folder gone) is downloaded again, and so repaired.
+  // A folder damaged outside code-learn (its module or a dirs folder gone) is downloaded again, and so repaired.
   if (wasi.sha256 && !replace && existsSync(store.toolchainDir(wasi.sha256)) && laidOut(store.toolchainDir(wasi.sha256), wasi)) {
     return { root: store.toolchainDir(wasi.sha256), sha256: wasi.sha256 };
   }
@@ -120,21 +120,21 @@ async function download(url: string, file: string, expected: string | undefined,
       controller.abort();
     }, stallMs);
   };
-  const tooBig = () => new CodemmError(`The file at ${url} is larger than ${maxDownload / MB} MB, the most Codemm downloads for a toolchain.`);
+  const tooBig = () => new CodeLearnError(`The file at ${url} is larger than ${maxDownload / MB} MB, the most code-learn downloads for a toolchain.`);
   alive();
   try {
     const response = await answer(url, controller.signal);
-    const refuse = async (e: CodemmError) => {
+    const refuse = async (e: CodeLearnError) => {
       await response.body?.cancel().catch(() => undefined);
       return e;
     };
     const retry = "This is not a problem with the track files, so retry with the same files later.";
     if (response.status === 404 || response.status === 410) {
-      throw await refuse(new CodemmError(`Downloading wasi.url failed: HTTP ${response.status}, so ${url} isn't there. Check the link.`));
+      throw await refuse(new CodeLearnError(`Downloading wasi.url failed: HTTP ${response.status}, so ${url} isn't there. Check the link.`));
     }
     if (response.status === 429) throw await refuse(infraError(`The download server is limiting requests (HTTP 429), so nothing was installed. ${retry}`, "rate-limit"));
     if (response.status >= 500) throw await refuse(infraError(`The download server failed (HTTP ${response.status}), so nothing was installed. ${retry}`, "offline"));
-    if (!response.ok) throw await refuse(new CodemmError(`Downloading wasi.url failed: ${url} answered HTTP ${response.status}. Check the link.`));
+    if (!response.ok) throw await refuse(new CodeLearnError(`Downloading wasi.url failed: ${url} answered HTTP ${response.status}. Check the link.`));
     // A toolchain is never a web page: a school filter or a captive portal answered instead of the server.
     if (/^text\/html\b/i.test(response.headers.get("content-type") ?? "")) {
       throw await refuse(infraError(
@@ -166,12 +166,12 @@ async function download(url: string, file: string, expected: string | undefined,
     }
     const actual = hash.digest("hex");
     if (expected && actual !== expected) {
-      throw new CodemmError(`wasi.sha256 is ${expected}, but the file at ${url} has SHA-256 ${actual}. Check the link, and put the SHA-256 of the file it serves in wasi.sha256.`);
+      throw new CodeLearnError(`wasi.sha256 is ${expected}, but the file at ${url} has SHA-256 ${actual}. Check the link, and put the SHA-256 of the file it serves in wasi.sha256.`);
     }
     return actual;
   } catch (e) {
     // The disk's errors (diskError) and the track's are already what they are.
-    if (e instanceof CodemmError || e instanceof DiskError) throw e;
+    if (e instanceof CodeLearnError || e instanceof DiskError) throw e;
     throw networkError(e, stalled);
   } finally {
     clearTimeout(timer);
@@ -190,11 +190,11 @@ async function answer(url: string, signal: AbortSignal): Promise<Response> {
     await response.body?.cancel().catch(() => undefined);
     const next = new URL(location, current);
     if (next.protocol !== "https:" || next.username || next.password) {
-      throw new CodemmError(`wasi.url redirects to a link that isn't https with no credentials (${next.protocol}//${next.host}). Use a link that stays on https.`);
+      throw new CodeLearnError(`wasi.url redirects to a link that isn't https with no credentials (${next.protocol}//${next.host}). Use a link that stays on https.`);
     }
     current = next.href;
   }
-  throw new CodemmError(`wasi.url redirects more than ${MAX_REDIRECTS} times. Use the file's final link.`);
+  throw new CodeLearnError(`wasi.url redirects more than ${MAX_REDIRECTS} times. Use the file's final link.`);
 }
 
 /** Writing the download failed: this computer's disk, never its network. */
@@ -211,7 +211,7 @@ const CERTIFICATE = /CERT|SSL|TLS|SELF_SIGNED|UNABLE_TO_(GET_ISSUER|VERIFY)/i;
 const DROPPED =
   /ETIMEDOUT|ECONNRESET|EPIPE|UND_ERR_(CONNECT_TIMEOUT|HEADERS_TIMEOUT|BODY_TIMEOUT|SOCKET)|ERR_TIMED_OUT|ERR_CONNECTION_(RESET|TIMED_OUT|CLOSED|ABORTED)|ERR_CONTENT_LENGTH_MISMATCH|ERR_INCOMPLETE_CHUNKED_ENCODING|ERR_HTTP2_PROTOCOL_ERROR|ERR_NETWORK_CHANGED/;
 
-function networkError(e: unknown, stalled: boolean): CodemmError {
+function networkError(e: unknown, stalled: boolean): CodeLearnError {
   const cause = (e as { cause?: { code?: string; message?: string } }).cause;
   const said = [cause?.code, cause?.message, (e as { code?: string }).code, (e as Error).message].filter(Boolean).join(" ");
   const retry = "This is not a problem with the track files, so retry with the same files.";
@@ -240,7 +240,7 @@ export function unpacker(file: string, dir: string, zip: boolean, platform = pro
   if (installed("/usr/bin/bsdtar")) return tar("/usr/bin/bsdtar");
   // -o: never ask before replacing a file, as tar doesn't.
   if (installed("/usr/bin/unzip")) return ["/usr/bin/unzip", ["-qq", "-o", file, "-d", dir]];
-  throw new CodemmError(
+  throw new CodeLearnError(
     "This computer can't unpack the .zip at wasi.url: its tar can't read zip, and neither unzip (/usr/bin/unzip) nor bsdtar (/usr/bin/bsdtar) " +
       "is installed. Install unzip, or link a .tar.gz of the same toolchain if its project publishes one, then retry.",
   );
@@ -267,12 +267,12 @@ async function unpack([bin, args]: [string, string[]], dir: string): Promise<voi
       if (/no space left|quota exceeded|disk full/i.test(said)) return reject(infraError("The disk filled up while unpacking the toolchain. Free some space, then retry.", "host-disk"));
       // Only the timer kills it: a slow computer, not the track.
       if (signal) return reject(infraError("Unpacking the toolchain took more than 10 minutes. Close other programs, then retry with the same files.", "check-timeout"));
-      reject(new CodemmError(`The archive at wasi.url didn't unpack with this computer's ${basename(bin, ".exe")}${said ? `:\n${said}` : "."}`));
+      reject(new CodeLearnError(`The archive at wasi.url didn't unpack with this computer's ${basename(bin, ".exe")}${said ? `:\n${said}` : "."}`));
     });
   });
   walk(dir, (_path, rel, stat) => {
     if (stat.isSymbolicLink() || !(stat.isFile() || stat.isDirectory()) || (stat.isFile() && stat.nlink > 1)) {
-      throw new CodemmError(`The archive at wasi.url holds a link or special file (${rel}). A toolchain may hold only files and folders.`);
+      throw new CodeLearnError(`The archive at wasi.url holds a link or special file (${rel}). A toolchain may hold only files and folders.`);
     }
   });
 }
@@ -315,11 +315,11 @@ function sameFiles(a: string, b: string): boolean {
 /** `module` must be a file in the toolchain and every `dirs` value a folder. */
 function assertLayout(root: string, wasi: Pick<WasiSpec, "module" | "dirs">): void {
   if (!lstatSync(join(root, wasi.module), { throwIfNoEntry: false })?.isFile()) {
-    throw new CodemmError(`wasi.module "${wasi.module}" isn't a file in the downloaded toolchain. Give its path in the archive.`);
+    throw new CodeLearnError(`wasi.module "${wasi.module}" isn't a file in the downloaded toolchain. Give its path in the archive.`);
   }
   for (const [at, folder] of Object.entries(wasi.dirs)) {
     if (!lstatSync(join(root, folder), { throwIfNoEntry: false })?.isDirectory()) {
-      throw new CodemmError(`wasi.dirs "${at}" names "${folder}", which isn't a folder in the downloaded toolchain. Give its path in the archive.`);
+      throw new CodeLearnError(`wasi.dirs "${at}" names "${folder}", which isn't a folder in the downloaded toolchain. Give its path in the archive.`);
     }
   }
 }
@@ -342,7 +342,7 @@ export function removeTree(dir: string): void {
 const LEFTOVER = /^\.(?:staging-(\d+)-[A-Za-z0-9]{6}(?:\.download)?|discard-(\d+)-[0-9a-f]{8})$/;
 
 /**
- * Removes the temp folders and downloads of installs whose Codemm process is gone, as run folders are (runs.ts). Their
+ * Removes the temp folders and downloads of installs whose code-learn process is gone, as run folders are (runs.ts). Their
  * contents may be sealed, so removeTree unseals them first. A live process's entries, links and anything else here are
  * never touched. Best effort: what can't be removed now is tried again by the next install.
  */

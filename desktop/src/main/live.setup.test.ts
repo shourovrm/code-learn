@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { type JobProgress } from '../shared/api';
 import { coreError, live, practising, researched, until } from './testing/fakes';
 
-describe('live CodemmApi: setup consent and install (§4.1)', () => {
+describe('live CodeLearnApi: setup consent and install (§4.1)', () => {
   it('proposes setup, builds only the proposal the learner saw, then writes lessons and an activity', async () => {
     const t = live();
     const activity = await practising(t);
@@ -186,7 +186,7 @@ describe('live CodemmApi: setup consent and install (§4.1)', () => {
     t.app.rebuildTrack = async () => {
       throw coreError('The container runtime isn\'t running. Start Docker Desktop (or `podman machine start`).', 'docker');
     };
-    // This computer's problem reaches the learner as Codemm's words and a next step, not core's.
+    // This computer's problem reaches the learner as code-learn's words and a next step, not core's.
     await expect(t.api.rebuild('react@1')).rejects.toThrow("Docker isn't running. Open Docker Desktop, then try again.");
     expect(heard.map((p) => [p.kind, p.ended ?? false])).toEqual([['rebuild', false], ['rebuild', true]]);
     expect(await t.api.jobProgress()).toEqual([]);
@@ -266,7 +266,7 @@ describe('live CodemmApi: setup consent and install (§4.1)', () => {
     const r = await researched(t);
     await t.api.approve(r.roadmap!.concepts);
     const { proposal } = await until(t.api, (c) => c.setup === 'consent');
-    t.c.install = async () => { throw Object.assign(new Error('Docker could not finish.'), { name: 'CodemmError', kind: 'offline' }); };
+    t.c.install = async () => { throw Object.assign(new Error('Docker could not finish.'), { name: 'CodeLearnError', kind: 'offline' }); };
     await t.api.install(proposal!.digest);
     expect(await until(t.api, (c) => c.setup === 'failed')).toMatchObject({ setupProblem: 'offline', proposal: { digest: proposal!.digest } });
   });
@@ -311,7 +311,7 @@ describe('live CodemmApi: setup consent and install (§4.1)', () => {
     expect(await s.api.check(activity.id)).toEqual({ kind: 'not-counted', reason: "Docker isn't running." });
   });
 
-  it("shows a setup's install as Codemm's own stage, and another proposal as a retry", async () => {
+  it("shows a setup's install as code-learn's own stage, and another proposal as a retry", async () => {
     const t = live();
     const heard: JobProgress[] = [];
     t.api.onJobProgress((p) => heard.push(p));

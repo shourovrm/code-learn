@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { CodemmApi, JobProgress } from '../shared/api';
+import type { CodeLearnApi, JobProgress } from '../shared/api';
 import { dispatch } from './ipc';
 import { CANARY, live, practising, settle } from './testing/fakes';
 import { HELD_BACK } from './views';
@@ -10,7 +10,7 @@ import { HELD_BACK } from './views';
 // hold canary strings. Every IPC handler is driven; no renderer-bound payload
 // or app log may hold a canary, and a tutor reply quoting one is held back.
 const leaks = /CANARY/;
-type Method = Exclude<keyof CodemmApi, 'onCheckProgress' | 'onJobProgress' | 'onRunOutput'>;
+type Method = Exclude<keyof CodeLearnApi, 'onCheckProgress' | 'onJobProgress' | 'onRunOutput'>;
 
 afterEach(() => vi.restoreAllMocks());
 

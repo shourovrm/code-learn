@@ -1,16 +1,19 @@
-// Claude Code: launching a headless turn with Codemm's MCP server, and reading its JSON stream (DESIGN §3.1).
+// Claude Code: launching a headless turn with code-learn's MCP server, and reading its JSON stream (DESIGN §3.1).
 import type { AgentCli, AgentEvent } from './agents';
 import { json, obj, progress, readOf, searchOf, stepOf, str, textOf, usageOf, versionRead } from './stream';
+
+/** Claude Code names an MCP tool mcp__<server>__<tool>. */
+const TOOL_PREFIX = 'mcp__code-learn__';
 
 export const claude: AgentCli = {
   bin: 'claude',
   launch({ prompt, server, tools, model, resume, web }) {
     const args = ['-p', prompt, '--output-format', 'stream-json', '--verbose'];
-    // No built-in tools (no shell, no file reads), so only the codemm server's tools exist. Research, review and setup may search
+    // No built-in tools (no shell, no file reads), so only the code-learn server's tools exist. Research, review and setup may search
     // the web; print mode refuses a tool that isn't allowed, so the web tools are allowed too.
     const webTools = web ? ['WebSearch', 'WebFetch'] : [];
-    args.push('--tools', webTools.join(','), '--mcp-config', JSON.stringify({ mcpServers: { codemm: server } }), '--strict-mcp-config');
-    const allowed = [...tools.map((t) => `mcp__codemm__${t}`), ...webTools];
+    args.push('--tools', webTools.join(','), '--mcp-config', JSON.stringify({ mcpServers: { 'code-learn': server } }), '--strict-mcp-config');
+    const allowed = [...tools.map((t) => `${TOOL_PREFIX}${t}`), ...webTools];
     if (allowed.length) args.push('--allowedTools', allowed.join(','));
     if (model) args.push('--model', model);
     if (resume) args.push('--resume', resume);
@@ -20,7 +23,7 @@ export const claude: AgentCli = {
     const e = json(line);
     if (!e) return [];
     if (e.type === 'system' && e.subtype === 'init') {
-      const failed = Array.isArray(e.mcp_servers) && e.mcp_servers.some((s: { name?: unknown; status?: unknown }) => s?.name === 'codemm' && s.status === 'failed');
+      const failed = Array.isArray(e.mcp_servers) && e.mcp_servers.some((s: { name?: unknown; status?: unknown }) => s?.name === 'code-learn' && s.status === 'failed');
       return [...(str(e.session_id) ? [{ type: 'session' as const, id: e.session_id }] : []), ...(failed ? [{ type: 'server' as const, ok: false as const }] : [])];
     }
     if (e.type === 'result') {
@@ -40,7 +43,7 @@ export const claude: AgentCli = {
           const read = readOf(input.url);
           return read ? [call, { type: 'progress', step: read, id: c.id }] : [call];
         }
-        const steps = c.name === 'WebSearch' ? searchOf(input.query) : c.name.startsWith('mcp__codemm__') ? stepOf(c.name.slice(13)) : [];
+        const steps = c.name === 'WebSearch' ? searchOf(input.query) : c.name.startsWith(TOOL_PREFIX) ? stepOf(c.name.slice(TOOL_PREFIX.length)) : [];
         return [call, ...progress(steps)];
       }
       if (c?.type === 'tool_result' && str(c.tool_use_id)) {

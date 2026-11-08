@@ -12,7 +12,7 @@ import { wasmtimeUp } from "./wasi-engine.js";
 
 /**
  * A WASI track end to end on real wasmtime (DESIGN §4.5): installed from a toolchain served through the injected
- * fetch, then an io exercise saved through every gate and checked. Codemm ships no languages, so the toolchain is a
+ * fetch, then an io exercise saved through every gate and checked. code-learn ships no languages, so the toolchain is a
  * language-free module (fixtures/wasi/answer.wat): answer.txt starting with "e" echoes stdin, anything else prints
  * itself.
  */
@@ -43,8 +43,8 @@ const exercise: FileMap = {
 
 let home: string;
 beforeEach(() => {
-  home = tempDir("codemm-home-");
-  vi.stubEnv("CODEMM_HOME", home);
+  home = tempDir("code-learn-home-");
+  vi.stubEnv("CODE_LEARN_HOME", home);
   setToolchainFetch(async (url) => (url === URL ? new Response(MODULE) : new Response("", { status: 404 })));
 });
 afterEach(() => {
@@ -63,7 +63,7 @@ describe.skipIf(!wasmtimeUp)("a WASI track on wasmtime", () => {
     expect(progress).toEqual(["downloading", "checking"]);
     expect(app.listTracks()).toEqual([{ track: "answer-wasi@1", styles: ["io"], files: ["answer.txt"], engine: "wasi" }]);
 
-    const ws = tempDir("codemm-ws-");
+    const ws = tempDir("code-learn-ws-");
     await app.saveRoadmap(ws, "echo", "goal: Echo\ntrack: answer-wasi@1\nstyle: io\nconcepts:\n  - { id: e.basics, title: Basics, requires: [] }\n");
     expect(await app.saveExercise(ws, exercise)).toEqual({ exercise: "echo" });
 

@@ -86,7 +86,7 @@ describe("Run's programs (§4.10)", () => {
     await expect(p.start('run-2', async () => Promise.reject(new Error('other')))).rejects.toThrow('other');
   });
 
-  it('stops every program when Codemm quits', async () => {
+  it('stops every program when code-learn quits', async () => {
     const { p } = subject();
     const runs = [p.start('a', fake().start), p.start('b', fake().start)];
     await new Promise((r) => setTimeout(r, 5));

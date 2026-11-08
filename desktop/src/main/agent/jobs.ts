@@ -1,4 +1,4 @@
-// Agent jobs (DESIGN §3.2): each runs with a short brief, a Codemm server that
+// Agent jobs (DESIGN §3.2): each runs with a short brief, a code-learn server that
 // exposes only its tools, a deadline and a bound on failed saves, and is done
 // only when its check against core records passes, never on the agent's word.
 import { createHash } from 'node:crypto';
@@ -10,7 +10,7 @@ import { infra as failureIn, infraOf, needsRebuild, type Cause, type Failure, ty
 import { run, type Executable } from './bridge';
 import { CHANGE_APPROACH } from './briefs';
 
-/** A job the agent runs: the kinds of progress that aren't Codemm's own (shared/api.ts). */
+/** A job the agent runs: the kinds of progress that aren't code-learn's own (shared/api.ts). */
 export type JobKind = AgentJobKind;
 
 interface JobSpec {
@@ -44,7 +44,7 @@ export const OFFLINE = /connection error|ENOTFOUND|EAI_AGAIN|network is unreacha
 
 /**
  * An Infra problem: this computer's Docker (stopped, busy, or failing while it runs), disk or network stopped a save,
- * or removing an ended attempt's containers. `rebuild`: a track image needs a rebuild. `infra`: the Codemm server or
+ * or removing an ended attempt's containers. `rebuild`: a track image needs a rebuild. `infra`: the code-learn server or
  * the agent failed to start. None records anything or spends an attempt (§6.1). `unstoppable`: a cancel the agent
  * survived.
  */
@@ -53,7 +53,7 @@ export type JobProblem = 'plan-limit' | 'signed-out' | 'failed' | 'infra' | 'reb
 export interface JobOutcome {
   ok: boolean;
   problem?: JobProblem;
-  /** Which of core's failures stopped it, when a Codemm tool said so: a fixed label for the app log. */
+  /** Which of core's failures stopped it, when a code-learn tool said so: a fixed label for the app log. */
   cause?: Cause;
   session?: string;
   /** The agent's text, for tutor and roadmap-change turns only. */
@@ -70,7 +70,7 @@ export interface Job {
   /** Builds the job's server for its tools. */
   server: (tools: string[]) => McpServer;
   cwd: string;
-  /** A Codemm-owned folder for agents that read their config from the working directory (Cursor). */
+  /** A code-learn-owned folder for agents that read their config from the working directory (Cursor). */
   agentDir?: string;
   model?: string;
   resume?: string;
@@ -79,13 +79,13 @@ export interface Job {
   done: (turn: { ok: boolean }) => boolean | Promise<boolean>;
   /** True once no agent may launch: another job's agent couldn't be stopped (§3.1). */
   blocked?: () => boolean;
-  /** False once Codemm has started installing this agent again: nothing of it launches until that install is done (§3.1). */
+  /** False once code-learn has started installing this agent again: nothing of it launches until that install is done (§3.1). */
   usable?: () => boolean;
   /** Asked when a job fails for an unknown reason. */
   /** Null when the agent's sign-in check couldn't answer: a timeout, or offline. */
   signedIn: () => Promise<boolean | null>;
   /**
-   * Removes the containers of Codemm processes that are gone (core's removeAbandoned), after an attempt Codemm ended:
+   * Removes the containers of code-learn processes that are gone (core's removeAbandoned), after an attempt code-learn ended:
    * a cancelled job's gate container would otherwise run on beside the next one (§5).
    */
   cleanup?: () => Promise<void>;
@@ -107,10 +107,10 @@ interface Attempt {
   text: string[];
   /** A cancel the agent's process group survived (§3.1). */
   unstoppable: boolean;
-  /** Codemm ended the attempt (a cancel, the deadline, or a failure that stops it), so it may have left containers. */
+  /** code-learn ended the attempt (a cancel, the deadline, or a failure that stops it), so it may have left containers. */
   ended: boolean;
   /**
-   * `server`: the Codemm server didn't start. A Codemm tool hit this computer's Docker, disk or network, or
+   * `server`: the code-learn server didn't start. A code-learn tool hit this computer's Docker, disk or network, or
    * (`rebuild`) a track image that needs a rebuild. `unstarted`: the agent exited before it started.
    */
   infra?: 'server' | 'rebuild' | 'unstarted' | Infra;
@@ -143,7 +143,7 @@ async function once(job: Job): Promise<Attempt> {
   const cancel = () => stop.abort();
   job.signal?.addEventListener('abort', cancel, { once: true });
   const saves = new Set<string>();
-  /** Calls of Codemm's own tools: only their results can carry core's code (the agent's other tools say anything). */
+  /** Calls of code-learn's own tools: only their results can carry core's code (the agent's other tools say anything). */
   const ours = new Set<string>();
   let failedSaves = 0;
   let session: string | undefined;
@@ -179,9 +179,9 @@ async function once(job: Job): Promise<Attempt> {
       infra = 'server';
       stop.abort();
     }
-    if (e.type === 'tool_call' && /^codemm\./i.test(e.name)) ours.add(e.id);
-    if (e.type === 'tool_call' && spec.save && e.name === `codemm.${spec.save}`) saves.add(e.id);
-    // Only core's code on a Codemm tool result's first line says it's this computer's problem, never any other text.
+    if (e.type === 'tool_call' && /^code-learn\./i.test(e.name)) ours.add(e.id);
+    if (e.type === 'tool_call' && spec.save && e.name === `code-learn.${spec.save}`) saves.add(e.id);
+    // Only core's code on a code-learn tool result's first line says it's this computer's problem, never any other text.
     const coreSaid = e.type === 'tool_result' && e.error && e.text && ours.has(e.id) ? e.text : undefined;
     const failure = coreSaid ? failureIn(coreSaid) : null;
     if (failure || (coreSaid && needsRebuild(coreSaid))) {
@@ -227,7 +227,7 @@ export async function runJob(job: Job): Promise<JobOutcome> {
     if (again !== job && last.infra === 'unstarted' && !job.signal?.aborted && !job.blocked?.() && job.usable?.() !== false) last = await once(job);
     // Said at once: the caller stops every other agent on this, and a cleanup waiting on Docker must not delay it.
     if (last.unstoppable) return { ok: false, problem: 'unstoppable', text: last.text };
-    // Before a relaunch or the end, an attempt Codemm ended leaves no container behind. Why a cleanup failed is
+    // Before a relaunch or the end, an attempt code-learn ended leaves no container behind. Why a cleanup failed is
     // Docker's to say: busy, or answering but failing. A busy Docker would only keep the learner waiting on it, and
     // nothing relaunches after it: a later cleanup removes what's left once this attempt's processes are gone.
     const tidy = last.ended && job.cleanup && last.infra !== 'docker-busy';

@@ -12,7 +12,7 @@ const STATE_LABEL = { covered: 'Read', mastered: 'Mastered', now: 'Now', later: 
 const STEP_MS = 140;
 const STAGGERED = 8;
 
-/** The topic Codemm offers now: a due (or being written) review, otherwise the current topic. */
+/** The topic code-learn offers now: a due (or being written) review, otherwise the current topic. */
 function currentIndex(topics: TopicView[]): number {
   const offered = offeredTopic(topics);
   return offered ? topics.indexOf(offered) : -1;
@@ -20,7 +20,7 @@ function currentIndex(topics: TopicView[]): number {
 
 /**
  * The course as a path along Emm's branch: each topic is a leaf, the branch is green between topics the learner has
- * reached, and Emm sits on the topic Codemm offers now. A finished course has Emm at the branch's end.
+ * reached, and Emm sits on the topic code-learn offers now. A finished course has Emm at the branch's end.
  */
 export function Path({ course }: { course: CourseView }) {
   const { topics } = course;
@@ -89,7 +89,7 @@ function Leaf({ state, flip, reading }: { state: TopicView['state']; flip: boole
   );
 }
 
-/** The topic Codemm offers now, with Emm perched on its card: Continue, or a due review. */
+/** The topic code-learn offers now, with Emm perched on its card: Continue, or a due review. */
 function Current({ topic, track }: { topic: TopicView; track: string }) {
   const { go } = useRouter();
   const mood = topic.review ? 'look' : topic.stuck ? 'think' : 'ready';

@@ -9,7 +9,7 @@ import { tempDir } from './testing/temp';
 afterEach(() => vi.unstubAllEnvs());
 
 it('checks a quiz through live core without Docker, then opens a new quiz and restores the style', async () => {
-  vi.stubEnv('CODEMM_HOME', tempDir());
+  vi.stubEnv('CODE_LEARN_HOME', tempDir());
   const ws = tempDir();
   await core.saveRoadmap(ws, 'quiz', quizRoadmap);
   await core.saveLesson(ws, { id: 'intro', concept: 'a', title: 'A', markdown: 'Read this.' });

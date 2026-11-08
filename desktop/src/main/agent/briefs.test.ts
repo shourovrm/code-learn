@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { TOOL_NAMES } from '../../../../src/mcp';
 import { JOB_BRIEFS } from '../../../../src/templates';
 import { LIMITS } from '../../shared/limits';
-import { codemmServer } from '../server';
+import { codeLearnServer } from '../server';
 import { AGENT_CLIS } from './agents';
 import { spawnable } from './bridge';
 import { briefsFrom, courseId } from './briefs';
@@ -64,13 +64,13 @@ describe('job briefs', () => {
     const question = '"'.repeat(LIMITS.words);
     const brief = briefsFrom(JOB_BRIEFS, 'win32').tutor('the activity "count-1"', question, files);
     const home = 'C:\\Users\\Ann Lee\\AppData\\Local';
-    const server = codemmServer({
-      runtime: `${home}\\Programs\\Codemm\\Codemm.exe`,
-      coreDir: `${home}\\Programs\\Codemm\\resources\\core`,
-      ws: 'C:\\Users\\Ann Lee\\Codemm',
+    const server = codeLearnServer({
+      runtime: `${home}\\Programs\\code-learn\\code-learn.exe`,
+      coreDir: `${home}\\Programs\\code-learn\\resources\\core`,
+      ws: 'C:\\Users\\Ann Lee\\code-learn',
       // A long PATH, as on a computer with many tools installed.
-      env: { PATH: Array.from({ length: 40 }, (_, i) => `C:\\Program Files\\Tool ${i}\\bin`).join(';'), CODEMM_HOME: 'C:\\Users\\Ann Lee\\.codemm' },
-    })('a-course-0', JOBS.tutor.tools, `${home}\\Temp\\codemm-progress\\job.json`);
+      env: { PATH: Array.from({ length: 40 }, (_, i) => `C:\\Program Files\\Tool ${i}\\bin`).join(';'), CODE_LEARN_HOME: 'C:\\Users\\Ann Lee\\.code-learn' },
+    })('a-course-0', JOBS.tutor.tools, `${home}\\Temp\\code-learn-progress\\job.json`);
     for (const [id, cli] of Object.entries(AGENT_CLIS)) {
       const { args } = cli.launch({ prompt: brief, server, tools: JOBS.tutor.tools, model: 'a-model', resume: '0b7d4c2e-9a1f-4e55-8a3e-2f6c1d9e7b10', web: false, toolTimeoutSec: 600 });
       for (const exe of [{ path: `${home}\\..\\..\\.local\\bin\\${cli.bin}.exe`, js: false }, { path: `${home}\\..\\Roaming\\npm\\node_modules\\${cli.bin}\\cli.js`, js: true }]) {
@@ -101,7 +101,7 @@ describe('job briefs', () => {
   });
 });
 
-// JOBS is the one list of each job's Codemm tools (DESIGN §3.2); core's briefs must keep to it.
+// JOBS is the one list of each job's code-learn tools (DESIGN §3.2); core's briefs must keep to it.
 describe('each job\'s tools and its brief', () => {
   const kinds = Object.keys(JOBS) as JobKind[];
   const named = (brief: string) => new Set(brief.match(new RegExp(`(?<!-)\\b(${TOOL_NAMES.join('|')})\\b(?!-)`, 'g')));
@@ -110,7 +110,7 @@ describe('each job\'s tools and its brief', () => {
     expect(Object.keys(JOB_BRIEFS).sort()).toEqual([...kinds].sort());
   });
 
-  it('gives each job only real Codemm tools', () => {
+  it('gives each job only real code-learn tools', () => {
     for (const k of kinds) for (const t of JOBS[k].tools) expect([k, (TOOL_NAMES as readonly string[]).includes(t)]).toEqual([k, true]);
   });
 

@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { tempDir } from './testing/temp';
 import { usageStore } from './usage';
 
-const dir = () => tempDir('codemm-usage-');
+const dir = () => tempDir('code-learn-usage-');
 
 describe('usage store', () => {
   it('adds up what the agents reported, per course and job kind', () => {

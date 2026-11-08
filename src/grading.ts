@@ -18,7 +18,7 @@ export type TestResult = {
 /** The most an io case may print. More is an error, never a comparison of the first part (DESIGN §4.2). */
 export const CASE_OUTPUT_BYTES = 32 * 1024 * 1024;
 export const CASE_OUTPUT_MB = CASE_OUTPUT_BYTES / 1024 / 1024;
-/** How much of an io case's output Codemm keeps and shows. The comparison uses a digest of all of it. */
+/** How much of an io case's output code-learn keeps and shows. The comparison uses a digest of all of it. */
 export const SHOWN_BYTES = 65_536;
 /** The longest body any other frame carries: a unit report (1 MB). Anything past it was forged and is dropped. */
 const FRAME_BYTES = 1_048_576;
@@ -40,7 +40,7 @@ export type RawCase = {
 export type RawReport = { exit: number; body: string; log: string; timedOut?: boolean };
 export type RawBuild = { exit: number; output: string };
 
-const MARKER = Buffer.from("@@codemm ");
+const MARKER = Buffer.from("@@code-learn ");
 const MESSAGE_CAP = 2000;
 /**
  * Text from the sandbox as the learner sees it: their files by their own names (`/work/src/main.py` is `main.py`,
@@ -53,7 +53,7 @@ const cap = (raw: string) => {
 };
 
 /**
- * Output as Codemm compares it: CRLF as LF, no trailing whitespace on any line and no blank lines at the end.
+ * Output as code-learn compares it: CRLF as LF, no trailing whitespace on any line and no blank lines at the end.
  * Linear in the length, whatever the program printed.
  */
 export function normalizeOutput(text: string): string {
@@ -135,7 +135,7 @@ export class OutputDigest {
 }
 
 /**
- * Reads the driver's length-framed records as they stream: `@@codemm <kind> <name> <exit> <bytes>\n<bytes>`.
+ * Reads the driver's length-framed records as they stream: `@@code-learn <kind> <name> <exit> <bytes>\n<bytes>`.
  * Program output only ever appears inside a frame body, so it can't forge a frame. A case body is reduced as it
  * comes to its start and the digest of all of it, so memory stays bounded however much a program prints.
  * `onFrame` hears each frame as it completes; one that throws is dropped, and reading goes on.
@@ -270,7 +270,7 @@ export const caseDigest = (c: RawCase) => c.digest ?? digestOf(c.stdout);
 /** What a set is graded against: io expected outputs by test name, or each unit set's test names. */
 export type Expectation = { expected?: Record<string, Expected>; inventory?: Partial<Record<TestSet, string[]>> };
 
-const FLOODED = "Output limit exceeded: the program wrote more than Codemm reads from one run.";
+const FLOODED = "Output limit exceeded: the program wrote more than code-learn reads from one run.";
 const OUT_OF_MEMORY = "Memory limit exceeded: the program used more memory than the track allows.";
 const killedBy = (run: { flooded: boolean; outOfMemory?: boolean }) => (run.flooded ? FLOODED : run.outOfMemory ? OUT_OF_MEMORY : undefined);
 
@@ -300,7 +300,7 @@ export function gradeRuns(style: "io" | "unit", runs: Runs, exp: Expectation): T
   return tests;
 }
 
-/** A result as Codemm shows it outside: a visible test in full; a hidden one only its `index` and status. */
+/** A result as code-learn shows it outside: a visible test in full; a hidden one only its `index` and status. */
 export type ShownResult = { name: string; status: Status; message?: string; actual?: string; index?: number };
 
 /** The hidden-results rule (DESIGN §4.2), in one place: nothing about a hidden test but its index and status. */

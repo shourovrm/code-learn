@@ -1,5 +1,5 @@
 // What differs between agent CLIs (docs/desktop/DESIGN.md §3.1, proved in the
-// agent-bridge spike): how to launch a headless turn with Codemm's MCP server,
+// agent-bridge spike): how to launch a headless turn with code-learn's MCP server,
 // how to read its JSON stream as common events, and how to ask its version and
 // whether the learner is signed in.
 import type { AgentId } from '../../shared/api';
@@ -15,11 +15,11 @@ export type AgentEvent =
   | { type: 'tool_call'; id: string; name: string }
   /** A failed result keeps a little of its text, only to tell infrastructure failures apart (§6.1). */
   | { type: 'tool_result'; id: string; error: boolean; text?: string }
-  /** The Codemm server failed to start. */
+  /** The code-learn server failed to start. */
   | { type: 'server'; ok: false }
   | { type: 'done'; ok: boolean; error?: string }
   /**
-   * What the agent is looking at: a web search, an https page, or one of Codemm's steps (research progress). `id` is
+   * What the agent is looking at: a web search, an https page, or one of code-learn's steps (research progress). `id` is
    * the tool call of a page fetch still under way: it counts as a source only if that call succeeds.
    */
   | { type: 'progress'; step: ResearchStep; id?: string }
@@ -31,11 +31,11 @@ export type AgentEvent =
 
 /**
  * One step a job shows while it runs. `read` keeps the full https `href` for the roadmap's sources and shows only
- * host and path. Nothing here ever comes from a file path, a file's contents or Codemm's records.
+ * host and path. Nothing here ever comes from a file path, a file's contents or code-learn's records.
  */
 export type ResearchStep = { kind: 'search'; query: string } | { kind: 'read'; url: string; href?: string } | { kind: 'step'; label: string };
 
-/** How an agent starts Codemm's MCP server for one job. */
+/** How an agent starts code-learn's MCP server for one job. */
 export interface McpServer {
   command: string;
   args: string[];
@@ -45,14 +45,14 @@ export interface McpServer {
 export interface Turn {
   prompt: string;
   server: McpServer;
-  /** The job's Codemm tools: the only ones the agent may call. */
+  /** The job's code-learn tools: the only ones the agent may call. */
   tools: string[];
   model?: string;
   /** A session or thread id to continue (tutor turns). */
   resume?: string;
   /** Built-in tools the job may use; research, review and setup get web search and fetch (§3.2). */
   web?: boolean;
-  /** How long one Codemm tool call may run: the job's deadline. */
+  /** How long one code-learn tool call may run: the job's deadline. */
   toolTimeoutSec?: number;
 }
 
@@ -91,7 +91,7 @@ const compare = (a: number[], b: number[]) => {
 };
 
 /**
- * Tested: a listed version, or a later release of a listed major. Agents update themselves and Codemm installs the
+ * Tested: a listed version, or a later release of a listed major. Agents update themselves and code-learn installs the
  * maker's latest, so pinning exact versions would call nearly every learner's agent untested. Another major, one
  * older than the oldest tested, or a prerelease is untested.
  */

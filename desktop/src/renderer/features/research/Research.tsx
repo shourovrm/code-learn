@@ -12,7 +12,7 @@ import { fillOf, JobBar, sayStep } from '../../ui/JobBar';
 import { Panel } from '../../ui/Panel';
 import { shownTopic } from '../../../shared/topic';
 
-/** Codemm's agent researches the goal and writes a roadmap, which the learner then edits. */
+/** code-learn's agent researches the goal and writes a roadmap, which the learner then edits. */
 export function Research({ goal }: { goal: Goal }) {
   const api = useApi();
   const { go } = useRouter();
@@ -41,7 +41,7 @@ export function Research({ goal }: { goal: Goal }) {
         <section className="looking" aria-label="Research progress">
           <JobBar job={job} label={`Researching ${topic}`} noLine emm={false} />
           {steps.length > 0 && (
-            <ol aria-label="What Codemm is looking at">
+            <ol aria-label="What code-learn is looking at">
               {steps.map((step, i) => (
                 // The latest step stands out by its color; older ones stay readable (WCAG AA), never faded.
                 <li key={count - i} className={i === 0 ? 'now' : undefined}>{sayStep(step)}</li>
@@ -61,7 +61,7 @@ export function Research({ goal }: { goal: Goal }) {
   );
 }
 
-/** Research stopped, or Codemm couldn't read how it's going: why, when Codemm knows, with Try again and Check your agent. */
+/** Research stopped, or code-learn couldn't read how it's going: why, when code-learn knows, with Try again and Check your agent. */
 function NotFinished({ goal, error, retry }: { goal: Goal; error?: unknown; retry: () => void }) {
   const { go, fail } = useRouter();
   const problem = error === undefined ? undefined : problemOf(error);
@@ -81,7 +81,7 @@ function NotFinished({ goal, error, retry }: { goal: Goal; error?: unknown; retr
           : SAY[problem];
   return (
     <main className="center">
-      <Panel art={<Emm mood="soft" width={130} />} title="Codemm couldn't finish the research." text={why}>
+      <Panel art={<Emm mood="soft" width={130} />} title="code-learn couldn't finish the research." text={why}>
         {/* Offline isn't the agent's doing. */}
         {problem !== 'offline' && <Button variant="ghost" size="lg" onClick={() => go({ to: 'connect', then: { to: 'research', goal } })}>Check your agent</Button>}
         <Button size="lg" onClick={retry}>Try again</Button>

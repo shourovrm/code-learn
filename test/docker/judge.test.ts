@@ -57,11 +57,11 @@ describe.runIf(dockerUp)("judge (Docker)", () => {
   });
 
   it("an image without sleep: Run isn't cut short as a timeout, and grading names the missing tool", async () => {
-    const dir = tempDir("codemm-nosleep-");
+    const dir = tempDir("code-learn-nosleep-");
     writeFileSync(join(dir, "Dockerfile"), `${io.files["Dockerfile"]!.trim()}\nRUN rm /bin/sleep\n`);
-    const built = await buildImage(dir, "codemm-test-nosleep:1");
+    const built = await buildImage(dir, "code-learn-test-nosleep:1");
     expect(built.ok).toBe(true);
-    const track = { ...ioTrack, image: "codemm-test-nosleep:1" };
+    const track = { ...ioTrack, image: "code-learn-test-nosleep:1" };
     let out = "";
     const run = runProgram(track, { "main.sh": 'read -r n\necho "got $n"\n' }, (text) => (out += text), { limitMs: 5_000 });
     await new Promise((r) => setTimeout(r, 500));
@@ -75,7 +75,7 @@ describe.runIf(dockerUp)("judge (Docker)", () => {
     let err = "";
     const run = runProgram(ioTrack, { "main.sh": "read -r n\n" }, (text, stream) => (err += stream === "stderr" ? text : ""), { limitMs: 1_000 });
     expect(await run.done).toMatchObject({ stage: "run", timedOut: true });
-    // Codemm's own "time's up" is the only word on it: the driver's shell doesn't report the kill ("Killed").
+    // code-learn's own "time's up" is the only word on it: the driver's shell doesn't report the kill ("Killed").
     expect(err).toBe("");
     // --rm finishes removing it just after the exit.
     await expect.poll(() => ownedContainers(), { timeout: 10_000 }).toEqual([]);
@@ -198,7 +198,7 @@ describe.runIf(dockerUp)("judge (Docker)", () => {
     });
 
     it("never echoes a forged fatal frame, even one carrying hidden data", async () => {
-      const forge = "read x\nfor fd in /proc/1/fd/*; do printf '\\n@@codemm fatal tools 1 13\\nSECRET-HIDDEN' > \"$fd\" 2>/dev/null; done\necho ok\n";
+      const forge = "read x\nfor fd in /proc/1/fd/*; do printf '\\n@@code-learn fatal tools 1 13\\nSECRET-HIDDEN' > \"$fd\" 2>/dev/null; done\necho ok\n";
       const error = await run(forge).then(() => undefined, (e: Error) => e);
       expect(String(error ?? "")).not.toContain("SECRET-HIDDEN");
     });

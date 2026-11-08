@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for helping. Codemm stays small on purpose, so read [AGENTS.md](AGENTS.md) for the invariants and [docs/DESIGN.md](docs/DESIGN.md) for the spec before you start.
+Thanks for helping. code-learn stays small on purpose, so read [AGENTS.md](AGENTS.md) for the invariants and [docs/DESIGN.md](docs/DESIGN.md) for the spec before you start.
 
 ## Set up
 
@@ -20,7 +20,7 @@ npm test
 src/        the CLI, MCP server and core modules
 test/       unit tests; test/docker/ needs a container runtime
 test/fixtures/
-  tracks/      shell-script tracks used only by Codemm's own tests
+  tracks/      shell-script tracks used only by code-learn's own tests
   exercises/   fixture exercises for the gates
 docs/       design, security, migration
 ```

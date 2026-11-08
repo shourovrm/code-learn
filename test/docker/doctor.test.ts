@@ -23,13 +23,13 @@ describe.runIf(dockerUp)("network isolation check", () => {
 
   it("leaves no container behind", async () => {
     await networkIsolation();
-    const mine = await cli(["ps", "-aq", "--filter", `label=${OWNER_LABEL}`, "--filter", `label=codemm.pid=${process.pid}`]);
+    const mine = await cli(["ps", "-aq", "--filter", `label=${OWNER_LABEL}`, "--filter", `label=code-learn.pid=${process.pid}`]);
     expect(mine.output.trim()).toBe("");
   });
 
-  it("mounts a staged folder under Codemm's home, read-only, and reads a file from it, as a check does", async () => {
-    const home = tempDir("codemm-home-");
-    vi.stubEnv("CODEMM_HOME", home);
+  it("mounts a staged folder under code-learn's home, read-only, and reads a file from it, as a check does", async () => {
+    const home = tempDir("code-learn-home-");
+    vi.stubEnv("CODE_LEARN_HOME", home);
     const recorder = recordMounts();
     try {
       expect(await networkIsolation()).toMatchObject({ ok: true });

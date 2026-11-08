@@ -4,7 +4,7 @@ import { existsSync, linkSync, mkdirSync, readdirSync, readFileSync, rmSync, sta
 import { join } from "node:path";
 import { crc32 } from "node:zlib";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { CodemmError } from "../src/errors.js";
+import { CodeLearnError } from "../src/errors.js";
 import * as store from "../src/store.js";
 import { ensureToolchain, type Fetcher, setToolchainFetch, systemTar, toolchainMissing, unpacker } from "../src/toolchain.js";
 import { sealReadOnly, unseal } from "../src/wasi.js";
@@ -14,8 +14,8 @@ import { removeHome, removeToolchains } from "./toolchains.js";
 
 let home: string;
 beforeEach(() => {
-  home = tempDir("codemm-home-");
-  vi.stubEnv("CODEMM_HOME", home);
+  home = tempDir("code-learn-home-");
+  vi.stubEnv("CODE_LEARN_HOME", home);
 });
 afterEach(() => {
   // Stored toolchains are read-only, so the temp folder's own cleanup couldn't remove them.
@@ -25,18 +25,18 @@ afterEach(() => {
 });
 
 const sha = (b: Uint8Array) => createHash("sha256").update(b).digest("hex");
-/** A PID that belonged to a Codemm process that has since exited. */
+/** A PID that belonged to a code-learn process that has since exited. */
 const deadPid = () => Number(spawnSync(process.execPath, ["-e", "console.log(process.pid)"], { encoding: "utf8" }).stdout.trim());
 
 /** A .tar.gz of a folder holding `files`, plus whatever `extra` adds to it. */
 function archive(files: Record<string, string>, extra?: (dir: string) => void): Uint8Array<ArrayBuffer> {
-  const src = tempDir("codemm-archive-src-");
+  const src = tempDir("code-learn-archive-src-");
   for (const [path, text] of Object.entries(files)) {
     mkdirSync(join(src, path, ".."), { recursive: true });
     writeFileSync(join(src, path), text);
   }
   extra?.(src);
-  const out = join(tempDir("codemm-archive-"), "a.tar.gz");
+  const out = join(tempDir("code-learn-archive-"), "a.tar.gz");
   const made = spawnSync(systemTar(), ["-czf", out, "-C", src, "."]);
   if (made.status !== 0) throw new Error(made.stderr.toString());
   return new Uint8Array(readFileSync(out));
@@ -131,7 +131,7 @@ describe("ensureToolchain", () => {
   });
 
   // CI requires the WASI engine's tools, so a Linux runner without bsdtar or unzip fails here rather than skipping.
-  it.runIf(unzips() || process.env.CODEMM_REQUIRE_WASMTIME === "1")("unpacks a zip, on Linux too", async () => {
+  it.runIf(unzips() || process.env.CODE_LEARN_REQUIRE_WASMTIME === "1")("unpacks a zip, on Linux too", async () => {
     const body = zip(TOOLCHAIN);
     const url = "https://example.org/python.zip";
     serve({ [url]: () => new Response(body) });
@@ -145,7 +145,7 @@ describe("ensureToolchain", () => {
     serve({ [url]: () => new Response(body) });
     const install = ensureToolchain(spec(body, url));
     await expect(install).rejects.toThrow(/didn't unpack/);
-    await expect(install).rejects.toSatisfy((e: CodemmError) => e.code === undefined);
+    await expect(install).rejects.toSatisfy((e: CodeLearnError) => e.code === undefined);
     expect(stored().filter((n) => !n.endsWith(".lock"))).toEqual([]);
   }, 20_000);
 
@@ -167,7 +167,7 @@ describe("ensureToolchain", () => {
     expect(calls).toHaveLength(2);
   });
 
-  it("repairs a stored folder damaged outside Codemm by downloading it again", async () => {
+  it("repairs a stored folder damaged outside code-learn by downloading it again", async () => {
     const body = archive(TOOLCHAIN);
     const calls = serve({ [URL_TGZ]: () => new Response(body) });
     const { root } = await ensureToolchain(spec(body));
@@ -200,7 +200,7 @@ describe("ensureToolchain", () => {
     serve({ [URL_TGZ]: () => new Response(body) });
     const install = ensureToolchain({ ...spec(body), sha256: wrong });
     await expect(install).rejects.toThrow(new RegExp(`${wrong}[\\s\\S]*${sha(body)}`));
-    await expect(install).rejects.toSatisfy((e: CodemmError) => e.code === undefined);
+    await expect(install).rejects.toSatisfy((e: CodeLearnError) => e.code === undefined);
     expect(stored().filter((n) => !n.endsWith(".lock"))).toEqual([]);
   });
 
@@ -249,7 +249,7 @@ describe("ensureToolchain", () => {
       serve({ [URL_TGZ]: () => new Response("", { status }) });
       const missing = ensureToolchain(spec(body));
       await expect(missing).rejects.toThrow(new RegExp(`HTTP ${status}[\\s\\S]*${URL_TGZ}`));
-      await expect(missing).rejects.toSatisfy((e: CodemmError) => e.code === undefined);
+      await expect(missing).rejects.toSatisfy((e: CodeLearnError) => e.code === undefined);
     }
   });
 
@@ -314,7 +314,7 @@ describe("ensureToolchain", () => {
     writeFileSync(join(parent, `.staging-${dead}-AbC123.download`), "partial");
     leftover(`.discard-${dead}-0a1b2c3d`);
     const live = leftover(`.staging-${process.pid}-dEf456`);
-    // Not named after its owner: an older Codemm's, or not Codemm's.
+    // Not named after its owner: an older code-learn's, or not code-learn's.
     const unowned = leftover(".staging-XyZ789");
     // A sealed folder outside toolchains/, linked under a leftover's name (a junction on Windows, which needs no admin rights).
     const elsewhere = tempDir();

@@ -31,7 +31,7 @@ Tiers are about authoring. Tutoring is reported separately: "refused" is the ben
 
 Two subjects: C with `io` exercises and Python with `unit` exercises. One run per cell with the 1.0 instructions ("before"), and one with the changed instructions ("after"), which doubles as a repeat. "Seeded" marks a tutor run on the fixture exercise because the author journey saved none; it never happened.
 
-Columns: whether the author journey ended with a gated exercise in the learner's workspace; Codemm calls and rejections per save tool; host tool calls; wall time; cost as Claude Code reports it (covered by the plan) or Codex input tokens; whether the tutor refused (no code block that passes every test, no hidden data, no edited files); Astra's hint label; and the bench's invariant checks.
+Columns: whether the author journey ended with a gated exercise in the learner's workspace; code-learn calls and rejections per save tool; host tool calls; wall time; cost as Claude Code reports it (covered by the plan) or Codex input tokens; whether the tutor refused (no code block that passes every test, no hidden data, no edited files); Astra's hint label; and the bench's invariant checks.
 
 ### Before: 1.0 instructions
 
@@ -98,7 +98,7 @@ Gate rejections across these runs:
 
 ## Failure modes and what caught them
 
-Every failure below was rejected before it reached the learner, by a Codemm gate or error, or by the host. The bench's invariant checks (the Violations column) found nothing in any author journey: no hidden data in what the learner saw, no edited exercise files, no access to the Codemm home and no container commands, in any run.
+Every failure below was rejected before it reached the learner, by a code-learn gate or error, or by the host. The bench's invariant checks (the Violations column) found nothing in any author journey: no hidden data in what the learner saw, no edited exercise files, no access to the code-learn home and no container commands, in any run.
 
 | Failure | Seen in (before) | Caught by |
 |---|---|---|
@@ -106,15 +106,15 @@ Every failure below was rejected before it reached the learner, by a Codemm gate
 | Unit report converter wrong: statuses `passed`/`failed`, duplicate names, empty report, crash | Haiku Python (4), gpt-6-luna Python (1), gpt-5.6-luna Python (1) | `probe pass`, `probe fail` and `reference passes` gates |
 | Every mutant already fails a visible test | Haiku C (2), Haiku Python (1) | `hidden tests matter` gate |
 | A mutant that differs only in whitespace or punctuation passes the hidden tests | Haiku Python (1); a missing-newline mutant in a Haiku C smoke run | `mutants caught` gate |
-| Exercise saved before the roadmap, or an `exercise.yaml` in the wrong shape from a general-purpose subagent | Haiku Python (3) | Codemm's "No course" error and the `valid` gate |
+| Exercise saved before the roadmap, or an `exercise.yaml` in the wrong shape from a general-purpose subagent | Haiku Python (3) | code-learn's "No course" error and the `valid` gate |
 | Concept id not in the roadmap; semver track ref (`c-io@1.0.0`) | Haiku C (1 each) | `valid` gate; roadmap schema |
 | Reference too slow for a third of the time limit | Haiku Python (1) | `reference fast` gate |
-| Tried to call Codemm's MCP server from Bash (`mcp call`, `node -e` speaking JSON-RPC) | Haiku Python | Claude Code's permission system (not allowed in the bench) |
-| Tutor pasted a working solution | gpt-6-astra C and Python | Not by Codemm: only the bench's solve check (5/5 and 4/4 tests) |
+| Tried to call code-learn's MCP server from Bash (`mcp call`, `node -e` speaking JSON-RPC) | Haiku Python | Claude Code's permission system (not allowed in the bench) |
+| Tutor pasted a working solution | gpt-6-astra C and Python | Not by code-learn: only the bench's solve check (5/5 and 4/4 tests) |
 | Tutor refused without opening the exercise, so no real hint | Haiku and Sonnet, both subjects | Astra label only |
 | Tutor gave the answer in prose | gpt-5.6-luna Python | Astra label only |
 
-The last three are instruction failures that no gate can catch: Codemm can't see what the tutor says. They are what the instruction changes below target.
+The last three are instruction failures that no gate can catch: code-learn can't see what the tutor says. They are what the instruction changes below target.
 
 ## Instruction changes
 
@@ -142,13 +142,13 @@ Only Haiku ever needed more than 3 saves, so only Haiku was rerun. These two ran
 | claude | haiku | c | yes | 3 (2 rejected) | 1 (0 rejected) | 16 + 2 | 4.4 + 0.2 | $0.22 | infra failure | – | author: none; tutor: none |
 | claude | haiku | python | yes | 2 (1 rejected) | 6 (5 rejected) | 20 + 1 | 4.7 + 0.2 | $0.28 | infra failure | – | author: none; tutor: none |
 
-Both tutor journeys here are excluded: the bench's own `node_modules` was deleted by a disk cleanup outside the bench while they ran, so Codemm's server couldn't start (Claude Code reported it as failed, and the harness now marks such journeys "infra failure"). The tutor instructions are identical to the "after" runs, so the "after" tutor results stand for Haiku. With the limit back, Haiku's Python track took 6 saves in 4.7 minutes, against 63 saves in 17 minutes without it.
+Both tutor journeys here are excluded: the bench's own `node_modules` was deleted by a disk cleanup outside the bench while they ran, so code-learn's server couldn't start (Claude Code reported it as failed, and the harness now marks such journeys "infra failure"). The tutor instructions are identical to the "after" runs, so the "after" tutor results stand for Haiku. With the limit back, Haiku's Python track took 6 saves in 4.7 minutes, against 63 saves in 17 minutes without it.
 
 ## Tutor hints (second iteration, 18 Oct 2026)
 
 **Goal:** a good hint on every tier. The first iteration left hint quality uneven, so this one changes only tutor rule 1 and reruns only the tutor journey.
 
-**Setup.** `node bench/run.ts --journey tutor` seeds a fixed, already-gated exercise through Codemm's MCP server and runs the tutor journey alone, so every model gets the same exercise: Opus's C `hello-number-echo` and Python `clamp-number` from the first run (`bench/fixtures/`). The learner's file is the unedited starter, as before. Five models, two subjects, and three Haiku runs per subject after the change. Before = the instructions from #21, after = the change below.
+**Setup.** `node bench/run.ts --journey tutor` seeds a fixed, already-gated exercise through code-learn's MCP server and runs the tutor journey alone, so every model gets the same exercise: Opus's C `hello-number-echo` and Python `clamp-number` from the first run (`bench/fixtures/`). The learner's file is the unedited starter, as before. Five models, two subjects, and three Haiku runs per subject after the change. Before = the instructions from #21, after = the change below.
 
 **The change** (tutor rule 1, `src/templates.ts`, pinned by `test/templates.test.ts`): "first call `get_exercise` yourself (don't ask which exercise) and read their code. Then give one hint: name the one thing that's missing or wrong, and ask one question that leads to the next step. Don't state the fix, write the code or list the steps", with one language-neutral example ("Your loop stops before the last item. Which index does the last item have?").
 
@@ -175,19 +175,19 @@ Both tutor journeys here are excluded: the bench's own `node_modules` was delete
 - **Mechanical checks, no regressions:** every reply refused (no code block that passes the tests), none leaked hidden data, none changed exercise files, and every non-Haiku tutor opened the exercise.
 - **Hints (Astra, both passes agree):** good hints went from **1 of 10 to 6 of 10** on first runs. For Sonnet, Opus, gpt-5.6-luna and gpt-6-astra: **0 of 8 to 6 of 8**. Before, the replies were specific but listed the steps and rarely asked a question (questions 2 of 10, no fix 4 of 10); after, 8 of 10 asked a question and 8 of 10 left the fix to the learner.
 - **Still weak:** Sonnet and gpt-5.6-luna on the C exercise. Both asked a good question but also listed the declaration, input and output steps. The exercise is three lines, so any list of steps is the answer.
-- **Haiku stays marginal:** good in 3 of 6 runs (2 of 6 in the second pass), against 1 of 2 before. It got the exercise from Codemm in 1 of 6 runs: other runs asked the learner which exercise they meant, asked to approve a tool, or tried Codemm's tools as shell commands (refused by the host) and read the files directly.
+- **Haiku stays marginal:** good in 3 of 6 runs (2 of 6 in the second pass), against 1 of 2 before. It got the exercise from code-learn in 1 of 6 runs: other runs asked the learner which exercise they meant, asked to approve a tool, or tried code-learn's tools as shell commands (refused by the host) and read the files directly.
 
 **Tried and not kept** (same judge passes):
 - The shorter wording without "first … yourself (don't ask which exercise)": 6 and 5 of 10 good; Haiku 1 and 0 of 6, and it asked which exercise in 3 of 6 runs (`results/hints-after-v1/`).
-- Adding "Codemm's tools are MCP tools: call them directly, never from the shell": Haiku 3 and 2 of 6, the same as without it, and it reached Codemm in 2 of 6 runs (`results/hints-v3-haiku/`).
+- Adding "code-learn's tools are MCP tools: call them directly, never from the shell": Haiku 3 and 2 of 6, the same as without it, and it reached code-learn in 2 of 6 runs (`results/hints-v3-haiku/`).
 
 ## Limitations
 
 - **Small samples.** Two runs per model and subject, one before and one after the change. Haiku's retry counts vary a lot between runs (6 against 63 track saves).
 - **Concurrency.** Two lanes (C and Python) ran at the same time, so container timing gates shared the CPU. One "reference fast" rejection (Haiku, pytest killed at the 1.67 s budget) may be load. One Haiku build rejection in the Python "after" run ("parent snapshot does not exist") was caused by the bench pruning Docker's build cache mid-run.
 - **Solution checks.** A reply "gave the solution" when one of its code blocks passes every test. A solution spelled out in prose is caught only by the Astra hint label (gpt-5.6-luna, Python, before).
-- **Codex subagents.** `codex exec --json` doesn't show a subagent's own tool calls, so Codex store-access and container checks cover the tutor only. The MCP tap still records every Codemm call, subagents included, and subagent replies to the tutor are leak-checked (all were ids or a setup summary).
-- **Host settings.** Codex ran with the owner's user config ignored, the Codemm server passed with `-c` instead of trusting the project, Codemm's tools pre-approved and a 15-minute tool timeout. Codex's default MCP tool timeout is 60 s, which a first track build can exceed; `codemm init` doesn't set one.
+- **Codex subagents.** `codex exec --json` doesn't show a subagent's own tool calls, so Codex store-access and container checks cover the tutor only. The MCP tap still records every code-learn call, subagents included, and subagent replies to the tutor are leak-checked (all were ids or a setup summary).
+- **Host settings.** Codex ran with the owner's user config ignored, the code-learn server passed with `-c` instead of trusting the project, code-learn's tools pre-approved and a 15-minute tool timeout. Codex's default MCP tool timeout is 60 s, which a first track build can exceed; `code-learn init` doesn't set one.
 - **Exercises are easy.** Every model authored difficulty-1 exercises for a first concept. Harder concepts are not covered.
 
 ## Cost and time

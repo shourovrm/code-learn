@@ -10,17 +10,17 @@
  * A failed call rejects with an Error whose message holds one of these codes.
  * None of them records anything.
  */
-export const SIGNED_OUT = 'codemm:signed-out';
-export const NO_AGENT = 'codemm:no-agent';
-export const PLAN_LIMIT = 'codemm:plan-limit';
+export const SIGNED_OUT = 'code-learn:signed-out';
+export const NO_AGENT = 'code-learn:no-agent';
+export const PLAN_LIMIT = 'code-learn:plan-limit';
 /** This computer couldn't reach the network: the agent's service, or a build's downloads. */
-export const OFFLINE = 'codemm:offline';
+export const OFFLINE = 'code-learn:offline';
 /** An agent job failed or wasn't done by its check (§5). */
-export const AGENT_FAILED = 'codemm:agent-failed';
-/** A damaged Codemm record. The message's next lines are core's repair guidance (§5). */
-export const REPAIR = 'codemm:repair';
-/** A cancel the agent's process group survived: "Codemm couldn't stop your agent" (§3.1). */
-export const UNSTOPPABLE = 'codemm:unstoppable';
+export const AGENT_FAILED = 'code-learn:agent-failed';
+/** A damaged code-learn record. The message's next lines are core's repair guidance (§5). */
+export const REPAIR = 'code-learn:repair';
+/** A cancel the agent's process group survived: "code-learn couldn't stop your agent" (§3.1). */
+export const UNSTOPPABLE = 'code-learn:unstoppable';
 /** Why a check wasn't counted when a track's image is missing or changed: the fix is under Tracks, not this computer (§5). */
 export const REBUILD = 'This environment needs a rebuild. Rebuild it under Tracks.';
 /** Why a run wasn't counted, or didn't run, when this computer caused it (notCounted.ts). */
@@ -31,14 +31,14 @@ export const NOT_COUNTED = {
   'docker-disk': 'Docker ran out of disk space.',
   disk: 'This computer is out of disk space.',
   offline: "Docker couldn't reach the network.",
-  // A WASI track's wasmtime didn't start (core §4.5): it comes with Codemm, so reinstalling brings it back.
-  wasi: "Codemm couldn't start the part that runs your code.",
-  // A drive without file permissions (FAT, exFAT): Codemm can't keep the learner's program from writing (core §4.5).
-  'wasi-seal': "Codemm couldn't make its files read-only on this drive.",
+  // A WASI track's wasmtime didn't start (core §4.5): it comes with code-learn, so reinstalling brings it back.
+  wasi: "code-learn couldn't start the part that runs your code.",
+  // A drive without file permissions (FAT, exFAT): code-learn can't keep the learner's program from writing (core §4.5).
+  'wasi-seal': "code-learn couldn't make its files read-only on this drive.",
   // A container Docker refused for a reason core named: what to change, since trying again won't help.
   'docker-cpus': "Docker has fewer than the 2 CPUs a check uses. Give it more in Docker Desktop's settings.",
-  'docker-log-driver': "Docker's logging driver refused Codemm's log options. Set it to json-file or local in Docker's settings.",
-  'docker-file-sharing': "Docker can't share Codemm's run folders. Allow them in Docker Desktop's file sharing settings.",
+  'docker-log-driver': "Docker's logging driver refused code-learn's log options. Set it to json-file or local in Docker's settings.",
+  'docker-file-sharing': "Docker can't share code-learn's run folders. Allow them in Docker Desktop's file sharing settings.",
 } as const;
 /** Run and lesson examples have no recovery screen, so their line says what to do next (§4.10). */
 export const RUN_AGAIN: Record<string, string> = {
@@ -48,13 +48,13 @@ export const RUN_AGAIN: Record<string, string> = {
   [NOT_COUNTED['docker-disk']]: 'Remove unused images in Docker Desktop, then run again.',
   [NOT_COUNTED.disk]: 'Free some space, then run again.',
   [NOT_COUNTED.offline]: 'Connect to the internet, then run again.',
-  [NOT_COUNTED.wasi]: 'Reinstall Codemm, then run again.',
-  [NOT_COUNTED['wasi-seal']]: "Keep Codemm's folder on this computer's own drive, then run again.",
+  [NOT_COUNTED.wasi]: 'Reinstall code-learn, then run again.',
+  [NOT_COUNTED['wasi-seal']]: "Keep code-learn's folder on this computer's own drive, then run again.",
 };
 /** A run that didn't run: why, then what to do next. */
 export const notRunLine = (reason: string) => (RUN_AGAIN[reason] ? `${reason} ${RUN_AGAIN[reason]}` : reason);
-/** A learner file changed outside Codemm since the editor loaded it (§4.5). */
-export const CHANGED = 'codemm:changed';
+/** A learner file changed outside code-learn since the editor loaded it (§4.5). */
+export const CHANGED = 'code-learn:changed';
 
 // ---------- connect (§3.1, §3.3) ----------
 
@@ -80,17 +80,17 @@ export interface Agent {
   models: ModelChoice[];
   /** The model every job for this agent runs: the learner's choice, or the recommended one. */
   model: string | null;
-  /** The installed CLI version isn't one Codemm was tested with. It may still work. */
+  /** The installed CLI version isn't one code-learn was tested with. It may still work. */
   untested: boolean;
   experimental: boolean;
-  /** Codemm can install this agent here, the vendor's own way (macOS and Windows; Claude Code and Codex). */
+  /** code-learn can install this agent here, the vendor's own way (macOS and Windows; Claude Code and Codex). */
   canInstall: boolean;
-  /** An install Codemm started, while it runs and after it ends. */
+  /** An install code-learn started, while it runs and after it ends. */
   install?: AgentInstall;
 }
 
 /**
- * Codemm installing an agent for the learner. Problems: `offline` and `disk` are this computer's; `unverified`:
+ * code-learn installing an agent for the learner. Problems: `offline` and `disk` are this computer's; `unverified`:
  * the download didn't match the vendor's checksum or signature, so nothing ran (or, for a script's result, it isn't
  * used); `failed`: the vendor's installer didn't finish.
  */
@@ -124,7 +124,7 @@ export interface ComputerCheck {
 }
 
 /**
- * Codemm installing Docker Desktop for the learner (§6.1). `wsl`: on Windows, WSL's own setup, which Windows asks
+ * code-learn installing Docker Desktop for the learner (§6.1). `wsl`: on Windows, WSL's own setup, which Windows asks
  * permission for; `admin`: Docker's installer as administrator, when Windows says it needs one; `starting`: installed and opened; Docker's own window asks the learner to accept its terms.
  * Problems: `offline` and `disk` are this computer's; `macos-version`,
  * `windows-version` and `windows-server`: Docker Desktop doesn't run on this macOS or Windows, so nothing downloaded
@@ -144,12 +144,12 @@ export interface Computer {
   platform: Platform;
   checks: ComputerCheck[];
   ready: boolean;
-  /** Codemm can install and open Docker Desktop here (macOS and Windows). */
+  /** code-learn can install and open Docker Desktop here (macOS and Windows). */
   canInstall?: boolean;
-  /** An install Codemm started, while it runs and after it fails. */
+  /** An install code-learn started, while it runs and after it fails. */
   install?: DockerInstall;
   /**
-   * Docker isn't ready, but Codemm's WASI engine runs here (core §4.5): practice with programs that read input and
+   * Docker isn't ready, but code-learn's WASI engine runs here (core §4.5): practice with programs that read input and
    * print output runs without Docker, so the learner can go on. Docker stays an option for everything else.
    */
   wasi?: true;
@@ -219,12 +219,12 @@ export type SetupState = 'proposing' | 'consent' | 'installing' | 'ready' | 'fai
  */
 export type SetupProblem = 'offline' | 'disk' | 'docker' | 'docker-busy' | 'docker-failed' | 'docker-disk' | 'wasi' | 'wasi-seal' | 'gates';
 
-/** What the learner approves before setup: exactly the files Codemm will build (§4.1). */
+/** What the learner approves before setup: exactly the files code-learn will build (§4.1). */
 export interface Proposal {
   digest: string;
-  /** True when an earlier proposal failed its gates: "Codemm has another way". */
+  /** True when an earlier proposal failed its gates: "code-learn has another way". */
   retry: boolean;
-  /** On a retry, why the last proposal failed, in Codemm's words (never its output). */
+  /** On a retry, why the last proposal failed, in code-learn's words (never its output). */
   why?: string;
   files: { path: string; text: string }[];
 }
@@ -335,7 +335,7 @@ export type RunOutput = { run: string; stream: 'stdout' | 'stderr'; text: string
 
 /**
  * How Run ended. Never recorded. `exit` is the program's own code. `stopped`: the learner stopped it.
- * `timedOut`: its time limit did. `flooded`: it printed too much. `not-run`: Codemm couldn't run it.
+ * `timedOut`: its time limit did. `flooded`: it printed too much. `not-run`: code-learn couldn't run it.
  */
 export type RunResult =
   | { kind: 'ran'; exit: number; stage?: 'build' | 'run'; timedOut: boolean; stopped: boolean; flooded: boolean; outOfMemory: boolean }
@@ -420,7 +420,7 @@ export type UpdateStatus =
 export type Place = { lessonId: string } | { activityId: string };
 
 export interface Message {
-  from: 'you' | 'codemm';
+  from: 'you' | 'code-learn';
   text: string;
 }
 
@@ -429,7 +429,7 @@ export interface Track {
   name: string;
 }
 
-export interface CodemmApi {
+export interface CodeLearnApi {
   agents(): Promise<Agent[]>;
   /** Chooses the agent and runs its sign-in check. */
   connect(agent: AgentId): Promise<Agent>;
@@ -529,18 +529,18 @@ export interface CodemmApi {
   restartToUpdate(): Promise<void>;
 }
 
-/** One thing a job did: a web search, an https page (host and path) or one of Codemm's steps (§4.11). */
+/** One thing a job did: a web search, an https page (host and path) or one of code-learn's steps (§4.11). */
 export type JobStep = { kind: 'search'; query: string } | { kind: 'read'; url: string } | { kind: 'step'; label: string };
 
 /** The agent jobs (§3.2): research, review, a roadmap change, setup, a lesson, an activity (author) and a tutor turn. */
 export type AgentJobKind = 'research' | 'review' | 'roadmap' | 'setup' | 'lesson' | 'author' | 'tutor';
 
-/** Everything that reports progress (§4.11): the agent jobs, and Codemm's own rebuild of a track. */
+/** Everything that reports progress (§4.11): the agent jobs, and code-learn's own rebuild of a track. */
 export type JobKind = AgentJobKind | 'rebuild';
 
 /**
  * A running job's progress (§4.11): its stage (an index into JOB_STAGES[kind]), its latest steps and how long it has
- * run. Never a file path, a file's contents, a hidden test or anything else from Codemm's records.
+ * run. Never a file path, a file's contents, a hidden test or anything else from code-learn's records.
  */
 export interface JobProgress {
   /** This run of the job, an opaque id: a new run starts fresh. */
@@ -559,7 +559,7 @@ export interface JobProgress {
   part?: { done: number; total: number };
   /** "Trying again": attempt 2 of 3 after a failed save, or 2 of 2 after a relaunch. */
   retry?: { attempt: number; of: number };
-  /** False while one of Codemm's own tools runs: then the agent is waiting, not thinking. */
+  /** False while one of code-learn's own tools runs: then the agent is waiting, not thinking. */
   thinking: boolean;
   /** Since the job started, and since its last event, when this was sent. */
   elapsedMs: number;
@@ -568,7 +568,7 @@ export interface JobProgress {
   ended?: true;
 }
 
-/** What the preload script exposes as `window.codemm`. */
+/** What the preload script exposes as `window.codeLearn`. */
 export interface Bridge {
   invoke(method: string, args: unknown[]): Promise<unknown>;
   /** Events main sends, to the app window only: check progress, job progress, and Run's output (to the window that started it). */

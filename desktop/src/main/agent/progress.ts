@@ -1,6 +1,6 @@
 // One agent job's progress (DESIGN §4.11), read from the bridge's common events: the stage it has reached, its
-// latest steps (searches, pages, Codemm's own steps), retries, and how long it has run and been quiet. It keeps
-// nothing from a tool's arguments or results, a file or Codemm's records: only fixed labels, queries and pages.
+// latest steps (searches, pages, code-learn's own steps), retries, and how long it has run and been quiet. It keeps
+// nothing from a tool's arguments or results, a file or code-learn's records: only fixed labels, queries and pages.
 import { randomUUID } from 'node:crypto';
 import type { JobKind, JobProgress, JobStep } from '../../shared/api';
 import { JOB_STAGES } from '../../shared/progress';
@@ -12,7 +12,7 @@ const SAVES: Partial<Record<JobKind, string>> = { research: 'save_roadmap', road
 const KEPT = 8;
 
 /** The exercise gates (core §6), in the order they run, in the learner's words: the gates' own names mean nothing to them. */
-export const GATES = { reference: 'Codemm is checking that the exercise can be solved', starter: "Codemm is checking that the exercise isn't solved yet", mutants: 'Codemm is checking that the tests catch mistakes' } as const;
+export const GATES = { reference: 'code-learn is checking that the exercise can be solved', starter: "code-learn is checking that the exercise isn't solved yet", mutants: 'code-learn is checking that the tests catch mistakes' } as const;
 export type Gate = keyof typeof GATES;
 
 export interface TrackerOptions {
@@ -39,9 +39,9 @@ export function jobTracker(kind: JobKind, { id = randomUUID(), concept, track, n
   let retry: JobProgress['retry'] = first;
   let part: JobProgress['part'];
   let gate: Gate | undefined;
-  /** Codemm itself is working (a setup's build), not the agent. */
-  let codemm = false;
-  /** What Codemm itself is doing at its stage, shown as the latest step until it moves on. */
+  /** code-learn itself is working (a setup's build), not the agent. */
+  let codeLearn = false;
+  /** What code-learn itself is doing at its stage, shown as the latest step until it moves on. */
   let doing: JobStep | undefined;
   let failedSaves = 0;
   const open = new Set<string>();
@@ -69,10 +69,10 @@ export function jobTracker(kind: JobKind, { id = randomUUID(), concept, track, n
       lastEvent = now();
       if (kind !== 'setup') reach(1);
       if (e.type === 'progress') step(e.step);
-      if (e.type === 'tool_call' && e.name.startsWith('codemm.')) {
+      if (e.type === 'tool_call' && e.name.startsWith('code-learn.')) {
         open.add(e.id);
-        if (kind === 'author' && e.name === 'codemm.next_step') targets.add(e.id);
-        if (e.name === `codemm.${SAVES[kind]}`) {
+        if (kind === 'author' && e.name === 'code-learn.next_step') targets.add(e.id);
+        if (e.name === `code-learn.${SAVES[kind]}`) {
           saves.add(e.id);
           reach(2);
         }
@@ -92,19 +92,19 @@ export function jobTracker(kind: JobKind, { id = randomUUID(), concept, track, n
       }
     },
     /**
-     * Codemm's own work reached a stage: a setup's build (with its steps) or a WASI track's download (`doing`), then
+     * code-learn's own work reached a stage: a setup's build (with its steps) or a WASI track's download (`doing`), then
      * its checks.
      */
     reach(n: number, fraction?: JobProgress['part'], label?: string) {
       lastEvent = now();
-      codemm = true;
+      codeLearn = true;
       stage = Math.min(n, last);
       part = fraction;
       doing = label ? { kind: 'step', label } : undefined;
     },
     /** True while one of the job's saves runs: only then can an exercise gate be running. */
     saving: () => [...saves].some((s) => open.has(s)),
-    /** The exercise gate Codemm runs during the author's save (core's --progress file). Ignored when no save runs. */
+    /** The exercise gate code-learn runs during the author's save (core's --progress file). Ignored when no save runs. */
     gate(g: Gate) {
       if (g === gate || ![...saves].some((s) => open.has(s))) return;
       lastEvent = now();
@@ -136,7 +136,7 @@ export function jobTracker(kind: JobKind, { id = randomUUID(), concept, track, n
         count,
         ...(retry ? { retry } : {}),
         ...(part ? { part } : {}),
-        thinking: open.size === 0 && !codemm,
+        thinking: open.size === 0 && !codeLearn,
         elapsedMs: t - started,
         idleMs: t - lastEvent,
       };

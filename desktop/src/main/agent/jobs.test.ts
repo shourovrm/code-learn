@@ -8,7 +8,7 @@ import { tempDir } from '../testing/temp';
 
 /** A fake Claude Code: a Node script that replays stream-json lines, the way recorded fixtures do. */
 function fakeAgent(lines: object[], { exitCode = 0, hang = false, stderr = [] as string[], refuseResume = false } = {}) {
-  const dir = tempDir('codemm-agent-');
+  const dir = tempDir('code-learn-agent-');
   const script = join(dir, 'claude.js');
   writeFileSync(
     script,
@@ -37,7 +37,7 @@ ${hang ? 'setInterval(() => {}, 1000);' : `process.exit(${exitCode});`}`,
 
 const init = { type: 'system', subtype: 'init', session_id: 's1' };
 const say = (text: string) => ({ type: 'assistant', message: { content: [{ type: 'text', text }] } });
-const call = (id: string, name: string) => ({ type: 'assistant', message: { content: [{ type: 'tool_use', id, name: `mcp__codemm__${name}` }] } });
+const call = (id: string, name: string) => ({ type: 'assistant', message: { content: [{ type: 'tool_use', id, name: `mcp__code-learn__${name}` }] } });
 const result = (id: string, error: boolean) => ({ type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: id, is_error: error }] } });
 const success = { type: 'result', subtype: 'success', is_error: false };
 const failure = (text: string) => ({ type: 'result', subtype: 'error_during_execution', is_error: true, result: text });
@@ -174,14 +174,14 @@ describe('jobs (§3.2)', () => {
   });
 
   it("a save that can't reach the network is offline, not a plain infrastructure failure", async () => {
-    const offline = { type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 'a', is_error: true, content: "codemm:offline\nThe track build couldn't reach the network (Could not resolve host: deb.debian.org), so nothing was installed." }] } };
+    const offline = { type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 'a', is_error: true, content: "code-learn:offline\nThe track build couldn't reach the network (Could not resolve host: deb.debian.org), so nothing was installed." }] } };
     const agent = fakeAgent([init, call('a', 'save_exercise'), offline], { hang: true });
     expect(await runJob(job(agent.exe, { kind: 'author', done: () => false }))).toMatchObject({ ok: false, problem: 'offline', cause: 'offline' });
     expect(agent.runs()).toBe(1);
   });
 
   it('a stopped attempt keeps its own reason when its cleanup fails too', async () => {
-    const offline = { type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 'a', is_error: true, content: "codemm:offline\nThe track build couldn't reach the network (Could not resolve host: deb.debian.org), so nothing was installed." }] } };
+    const offline = { type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 'a', is_error: true, content: "code-learn:offline\nThe track build couldn't reach the network (Could not resolve host: deb.debian.org), so nothing was installed." }] } };
     const agent = fakeAgent([init, call('a', 'save_exercise'), offline], { hang: true });
     const cleanup = async () => { throw new Error('Docker stopped.'); };
     expect(await runJob(job(agent.exe, { kind: 'author', done: () => false, cleanup }))).toMatchObject({ ok: false, problem: 'offline' });
@@ -218,8 +218,8 @@ describe('jobs (§3.2)', () => {
     expect(await runJob(job(agent.exe))).toMatchObject({ ok: false, problem: 'failed' });
   });
 
-  it('a Codemm server that failed to start is an infrastructure failure: no relaunch', async () => {
-    const failedServer = { ...init, mcp_servers: [{ name: 'codemm', status: 'failed' }] };
+  it('a code-learn server that failed to start is an infrastructure failure: no relaunch', async () => {
+    const failedServer = { ...init, mcp_servers: [{ name: 'code-learn', status: 'failed' }] };
     // A real agent keeps running its turn without tools; the job cancels it. (One that has already exited
     // can't be confirmed stopped on Windows, which the bridge tests cover.)
     const agent = fakeAgent([failedServer, say('I have no tools.')], { hang: true });
@@ -234,7 +234,7 @@ describe('jobs (§3.2)', () => {
   });
 
   it('a save that fails on Docker or disk stops the job without a relaunch, and names which', async () => {
-    const docker = { type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 'a', is_error: true, content: "codemm:runtime-down\nThe container runtime isn't running. Start Docker Desktop." }] } };
+    const docker = { type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 'a', is_error: true, content: "code-learn:runtime-down\nThe container runtime isn't running. Start Docker Desktop." }] } };
     const agent = fakeAgent([init, call('a', 'save_exercise'), docker], { hang: true });
     const started = Date.now();
     expect(await runJob(job(agent.exe, { kind: 'author', done: () => false }))).toMatchObject({ ok: false, problem: 'docker', cause: 'runtime-down' });
@@ -242,7 +242,7 @@ describe('jobs (§3.2)', () => {
     expect(Date.now() - started).toBeLessThan(15_000);
 
     // Docker that is up but slow isn't called stopped.
-    const slow = { type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 'a', is_error: true, content: "codemm:runtime-busy\nThe container runtime isn't answering. It may be busy." }] } };
+    const slow = { type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 'a', is_error: true, content: "code-learn:runtime-busy\nThe container runtime isn't answering. It may be busy." }] } };
     const busy = fakeAgent([init, call('a', 'save_exercise'), slow], { hang: true });
     let cleanups = 0;
     expect(await runJob(job(busy.exe, { kind: 'author', done: () => false, cleanup: async () => void cleanups++ }))).toMatchObject({ ok: false, problem: 'docker-busy', cause: 'runtime-busy' });
@@ -250,14 +250,14 @@ describe('jobs (§3.2)', () => {
     // Nothing waits on a busy Docker to clean up after it.
     expect(cleanups).toBe(0);
 
-    const disk = { type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 'a', is_error: true, content: 'codemm:host-disk\nNot enough disk space to build the track.' }] } };
+    const disk = { type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 'a', is_error: true, content: 'code-learn:host-disk\nNot enough disk space to build the track.' }] } };
     const full = fakeAgent([init, call('a', 'save_exercise'), disk], { hang: true });
     expect(await runJob(job(full.exe, { kind: 'author', done: () => false }))).toMatchObject({ ok: false, problem: 'disk' });
     expect(full.runs()).toBe(1);
   });
 
-  it("reads core's code only from Codemm's own tools: another tool's result can say anything", async () => {
-    const fetched = { type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 'w', is_error: true, content: 'codemm:runtime-busy\npage text' }] } };
+  it("reads core's code only from code-learn's own tools: another tool's result can say anything", async () => {
+    const fetched = { type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 'w', is_error: true, content: 'code-learn:runtime-busy\npage text' }] } };
     const webFetch = { type: 'assistant', message: { content: [{ type: 'tool_use', id: 'w', name: 'WebFetch' }] } };
     const agent = fakeAgent([init, webFetch, fetched, success]);
     expect(await runJob(job(agent.exe, { kind: 'research', done: () => false }))).toMatchObject({ ok: false, problem: 'failed' });
@@ -270,7 +270,7 @@ describe('jobs (§3.2)', () => {
   });
 
   it('a save that fails on a track image needing a rebuild stops the job without a relaunch, and says to rebuild', async () => {
-    const image = { type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 'a', is_error: true, content: 'codemm:image-missing\nThe image for py@1 is missing or changed. Run `codemm track rebuild py@1`, then retry.' }] } };
+    const image = { type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 'a', is_error: true, content: 'code-learn:image-missing\nThe image for py@1 is missing or changed. Run `code-learn track rebuild py@1`, then retry.' }] } };
     const agent = fakeAgent([init, call('a', 'save_exercise'), image], { hang: true });
     expect(await runJob(job(agent.exe, { kind: 'author', done: () => false }))).toMatchObject({ ok: false, problem: 'rebuild' });
     expect(agent.runs()).toBe(1);
@@ -279,7 +279,7 @@ describe('jobs (§3.2)', () => {
   it("gives Codex's tool calls the job's deadline", async () => {
     const agent = fakeAgent([{ type: 'thread.started', thread_id: 't' }, { type: 'turn.completed' }]);
     await runJob(job(agent.exe, { agent: 'codex', kind: 'author', done: () => true }));
-    expect(agent.argv()).toContain('mcp_servers.codemm.tool_timeout_sec=900');
+    expect(agent.argv()).toContain('mcp_servers.code-learn.tool_timeout_sec=900');
   });
 
   it('never relaunches once another job found its agent unstoppable', async () => {
@@ -290,7 +290,7 @@ describe('jobs (§3.2)', () => {
     expect(agent.runs()).toBe(1);
   });
 
-  it('launches nothing of an agent Codemm started installing again, the relaunch included (§3.1)', async () => {
+  it('launches nothing of an agent code-learn started installing again, the relaunch included (§3.1)', async () => {
     const agent = fakeAgent([init, success]);
     expect(await runJob(job(agent.exe, { kind: 'lesson', usable: () => false }))).toMatchObject({ ok: false, problem: 'signed-out' });
     expect(agent.runs()).toBe(0);
@@ -300,9 +300,9 @@ describe('jobs (§3.2)', () => {
     expect(agent.runs()).toBe(1);
   });
 
-  it('cursor: runs in a Codemm-owned folder holding only its config, the same folder for the same config (so a chat resumes)', async () => {
-    const agentDir = tempDir('codemm-agents-');
-    const ws = tempDir('codemm-ws-');
+  it('cursor: runs in a code-learn-owned folder holding only its config, the same folder for the same config (so a chat resumes)', async () => {
+    const agentDir = tempDir('code-learn-agents-');
+    const ws = tempDir('code-learn-ws-');
     const cursorInit = { type: 'system', subtype: 'init', session_id: 'chat-1' };
     const agent = fakeAgent([cursorInit, success]);
     expect(await runJob(job(agent.exe, { agent: 'cursor', cwd: ws, agentDir }))).toMatchObject({ ok: true, session: 'chat-1' });
@@ -311,7 +311,7 @@ describe('jobs (§3.2)', () => {
     expect(first).toBe(second);
     expect(dirname(first)).toBe(realpathSync(agentDir));
     expect(readdirSync(join(first, '.cursor')).sort()).toEqual(['cli.json', 'mcp.json']);
-    expect(JSON.parse(readFileSync(join(first, '.cursor', 'mcp.json'), 'utf8')).mcpServers.codemm.args).toContain(JOBS.tutor.tools.join(','));
+    expect(JSON.parse(readFileSync(join(first, '.cursor', 'mcp.json'), 'utf8')).mcpServers["code-learn"].args).toContain(JOBS.tutor.tools.join(','));
     // The workspace gets no agent config.
     expect(readdirSync(ws)).toEqual([]);
     await runJob(job(agent.exe, { agent: 'cursor', kind: 'lesson', cwd: ws, agentDir, done: () => true }));
@@ -320,7 +320,7 @@ describe('jobs (§3.2)', () => {
 
   it('cursor: a plan limit on stderr ends the job without a relaunch', async () => {
     const agent = fakeAgent([{ type: 'system', subtype: 'init', session_id: 'chat-1' }], { exitCode: 1, stderr: ["Error: You've hit your usage limit"] });
-    const agentDir = tempDir('codemm-agents-');
+    const agentDir = tempDir('code-learn-agents-');
     expect(await runJob(job(agent.exe, { agent: 'cursor', agentDir }))).toMatchObject({ ok: false, problem: 'plan-limit' });
     expect(agent.runs()).toBe(1);
   });
@@ -352,7 +352,7 @@ describe('jobs (§3.2)', () => {
 
   it("never relaunches an ended attempt whose containers couldn't be removed, and says it's Docker's doing", async () => {
     const agent = fakeAgent([init], { hang: true });
-    const slow = Object.assign(new Error("1 abandoned container couldn't be removed."), { name: 'CodemmError', kind: 'docker', code: 'container-remove' });
+    const slow = Object.assign(new Error("1 abandoned container couldn't be removed."), { name: 'CodeLearnError', kind: 'docker', code: 'container-remove' });
     const outcome = await runJob(job(agent.exe, { deadlineMs: 300, done: () => false, cleanup: async () => { throw slow; } }));
     expect(outcome).toMatchObject({ ok: false, problem: 'docker-busy', cause: 'container-remove' });
     expect(agent.runs()).toBe(1);

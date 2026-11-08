@@ -4,7 +4,7 @@ vi.mock('@xterm/addon-fit', () => import('../../testing/xterm'));
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import type { CodemmApi, JobProgress } from '../../../shared/api';
+import type { CodeLearnApi, JobProgress } from '../../../shared/api';
 import { xterm } from '../../testing/xterm';
 import { scenario, type MockOptions } from '../../../main/mock';
 import { mockWithCourse, mockWithRoadmap, renderApp } from '../../test-utils';
@@ -286,8 +286,8 @@ describe('topic page and setup consent', () => {
     renderApp({ to: 'topic', topicId: TOPIC }, api);
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Set up' }));
     const alert = await screen.findByRole('alert');
-    expect(within(alert).getByRole('heading', { name: "Codemm couldn't start the part that runs your code." })).toBeInTheDocument();
-    expect(alert).toHaveTextContent('Reinstall Codemm, then try again.');
+    expect(within(alert).getByRole('heading', { name: "code-learn couldn't start the part that runs your code." })).toBeInTheDocument();
+    expect(alert).toHaveTextContent('Reinstall code-learn, then try again.');
     expect(alert).not.toHaveTextContent('Docker');
     expect(within(alert).getAllByRole('button').map((b) => b.textContent)).toEqual(['Stop', 'Try again']);
   });
@@ -300,7 +300,7 @@ describe('topic page and setup consent', () => {
     const alert = await screen.findByRole('alert');
     expect(within(alert).getByRole('heading', { name: "Couldn't set up React." })).toBeInTheDocument();
     await user.click(within(alert).getByRole('button', { name: 'Try again' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Codemm has another way to set up React.' });
+    const dialog = await screen.findByRole('dialog', { name: 'code-learn has another way to set up React.' });
     // It says why the last try failed, and declining only closes it, as on the first ask.
     expect(dialog).toHaveTextContent("The last try didn't build.");
     expect(within(dialog).getAllByRole('button').map((b) => b.textContent)).toEqual(expect.arrayContaining(['Not now', 'Set up']));
@@ -314,7 +314,7 @@ describe('topic page and setup consent', () => {
     api.course = async () => (retried ? course : failed);
     api.retryJobs = async () => void retried++;
     renderApp({ to: 'topic', topicId: TOPIC }, api);
-    const row = (await screen.findByText("Codemm couldn't write this lesson.")).closest('.row') as HTMLElement;
+    const row = (await screen.findByText("code-learn couldn't write this lesson.")).closest('.row') as HTMLElement;
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Check your agent' })).not.toBeInTheDocument();
     await user.click(within(row).getByRole('button', { name: 'Try again' }));
@@ -324,7 +324,7 @@ describe('topic page and setup consent', () => {
 
 describe('setup actions run once (a double click)', () => {
   /** Wraps one api call so it waits until released, counting calls. */
-  function hold<K extends 'install' | 'retrySetup' | 'retryJobs'>(api: CodemmApi, method: K) {
+  function hold<K extends 'install' | 'retrySetup' | 'retryJobs'>(api: CodeLearnApi, method: K) {
     const calls: unknown[][] = [];
     let release!: () => void;
     const real = api[method] as (...a: unknown[]) => Promise<void>;
@@ -381,17 +381,17 @@ describe('background work that stopped', () => {
     const { api } = await mockWithCourse({ stalled: 'failed', stalledWork: 'lesson' });
     renderApp({ to: 'topic', topicId: TOPIC }, api);
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent("Codemm couldn't finish writing a lesson.");
+    expect(alert).toHaveTextContent("code-learn couldn't finish writing a lesson.");
     expect(within(alert).getByRole('button', { name: 'Check your agent' })).toBeInTheDocument();
     await user.click(within(alert).getByRole('button', { name: 'Try again' }));
     await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
   });
 
-  it('says when Codemm could not stop the agent, with no way to retry until quitting', async () => {
+  it('says when code-learn could not stop the agent, with no way to retry until quitting', async () => {
     const { api } = await mockWithCourse({ stalled: 'unstoppable' });
     renderApp({ to: 'topic', topicId: TOPIC }, api);
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent("Codemm couldn't stop your agent. Quit Codemm to stop it.");
+    expect(alert).toHaveTextContent("code-learn couldn't stop your agent. Quit code-learn to stop it.");
     expect(within(alert).queryByRole('button')).not.toBeInTheDocument();
   });
 
@@ -432,16 +432,16 @@ describe('background work that stopped', () => {
     const { api } = await mockWithCourse({ stalled: 'wasi' });
     renderApp({ to: 'topic', topicId: TOPIC }, api);
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent("Codemm couldn't start the part that runs your code. Reinstall Codemm, then try again.");
+    expect(alert).toHaveTextContent("code-learn couldn't start the part that runs your code. Reinstall code-learn, then try again.");
     expect(alert).not.toHaveTextContent('Docker');
     expect(within(alert).getAllByRole('button').map((b) => b.textContent)).toEqual(['Try again']);
   });
 
-  it("says when Codemm couldn't make its files read-only on this drive, and where to keep its folder", async () => {
+  it("says when code-learn couldn't make its files read-only on this drive, and where to keep its folder", async () => {
     const { api } = await mockWithCourse({ stalled: 'wasi-seal' });
     renderApp({ to: 'topic', topicId: TOPIC }, api);
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent("Codemm couldn't make its files read-only on this drive. Keep Codemm's folder on this computer's own drive, then try again.");
+    expect(alert).toHaveTextContent("code-learn couldn't make its files read-only on this drive. Keep code-learn's folder on this computer's own drive, then try again.");
     expect(within(alert).getAllByRole('button').map((b) => b.textContent)).toEqual(['Try again']);
   });
 
@@ -488,7 +488,7 @@ describe('stalled work beside a lesson', () => {
     const { api } = await mockWithCourse({ stalled: 'failed', stalledWork: 'author' });
     renderApp({ to: 'lesson', lessonId: `${TOPIC}-2` }, api);
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent("Codemm couldn't finish writing an activity.");
+    expect(alert).toHaveTextContent("code-learn couldn't finish writing an activity.");
     await user.click(within(alert).getByRole('button', { name: 'Try again' }));
     await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
   });
@@ -530,7 +530,7 @@ describe('stalled work beside a lesson', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     options.stalled = 'failed';
     options.stalledWork = 'setup';
-    expect(await screen.findByRole('alert')).toHaveTextContent("Codemm couldn't finish setting up the course.");
+    expect(await screen.findByRole('alert')).toHaveTextContent("code-learn couldn't finish setting up the course.");
   });
 });
 
@@ -552,7 +552,7 @@ describe('lessons', () => {
     expect(await screen.findByText('The setter replaces the value.')).toBeInTheDocument();
     expect((await api.lesson(`${TOPIC}-2`)).notes).toBe('The setter replaces the value.');
 
-    await user.type(screen.getByRole('textbox', { name: 'Ask Codemm' }), 'Why a setter?{Enter}');
+    await user.type(screen.getByRole('textbox', { name: 'Ask code-learn' }), 'Why a setter?{Enter}');
     expect(await within(screen.getByRole('log')).findByText('Good question. Try it in the activity next.')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Next' }));
@@ -611,7 +611,7 @@ describe('lessons', () => {
     await screen.findByRole('heading', { name: 'useState', level: 1 });
     await user.click(screen.getByRole('button', { name: 'Add a note' }));
     await user.type(screen.getByRole('textbox', { name: 'My note' }), 'Kept note');
-    // From here on, lesson reads don't answer, as when background work keeps Codemm busy: the save's own re-read too.
+    // From here on, lesson reads don't answer, as when background work keeps code-learn busy: the save's own re-read too.
     api.lesson = () => new Promise(() => {});
     await user.click(screen.getByRole('button', { name: 'Save' }));
     expect(await screen.findByText('Kept note')).toBeInTheDocument();

@@ -6,7 +6,7 @@ import type { UpdateStatus } from '../shared/api';
 import type { Log } from './log';
 import { POWERSHELL } from './windows';
 
-/** What Codemm needs from electron-updater: a check that finds a newer version or none, a download, an install. */
+/** What code-learn needs from electron-updater: a check that finds a newer version or none, a download, an install. */
 export interface Updater {
   check(): Promise<{ version: string } | null>;
   download(): Promise<void>;
@@ -21,7 +21,7 @@ const VERSION = /^\d+\.\d+\.\d+(-[0-9A-Za-z]+(\.[0-9A-Za-z]+)*)?$/;
 export const isPrerelease = (version: string) => version.includes('-');
 
 /**
- * `cleanup` runs before an install: the installer may end the app the moment it starts, so Codemm's jobs and
+ * `cleanup` runs before an install: the installer may end the app the moment it starts, so code-learn's jobs and
  * containers are stopped first, the same way quitting stops them.
  */
 export function updates({ signed, updater, log = () => undefined, cleanup = async () => undefined }: { signed: boolean; updater: Updater; log?: Log; cleanup?: () => Promise<void> }) {
@@ -53,7 +53,7 @@ export function updates({ signed, updater, log = () => undefined, cleanup = asyn
     },
     stop: () => clearInterval(timer),
     status: () => status,
-    /** Stops Codemm's work, then quits and installs the downloaded version. Only a signed, finished download. */
+    /** Stops code-learn's work, then quits and installs the downloaded version. Only a signed, finished download. */
     async restart() {
       if (status.kind !== 'ready') return;
       await cleanup();
@@ -88,7 +88,7 @@ type Exec = (file: string, args: string[], env: NodeJS.ProcessEnv) => Promise<st
 /**
  * A distinguished name's parts by key, each with every value it has (a key may repeat, such as OU). Only plain names
  * are read: printable ASCII with no quotes, backslashes or multi-valued parts ("+"). Anything else is null, so the
- * update is refused rather than matched on a guess at Windows' quoting or at Unicode. Codemm's own certificate has a
+ * update is refused rather than matched on a guess at Windows' quoting or at Unicode. code-learn's own certificate has a
  * plain name.
  */
 function dn(name: string): Map<string, string[]> | null {
@@ -127,7 +127,7 @@ export async function verifyWindowsSignature(publisherNames: string[], file: str
   if (publisherNames.length === 0) return 'The update has no publisher to check its signature against.';
   let out: string;
   try {
-    out = await exec(POWERSHELL, ['-NoProfile', '-NonInteractive', '-InputFormat', 'None', '-Command', 'Get-AuthenticodeSignature -LiteralPath $env:CODEMM_UPDATE_FILE | ConvertTo-Json -Compress'], { ...process.env, CODEMM_UPDATE_FILE: file });
+    out = await exec(POWERSHELL, ['-NoProfile', '-NonInteractive', '-InputFormat', 'None', '-Command', 'Get-AuthenticodeSignature -LiteralPath $env:CODE_LEARN_UPDATE_FILE | ConvertTo-Json -Compress'], { ...process.env, CODE_LEARN_UPDATE_FILE: file });
   } catch (e) {
     return `The update's signature couldn't be checked: ${e instanceof Error ? e.message : String(e)}`;
   }

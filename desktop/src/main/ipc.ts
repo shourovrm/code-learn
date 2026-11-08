@@ -1,6 +1,6 @@
 // Every renderer call passes through here: the method must be part of
-// CodemmApi and every argument must have the right shape before Codemm sees it.
-import type { CodemmApi } from '../shared/api';
+// CodeLearnApi and every argument must have the right shape before code-learn sees it.
+import type { CodeLearnApi } from '../shared/api';
 import { errorFields, safeError, SafeError } from './errors';
 import type { Log } from './log';
 import { LIMITS } from '../shared/limits';
@@ -45,7 +45,7 @@ const exampleNumber: Valid = (v) => Number.isInteger(v) && (v as number) >= 1 &&
 const fileText: Valid = (v) => typeof v === 'string' && new TextEncoder().encode(v).length <= MAX_FILE_BYTES;
 
 // onCheckProgress, onJobProgress and onRunOutput are events main sends, never something the renderer may call.
-const ARGS: { [K in Exclude<keyof CodemmApi, 'onCheckProgress' | 'onJobProgress' | 'onRunOutput'>]: Valid[] } = {
+const ARGS: { [K in Exclude<keyof CodeLearnApi, 'onCheckProgress' | 'onJobProgress' | 'onRunOutput'>]: Valid[] } = {
   agents: [],
   jobProgress: [],
   connect: [oneOf('claude', 'codex', 'cursor')],
@@ -92,25 +92,25 @@ const ARGS: { [K in Exclude<keyof CodemmApi, 'onCheckProgress' | 'onJobProgress'
   restartToUpdate: [],
 };
 
-/** Validates a renderer call and passes it to Codemm. Throws on anything unexpected. */
-export function dispatch(codemm: CodemmApi, method: unknown, args: unknown): Promise<unknown> {
+/** Validates a renderer call and passes it to codeLearn. Throws on anything unexpected. */
+export function dispatch(codeLearn: CodeLearnApi, method: unknown, args: unknown): Promise<unknown> {
   if (typeof method !== 'string' || !Object.hasOwn(ARGS, method)) throw new SafeError('Unknown call');
   const valid = ARGS[method as keyof typeof ARGS];
   if (!Array.isArray(args) || args.length !== valid.length || !valid.every((check, i) => check(args[i]))) throw new SafeError('Bad input');
-  const call = codemm[method as keyof typeof ARGS] as (...a: unknown[]) => Promise<unknown>;
-  return call.apply(codemm, args);
+  const call = codeLearn[method as keyof typeof ARGS] as (...a: unknown[]) => Promise<unknown>;
+  return call.apply(codeLearn, args);
 }
 
 /**
- * The `codemm` IPC handler: calls only from the app's own frame, validated, and
+ * The `code-learn` IPC handler: calls only from the app's own frame, validated, and
  * failures reduced to what may leave main (errors.ts), with structured logging.
  */
-export function handler<E>(codemm: CodemmApi, log: Log, fromApp: (event: E) => boolean) {
+export function handler<E>(codeLearn: CodeLearnApi, log: Log, fromApp: (event: E) => boolean) {
   return (event: E, method: unknown, args: unknown): Promise<unknown> =>
     Promise.resolve()
       .then(() => {
         if (!fromApp(event)) throw new SafeError('Unknown sender');
-        return dispatch(codemm, method, args);
+        return dispatch(codeLearn, method, args);
       })
       .catch((e: unknown) => {
         log('ipc-error', { method: typeof method === 'string' && Object.hasOwn(ARGS, method) ? method : 'unknown', ...errorFields(e) });

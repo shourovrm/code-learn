@@ -6,7 +6,7 @@ import { afterAll } from 'vitest';
 const made: string[] = [];
 
 /** A fresh folder under the OS temp folder, removed when the test file ends. */
-export function tempDir(prefix = 'codemm-test-'): string {
+export function tempDir(prefix = 'code-learn-test-'): string {
   const dir = mkdtempSync(join(tmpdir(), prefix));
   made.push(dir);
   return dir;

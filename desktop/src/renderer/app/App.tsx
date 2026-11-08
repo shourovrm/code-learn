@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import type { CodemmApi } from '../../shared/api';
+import type { CodeLearnApi } from '../../shared/api';
 import { Connect } from '../features/connect/Connect';
 import { Welcome } from '../features/connect/Welcome';
 import { Computer } from '../features/computer/Computer';
@@ -50,7 +50,7 @@ function Screen({ route, visit }: { route: Route; visit: number }) {
   }
 }
 
-export function App({ api, start = { to: 'welcome' } }: { api: CodemmApi; start?: Route }) {
+export function App({ api, start = { to: 'welcome' } }: { api: CodeLearnApi; start?: Route }) {
   const [{ route, visit }, setPlace] = useState({ route: start, visit: 0 });
   const setRoute = (next: Route) => setPlace((p) => ({ route: next, visit: p.visit + 1 }));
   const [failed, setFailed] = useState<{ text: string; agent: boolean }>();
@@ -80,7 +80,7 @@ export function App({ api, start = { to: 'welcome' } }: { api: CodemmApi; start?
     <ApiContext.Provider value={api}>
       <RouterContext.Provider value={router}>
         <div className="win">
-          <div className="tbar">Codemm</div>
+          <div className="tbar">code-learn</div>
           <div className="wbody" ref={body}>
             <Screen route={route} visit={visit} />
           </div>

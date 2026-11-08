@@ -1,6 +1,6 @@
-// Starts an agent's own sign-in where the learner sees it (DESIGN §3.1). Codemm never reads, stores or types
+// Starts an agent's own sign-in where the learner sees it (DESIGN §3.1). code-learn never reads, stores or types
 // credentials: Claude Code's login runs in a terminal window (Terminal on a Mac, a console window on Windows), and
-// Codex's and Cursor's open the browser. Every program starts from an argument array; the one file Codemm writes
+// Codex's and Cursor's open the browser. Every program starts from an argument array; the one file code-learn writes
 // holds only quoted paths and a number.
 import { spawn } from 'node:child_process';
 import { mkdtempSync, statSync, writeFileSync } from 'node:fs';
@@ -32,27 +32,27 @@ const winQuote = (s: string) => (/\s/.test(s) ? `"${s}"` : s);
  * its own. The program and its arguments arrive as environment variables, never inside the command text. .NET's
  * Process.Start, as WSL's elevated setup uses (wsl.ts).
  */
-export const CONSOLE = '$i = New-Object Diagnostics.ProcessStartInfo $env:CODEMM_FILE, $env:CODEMM_ARGS; $i.UseShellExecute = $true; $null = [Diagnostics.Process]::Start($i)';
+export const CONSOLE = '$i = New-Object Diagnostics.ProcessStartInfo $env:CODE_LEARN_FILE, $env:CODE_LEARN_ARGS; $i.UseShellExecute = $true; $null = [Diagnostics.Process]::Start($i)';
 
 export function agentSignIn(d: SignInDeps) {
   return async (id: AgentId, exe: Executable): Promise<void> => {
     // A Node-script agent runs with this app as Node, as its jobs do; Cursor on Windows, as its own Node on its script (§3.1).
     const c = command(exe, LOGIN[id], d.runtime);
     // Claude Code asks for its login in a terminal. On a Mac, Terminal runs a one-line script; on Windows, it opens
-    // in a console window of its own. A program started straight from Codemm would have no window to show it in.
+    // in a console window of its own. A program started straight from code-learn would have no window to show it in.
     if (id === 'claude' && d.platform === 'darwin') {
       const file = posix.join(d.tempDir(), 'Sign in to Claude Code.command');
       const line = [...Object.entries(c.env).map(([k, v]) => `${k}=${quote(v)}`), 'exec', ...[c.file, ...c.args].map(quote)].join(' ');
-      // Terminal runs it a moment later: only the file Codemm allowed at Sign in runs, not one an install put there since.
+      // Terminal runs it a moment later: only the file code-learn allowed at Sign in runs, not one an install put there since.
       // The pin checks the agent's own file, `exe.path`.
-      const pin = `[ "$(/usr/bin/stat -L -f %i ${quote(exe.path)})" = ${d.inode(exe.path)} ] || { echo 'Claude Code changed. Sign in again from Codemm.'; exit 1; }`;
+      const pin = `[ "$(/usr/bin/stat -L -f %i ${quote(exe.path)})" = ${d.inode(exe.path)} ] || { echo 'Claude Code changed. Sign in again from codeLearn.'; exit 1; }`;
       d.write(file, `#!/bin/sh\n${pin}\n${line}\n`);
       await d.start('/usr/bin/open', [file]);
       return;
     }
     if (id === 'claude' && d.platform === 'win32') {
       // Windows opens it at once, so nothing can replace the file in between, as Terminal's moment allows on a Mac.
-      await d.start(POWERSHELL, ['-NoProfile', '-NonInteractive', '-Command', CONSOLE], { CODEMM_FILE: c.file, CODEMM_ARGS: c.args.map(winQuote).join(' '), ...c.env });
+      await d.start(POWERSHELL, ['-NoProfile', '-NonInteractive', '-Command', CONSOLE], { CODE_LEARN_FILE: c.file, CODE_LEARN_ARGS: c.args.map(winQuote).join(' '), ...c.env });
       return;
     }
     await d.start(c.file, c.args, c.env);
@@ -63,12 +63,12 @@ export function nodeSignInDeps(runtime: string): SignInDeps {
   return {
     platform: process.platform,
     runtime,
-    tempDir: () => mkdtempSync(join(tmpdir(), 'codemm-signin-')),
+    tempDir: () => mkdtempSync(join(tmpdir(), 'code-learn-signin-')),
     write: (file, text) => writeFileSync(file, text, { mode: 0o700 }),
     inode: (file) => statSync(file).ino,
     start: (file, args, env) =>
       new Promise((resolve, reject) => {
-        // On Windows, a detached program has no console at all, and one Codemm started shows none: hidden, it ends on its
+        // On Windows, a detached program has no console at all, and one code-learn started shows none: hidden, it ends on its
         // own (PowerShell, once it has opened the agent's console window).
         const child = spawn(file, args, { detached: process.platform !== 'win32', windowsHide: true, stdio: 'ignore', env: { ...process.env, ...env } });
         child.once('error', reject);

@@ -1,7 +1,7 @@
 // @vitest-environment node
 // Opt-in, on a Mac with network: the vendors' real downloads and the real checks, stopping short of installing.
-// CODEMM_REAL_AGENT_DOWNLOAD=1 npx vitest run src/main/agentInstall.real.test.ts
-// CODEMM_REAL_CODEX_BIN=<a native codex binary> also checks OpenAI's signature on it.
+// CODE_LEARN_REAL_AGENT_DOWNLOAD=1 npx vitest run src/main/agentInstall.real.test.ts
+// CODE_LEARN_REAL_CODEX_BIN=<a native codex binary> also checks OpenAI's signature on it.
 import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -11,7 +11,7 @@ import { fetchGet } from './download';
 
 const network = { get: fetchGet, arch: process.arch };
 
-const real = process.env.CODEMM_REAL_AGENT_DOWNLOAD === '1' && process.platform === 'darwin';
+const real = process.env.CODE_LEARN_REAL_AGENT_DOWNLOAD === '1' && process.platform === 'darwin';
 
 describe.skipIf(!real)("the agents' real downloads (opt-in)", () => {
   it("downloads Claude Code's binary, and accepts it only because it matches Anthropic's manifest and signature", { timeout: 20 * 60_000 }, async () => {
@@ -40,7 +40,7 @@ describe.skipIf(!real)("the agents' real downloads (opt-in)", () => {
   });
 
   it("downloads OpenAI's Codex script from OpenAI, and runs nothing", { timeout: 5 * 60_000 }, async () => {
-    const codex = process.env.CODEMM_REAL_CODEX_BIN;
+    const codex = process.env.CODE_LEARN_REAL_CODEX_BIN;
     const deps = nodeAgentDeps(() => (codex ? { path: codex, js: false } : { path: '/no/codex', js: false }), network);
     let script = '';
     const ran: string[] = [];
@@ -76,7 +76,7 @@ describe.skipIf(!real)("the agents' real downloads (opt-in)", () => {
     });
     installer.install('cursor');
     await installer.done('cursor');
-    // The version Codemm then requires is the one the script names.
+    // The version code-learn then requires is the one the script names.
     expect(cursorVersion(script, 'darwin')).toMatch(/^\d{4}\.\d{1,2}\.\d{1,2}-/);
     expect(script).toContain('https://downloads.cursor.com/');
     // Nothing is installed, so nothing is found.
@@ -85,7 +85,7 @@ describe.skipIf(!real)("the agents' real downloads (opt-in)", () => {
 
   it("Cursor's Windows script names its version too", { timeout: 5 * 60_000 }, async () => {
     const deps = nodeAgentDeps(() => null, network);
-    const file = join(mkdtempSync(join(tmpdir(), 'codemm-agent-')), 'install.ps1');
+    const file = join(mkdtempSync(join(tmpdir(), 'code-learn-agent-')), 'install.ps1');
     await deps.download('https://cursor.com/install?win32=true', file, () => undefined, isAgentHost('cursor'), 1024 * 1024);
     expect(cursorVersion(readFileSync(file, 'utf8'), 'win32')).toMatch(/^\d{4}\.\d{1,2}\.\d{1,2}-/);
   });

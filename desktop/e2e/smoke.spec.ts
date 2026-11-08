@@ -8,7 +8,7 @@ import { removeTempDirs, tempDir } from './temp';
 
 test.afterAll(removeTempDirs);
 
-// Launches the built app with the mock (CODEMM_MOCK) and walks the main journey.
+// Launches the built app with the mock (CODE_LEARN_MOCK) and walks the main journey.
 test('connect, computer check, goal, course, lesson and practice', async ({ launch }) => {
   const { app, page } = await launch();
   const button = (name: string) => page.getByRole('button', { name, exact: true });
@@ -79,7 +79,7 @@ test('no Docker: Install Docker, a link to do it by hand, and a re-check', async
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
   const installed = page.getByRole('listitem', { name: 'Docker is installed' });
   await expect(installed.getByText('Needs a step')).toBeVisible();
-  // macOS and Windows: Codemm installs Docker, and doing it by hand stays possible.
+  // macOS and Windows: code-learn installs Docker, and doing it by hand stays possible.
   await expect(installed.getByRole('button', { name: 'Install Docker', exact: true })).toBeVisible();
   await expect(installed.getByRole('link', { name: 'Install it myself' })).toBeVisible();
   await expect(page.getByRole('status')).toHaveText("Docker isn't installed yet. Checking again every few seconds.");
@@ -95,7 +95,7 @@ test('no Docker, but wasmtime runs: practice goes on without it, and installing 
   await page.getByRole('button', { name: 'Connect an agent', exact: true }).click();
   await page.getByRole('listitem', { name: 'Claude Code' }).getByRole('button', { name: 'Connect' }).click();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await expect(page.getByText('Codemm can run practice on this computer without Docker, for programs that read input and print output. For everything else, install Docker.')).toBeVisible();
+  await expect(page.getByText('code-learn can run practice on this computer without Docker, for programs that read input and print output. For everything else, install Docker.')).toBeVisible();
   await expect(page.getByRole('listitem', { name: 'Docker is installed' }).getByRole('button', { name: 'Install Docker', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'What do you want to learn?' })).toBeVisible();
@@ -107,7 +107,7 @@ test('no Docker, but wasmtime runs: practice goes on without it, and installing 
 test('renderer security', async ({ launch }) => {
   const { app, page } = await launch();
   await expect(page.getByRole('button', { name: 'Connect an agent', exact: true })).toBeVisible();
-  expect(page.url()).toBe('app://codemm/index.html');
+  expect(page.url()).toBe('app://code-learn/index.html');
   expect(await page.evaluate(() => [typeof (window as unknown as { require?: unknown }).require, typeof (window as unknown as { process?: unknown }).process])).toEqual(['undefined', 'undefined']);
 
   // A request CSP blocks still shows as a request; it must fail as blocked and get no response.
@@ -136,17 +136,17 @@ test('renderer security', async ({ launch }) => {
   });
   await page.waitForTimeout(500);
   // The navigation was cancelled: the same document still shows the app.
-  expect(await page.evaluate(() => [location.href, document.body.innerText.includes('Connect an agent')])).toEqual(['app://codemm/index.html', true]);
+  expect(await page.evaluate(() => [location.href, document.body.innerText.includes('Connect an agent')])).toEqual(['app://code-learn/index.html', true]);
   await app.close();
 });
 
-// N3: a rejected call reaches the renderer as Codemm's own message, without Electron's
-// "Error invoking remote method" envelope, so codes like codemm:repair still match.
+// N3: a rejected call reaches the renderer as code-learn's own message, without Electron's
+// "Error invoking remote method" envelope, so codes like code-learn:repair still match.
 test('errors cross IPC as their own message', async ({ launch }) => {
   const { app, page } = await launch();
   await expect(page.getByRole('button', { name: 'Connect an agent', exact: true })).toBeVisible();
   const messages = await page.evaluate(async () => {
-    const bridge = (window as unknown as { codemm: { invoke(m: string, a: unknown[]): Promise<unknown> } }).codemm;
+    const bridge = (window as unknown as { codeLearn: { invoke(m: string, a: unknown[]): Promise<unknown> } }).codeLearn;
     const call = (method: string, args: unknown[]) => bridge.invoke(method, args).then(() => 'resolved', (e: Error) => e.message);
     return [await call('nope', []), await call('lesson', [42])];
   });
@@ -154,16 +154,16 @@ test('errors cross IPC as their own message', async ({ launch }) => {
   await app.close();
 });
 
-// §2: one Codemm per profile. A second launch quits before it starts anything, and the open window comes back.
+// §2: one code-learn per profile. A second launch quits before it starts anything, and the open window comes back.
 test('a second launch brings back the open window and quits', async ({ launch }) => {
-  const dir = realpathSync(tempDir('codemm-profile-'));
+  const dir = realpathSync(tempDir('code-learn-profile-'));
   const { app, page } = await launch('', { args: [`--user-data-dir=${dir}`] });
   await expect(page.getByRole('button', { name: 'Connect an agent', exact: true })).toBeVisible();
   const minimized = () => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().map((w) => w.isMinimized()));
   await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].minimize());
   await expect.poll(minimized).toEqual([true]);
-  // The same app on the same profile, as a learner opening Codemm again would start it.
-  const second = spawn(require('electron') as string, ['.', `--user-data-dir=${dir}`], { env: { ...process.env, CODEMM_MOCK: '' }, stdio: 'ignore' });
+  // The same app on the same profile, as a learner opening code-learn again would start it.
+  const second = spawn(require('electron') as string, ['.', `--user-data-dir=${dir}`], { env: { ...process.env, CODE_LEARN_MOCK: '' }, stdio: 'ignore' });
   const exit = await Promise.race([new Promise((resolve) => second.on('exit', resolve)), new Promise((resolve) => setTimeout(() => resolve('still running'), 20_000))]);
   second.kill();
   expect(exit).toBe(0);
@@ -173,12 +173,12 @@ test('a second launch brings back the open window and quits', async ({ launch })
 
 // A separate profile (--user-data-dir) keeps its log too, so runs with one never write to the learner's log.
 test('logs live under a given user-data-dir', async ({ launch }) => {
-  const dir = realpathSync(tempDir('codemm-profile-'));
+  const dir = realpathSync(tempDir('code-learn-profile-'));
   const { app, page } = await launch('', { args: [`--user-data-dir=${dir}`] });
   await expect(page.getByRole('button', { name: 'Connect an agent', exact: true })).toBeVisible();
   expect(await app.evaluate(({ app: a }) => a.getPath('logs'))).toBe(join(dir, 'logs'));
   await app.close();
-  expect(readFileSync(join(dir, 'logs', 'codemm.log'), 'utf8')).toContain(' start ');
+  expect(readFileSync(join(dir, 'logs', 'code-learn.log'), 'utf8')).toContain(' start ');
 });
 
 // Check progress: main sends it to the app window, the preload hands the page only a phase and counts,
@@ -188,7 +188,7 @@ test('check progress reaches the page as phase and counts only', async ({ launch
   await expect(page.getByRole('button', { name: 'Connect an agent', exact: true })).toBeVisible();
   const { events, asCall } = await page.evaluate(async () => {
     type P = { phase: string; done: number; total: number };
-    const bridge = (window as unknown as { codemm: { invoke(m: string, a: unknown[]): Promise<any>; onCheckProgress(l: (p: P) => void): () => void } }).codemm;
+    const bridge = (window as unknown as { codeLearn: { invoke(m: string, a: unknown[]): Promise<any>; onCheckProgress(l: (p: P) => void): () => void } }).codeLearn;
     const events: P[] = [];
     let hidden!: () => void;
     const lastPhase = new Promise<void>((resolve) => (hidden = resolve));
@@ -232,7 +232,7 @@ test('Run streams a program through the bridge, with typed input', async ({ laun
   await expect(page.getByRole('button', { name: 'Connect an agent', exact: true })).toBeVisible();
   const { events, result, asCall } = await page.evaluate(async () => {
     type O = Record<string, unknown>;
-    const bridge = (window as unknown as { codemm: { invoke(m: string, a: unknown[]): Promise<any>; onRunOutput(l: (o: O) => void): () => void } }).codemm;
+    const bridge = (window as unknown as { codeLearn: { invoke(m: string, a: unknown[]): Promise<any>; onRunOutput(l: (o: O) => void): () => void } }).codeLearn;
     const call = (m: string, ...a: unknown[]) => bridge.invoke(m, a);
     // Bounded: a state that never settles fails here instead of hanging the test.
     const poll = async (read: () => Promise<any>, done: (v: any) => boolean, what: string) => {
@@ -283,10 +283,10 @@ test('auto-update finds a newer version on a feed, and an unsigned build only li
   const feed = [
     'version: 99.0.0',
     'files:',
-    '  - url: Codemm-99.0.0-mac-arm64.zip',
+    '  - url: code-learn-99.0.0-mac-arm64.zip',
     '    sha512: AAAA',
     '    size: 1',
-    'path: Codemm-99.0.0-mac-arm64.zip',
+    'path: code-learn-99.0.0-mac-arm64.zip',
     'sha512: AAAA',
     "releaseDate: '2026-10-01T00:00:00.000Z'",
     '',
@@ -301,9 +301,9 @@ test('auto-update finds a newer version on a feed, and an unsigned build only li
   await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
   const { port } = server.address() as AddressInfo;
   try {
-    const { app, page } = await launch('', { env: { CODEMM_UPDATE_FEED: `http://127.0.0.1:${port}/` } });
+    const { app, page } = await launch('', { env: { CODE_LEARN_UPDATE_FEED: `http://127.0.0.1:${port}/` } });
     await expect(page.getByRole('button', { name: 'Connect an agent', exact: true })).toBeVisible();
-    const update = () => page.evaluate(() => (window as unknown as { codemm: { invoke(m: string, a: unknown[]): Promise<unknown> } }).codemm.invoke('update', []));
+    const update = () => page.evaluate(() => (window as unknown as { codeLearn: { invoke(m: string, a: unknown[]): Promise<unknown> } }).codeLearn.invoke('update', []));
     await expect.poll(update, { timeout: 15_000 }).toEqual({ kind: 'available', version: '99.0.0', url: 'https://github.com/iignaite/Codemm/releases/tag/v99.0.0' });
     expect(requests.some((u) => u.endsWith('.yml'))).toBe(true);
     // Unsigned: nothing was downloaded.

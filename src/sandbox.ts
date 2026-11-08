@@ -3,16 +3,16 @@ import { randomBytes } from "node:crypto";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { CodemmError, INFRA, infraError, type InfraCode } from "./errors.js";
+import { CodeLearnError, INFRA, infraError, type InfraCode } from "./errors.js";
 import { processAlive } from "./store.js";
 
 /**
- * The only place Codemm starts containers. Every judge run gets the same
+ * The only place code-learn starts containers. Every judge run gets the same
  * host-owned isolation, whatever the track asked for.
  */
 
 export const OUTPUT_CAP = 4 * 1024 * 1024;
-export const OWNER_LABEL = "codemm=1";
+export const OWNER_LABEL = "code-learn=1";
 
 export type Mount = { host: string; container: string };
 export type SandboxRun = {
@@ -35,12 +35,12 @@ export type SandboxRun = {
 /** `oomKilled`: the runtime recorded that the container hit its memory limit (exit 137 from inside, not a kill from outside). */
 export type SandboxResult = { exit: number; stdout: Buffer; stderr: string; flooded: boolean; timedOut: boolean; cleanupFailed: boolean; oomKilled: boolean };
 
-const cleanupMs = () => Number(process.env.CODEMM_CLEANUP_MS ?? 30_000);
+const cleanupMs = () => Number(process.env.CODE_LEARN_CLEANUP_MS ?? 30_000);
 /** The bound for a second ask of a silent engine, and for the runtime's answers a grade waits on. */
 const SLOW_MS = 60_000;
 
 export function containerCli(): string {
-  const configured = process.env.CODEMM_CONTAINER_CLI;
+  const configured = process.env.CODE_LEARN_CONTAINER_CLI;
   if (configured) return configured;
   for (const cli of ["docker", "podman"]) {
     if (spawnSync(cli, ["--version"], { stdio: "ignore" }).status === 0) return cli;
@@ -48,7 +48,7 @@ export function containerCli(): string {
   throw infraError(`No container runtime found. ${runtimeHelp()}`, "no-runtime");
 }
 
-/** What to install and start on this OS. Codemm needs an engine that runs Linux containers. */
+/** What to install and start on this OS. code-learn needs an engine that runs Linux containers. */
 export function runtimeHelp(platform: NodeJS.Platform = process.platform): string {
   if (platform === "darwin") return "Install Docker Desktop for Mac (or Podman, experimental), start it and retry.";
   if (platform === "win32") {
@@ -131,7 +131,7 @@ export function runtimeProblem(r: { exit: number; output: string }, platform: No
 /** The full `run` argument list. Pure, so the isolation flags are easy to test. */
 export function sandboxArgs(run: SandboxRun, name: string, user = hostUser()): string[] {
   const args = [
-    "run", "--rm", "--name", name, "--label", OWNER_LABEL, "--label", `codemm.pid=${process.pid}`,
+    "run", "--rm", "--name", name, "--label", OWNER_LABEL, "--label", `code-learn.pid=${process.pid}`,
     "--network", "none",
     "--read-only",
     "--tmpfs", "/tmp:rw,exec,nosuid,nodev,size=256m",
@@ -181,7 +181,7 @@ const MAX_PENDING_INPUT = 1024 * 1024;
  */
 export function startSandboxed(run: SandboxRun, output: SandboxOutput = {}): StartedSandbox {
   const cli = containerCli();
-  const name = `codemm-${randomBytes(6).toString("hex")}`;
+  const name = `code-learn-${randomBytes(6).toString("hex")}`;
   const started = Date.now();
   const child = spawn(cli, sandboxArgs(run, name), { stdio: [run.stdin ? "pipe" : "ignore", "pipe", "pipe"] });
   const chunks: Buffer[] = [];
@@ -332,7 +332,7 @@ export function cli(args: string[], timeoutMs = 60_000, onOutput?: (text: string
     // Settle at the deadline even if an orphaned grandchild keeps the pipes open.
     const timer = setTimeout(() => {
       child.kill("SIGKILL");
-      // A grandchild may still hold the pipes; drop them so Codemm itself can exit.
+      // A grandchild may still hold the pipes; drop them so code-learn itself can exit.
       child.stdout.destroy();
       child.stderr.destroy();
       child.unref();
@@ -386,7 +386,7 @@ export async function assertRuntime(): Promise<void> {
 }
 
 /** A run whose runtime stopped, or stopped answering, under it. `tail` follows "during the run". */
-export function lostRun(down: RuntimeProblem, tail = ""): CodemmError {
+export function lostRun(down: RuntimeProblem, tail = ""): CodeLearnError {
   return infraError(`The container runtime stopped${down.code === "runtime-busy" ? " answering" : ""} during the run${tail}. ${down.help}`, down.code);
 }
 
@@ -470,7 +470,7 @@ export function buildProblem(log: string): BuildProblem | undefined {
 export function infraKind(text: string): "disk" | "offline" | "docker" | undefined {
   if (/not enough disk space|ran out of disk space|no space left on device/i.test(text)) return "disk";
   if (/couldn't reach the network|could not resolve host|network is unreachable/i.test(text)) return "offline";
-  if (/container runtime|Windows containers|Cannot connect to the Docker daemon|error getting credentials|container couldn't be removed|Couldn't list Codemm's containers|container couldn't start/i.test(text)) return "docker";
+  if (/container runtime|Windows containers|Cannot connect to the Docker daemon|error getting credentials|container couldn't be removed|Couldn't list code-learn's containers|container couldn't start/i.test(text)) return "docker";
   return undefined;
 }
 
@@ -490,8 +490,8 @@ export function runtimeCode(text: string, otherwise: InfraCode): InfraCode {
  */
 export function startRefusal(stderr: string): { code: InfraCode; why: string } {
   if (/range of CPUs|available CPUs|NanoCPUs/i.test(stderr)) return { code: "docker-cpus", why: "Docker has fewer than the 2 CPUs a check uses: give it more in Docker Desktop's settings" };
-  if (/log[- ]opt|log(?:ging)? driver/i.test(stderr)) return { code: "docker-log-driver", why: "Docker's logging driver refused Codemm's log options: set it to json-file or local" };
-  if (/mounts denied|not shared from the host|file sharing/i.test(stderr)) return { code: "docker-file-sharing", why: "Docker can't share Codemm's run folders: allow them in Docker Desktop's file sharing settings" };
+  if (/log[- ]opt|log(?:ging)? driver/i.test(stderr)) return { code: "docker-log-driver", why: "Docker's logging driver refused code-learn's log options: set it to json-file or local" };
+  if (/mounts denied|not shared from the host|file sharing/i.test(stderr)) return { code: "docker-file-sharing", why: "Docker can't share code-learn's run folders: allow them in Docker Desktop's file sharing settings" };
   const code = runtimeCode(stderr, "container-start");
   return { code, why: code === "docker-disk" ? "Docker ran out of disk space" : code === "offline" ? "Docker couldn't reach the network" : "the runtime refused it" };
 }
@@ -543,7 +543,7 @@ function stepReader(listener: (step: BuildStep) => void) {
 export async function buildImage(
   contextDir: string, tag: string, timeoutMs = BUILD_TIMEOUT_MS, onStep?: (step: BuildStep) => void,
 ): Promise<{ ok: boolean; log: string; imageId?: string; problem?: BuildProblem }> {
-  const out = mkdtempSync(join(tmpdir(), "codemm-iid-"));
+  const out = mkdtempSync(join(tmpdir(), "code-learn-iid-"));
   try {
     const args = ["build", "-t", tag, "--iidfile", join(out, "iid")];
     if (containerCli() === "docker") args.push("--progress", "plain");
@@ -578,7 +578,7 @@ export async function inspectImage(tag: string): Promise<{ id: string; hasVolume
     throw infraError(`The container runtime couldn't inspect the track image: ${r.output.trim().slice(0, 300)}`, runtimeCode(r.output, "image-inspect"));
   }
   const record = inspectRecord<{ Id?: unknown; Config?: { Volumes?: Record<string, unknown> | null } | null }>(r.output);
-  // Docker answered, so this is no stopped runtime: Codemm couldn't read what it said.
+  // Docker answered, so this is no stopped runtime: code-learn couldn't read what it said.
   if (!record || typeof record.Id !== "string") throw infraError(`The container runtime's image record couldn't be read: ${r.output.trim().slice(0, 300)}`, "image-inspect");
   const volumes = record.Config?.Volumes;
   return { id: record.Id, hasVolumes: !!volumes && Object.keys(volumes).length > 0 };
@@ -662,14 +662,14 @@ export function inspectRecord<T>(output: string): T | undefined {
   return from < 0 ? undefined : parse(output.slice(from));
 }
 
-/** Every container Codemm started, with the PID of the Codemm process that owns it. Throws if listing fails. */
+/** Every container code-learn started, with the PID of the code-learn process that owns it. Throws if listing fails. */
 export async function ownedContainers(): Promise<{ id: string; pid: number }[]> {
-  const r = await cli(["ps", "-a", "--filter", `label=${OWNER_LABEL}`, "--format", '{{.ID}} {{.Label "codemm.pid"}}']);
+  const r = await cli(["ps", "-a", "--filter", `label=${OWNER_LABEL}`, "--format", '{{.ID}} {{.Label "code-learn.pid"}}']);
   if (r.exit !== 0) {
     // Down only when the runtime says so; anything else is a runtime that answers but failed to list.
     const down = await runtimeDown();
     if (down) throw infraError(down.message, down.code);
-    throw infraError(`Couldn't list Codemm's containers: ${r.output.trim().slice(0, 300)}`, runtimeCode(r.output, "container-list"));
+    throw infraError(`Couldn't list code-learn's containers: ${r.output.trim().slice(0, 300)}`, runtimeCode(r.output, "container-list"));
   }
   return r.output.split("\n").filter((l) => l.trim()).map((l) => {
     const [id, pid] = l.trim().split(/\s+/);
@@ -677,11 +677,11 @@ export async function ownedContainers(): Promise<{ id: string; pid: number }[]> 
   });
 }
 
-/** True when the Codemm process that started a container is gone, so the container is abandoned. */
+/** True when the code-learn process that started a container is gone, so the container is abandoned. */
 export const ownerGone = (pid: number): boolean => !pid || !processAlive(pid);
 
 /**
- * Removes the containers whose owning Codemm process is gone; live ones are never touched (after a cancel or a
+ * Removes the containers whose owning code-learn process is gone; live ones are never touched (after a cancel or a
  * crash, and doctor --fix). Returns how many were abandoned and how many of those are still there.
  */
 export async function removeAbandoned(): Promise<{ abandoned: number; left: number }> {

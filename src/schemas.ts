@@ -1,7 +1,7 @@
 import MarkdownIt from "markdown-it";
 import { parse as parseYaml } from "yaml";
 import { z } from "zod";
-import { CodemmError } from "./errors.js";
+import { CodeLearnError } from "./errors.js";
 import { assertRelativePath, ID_PATTERN } from "./files.js";
 
 const MAX_YAML_BYTES = 65_536;
@@ -21,15 +21,15 @@ function describe(error: z.ZodError): string {
 }
 
 function parseWith<T>(schema: z.ZodType<T>, yaml: string, what: string): T {
-  if (Buffer.byteLength(yaml) > MAX_YAML_BYTES) throw new CodemmError(`${what} is larger than 64 KB.`);
+  if (Buffer.byteLength(yaml) > MAX_YAML_BYTES) throw new CodeLearnError(`${what} is larger than 64 KB.`);
   let data: unknown;
   try {
     data = parseYaml(yaml);
   } catch (e) {
-    throw new CodemmError(`${what} is not valid YAML: ${(e as Error).message}`);
+    throw new CodeLearnError(`${what} is not valid YAML: ${(e as Error).message}`);
   }
   const parsed = schema.safeParse(data);
-  if (!parsed.success) throw new CodemmError(`Invalid ${what}: ${describe(parsed.error)}`);
+  if (!parsed.success) throw new CodeLearnError(`Invalid ${what}: ${describe(parsed.error)}`);
   return parsed.data;
 }
 
@@ -59,7 +59,7 @@ const WasiYaml = z
         return false;
       }
     }, "must be an https link with no credentials, whose path ends in .wasm, .zip or .tar.gz"),
-    /** Optional: without it, Codemm records the digest it downloads and installs with a warning (DESIGN §4.5). */
+    /** Optional: without it, code-learn records the digest it downloads and installs with a warning (DESIGN §4.5). */
     sha256: z.string().regex(/^[0-9a-f]{64}$/, "must be the downloaded file's SHA-256, as 64 lowercase hex digits").optional(),
     module: ArchivePath,
     dirs: z
@@ -104,19 +104,19 @@ export function parseTrackYaml(yaml: string): TrackSpec {
   const t = parseWith(TrackYaml, yaml, "track.yaml");
   for (const f of t.files) {
     assertRelativePath(f);
-    if (isReserved(f)) throw new CodemmError(`Invalid track.yaml: "${f}" is reserved for the statement and visible tests. Rename the learner file.`);
+    if (isReserved(f)) throw new CodeLearnError(`Invalid track.yaml: "${f}" is reserved for the statement and visible tests. Rename the learner file.`);
   }
-  if (new Set(t.files).size !== t.files.length) throw new CodemmError("Invalid track.yaml: files lists the same file twice.");
+  if (new Set(t.files).size !== t.files.length) throw new CodeLearnError("Invalid track.yaml: files lists the same file twice.");
   const lower = t.files.map((f) => f.toLowerCase());
-  if (new Set(lower).size !== lower.length) throw new CodemmError("Invalid track.yaml: two learner files differ only by case.");
+  if (new Set(lower).size !== lower.length) throw new CodeLearnError("Invalid track.yaml: two learner files differ only by case.");
   const clash = t.files.find((f) => lower.some((g) => g.startsWith(`${f.toLowerCase()}/`)));
-  if (clash) throw new CodemmError(`Invalid track.yaml: "${clash}" can't be both a file and a folder.`);
-  if (t.styles.includes("io") && !t.run) throw new CodemmError("Invalid track.yaml: an io track needs a run command.");
-  if (t.styles.includes("unit") && !t.test) throw new CodemmError("Invalid track.yaml: a unit track needs a test command.");
+  if (clash) throw new CodeLearnError(`Invalid track.yaml: "${clash}" can't be both a file and a folder.`);
+  if (t.styles.includes("io") && !t.run) throw new CodeLearnError("Invalid track.yaml: an io track needs a run command.");
+  if (t.styles.includes("unit") && !t.test) throw new CodeLearnError("Invalid track.yaml: a unit track needs a test command.");
   if (t.wasi) {
     // The WASI engine runs io programs of interpreted languages only (DESIGN §4.5).
-    if (t.styles.length !== 1 || t.styles[0] !== "io") throw new CodemmError("Invalid track.yaml: a WASI track's styles must be [io].");
-    if (t.build || t.test) throw new CodemmError(`Invalid track.yaml: a WASI track has no ${t.build ? "build" : "test"} command. It runs an interpreter's WASI build, so remove it.`);
+    if (t.styles.length !== 1 || t.styles[0] !== "io") throw new CodeLearnError("Invalid track.yaml: a WASI track's styles must be [io].");
+    if (t.build || t.test) throw new CodeLearnError(`Invalid track.yaml: a WASI track has no ${t.build ? "build" : "test"} command. It runs an interpreter's WASI build, so remove it.`);
     const path = new URL(t.wasi.url).pathname;
     if (path.endsWith(".wasm")) {
       let name = "";
@@ -126,7 +126,7 @@ export function parseTrackYaml(yaml: string): TrackSpec {
         // Not a name: refused below.
       }
       if (!name || name.includes("/") || t.wasi.module !== name) {
-        throw new CodemmError(`Invalid track.yaml: when wasi.url is a .wasm, wasi.module must be the downloaded file's name${name && !name.includes("/") ? `, "${name}"` : ", and the url must end in a plain file name"}.`);
+        throw new CodeLearnError(`Invalid track.yaml: when wasi.url is a .wasm, wasi.module must be the downloaded file's name${name && !name.includes("/") ? `, "${name}"` : ", and the url must end in a plain file name"}.`);
       }
     }
   }
@@ -176,16 +176,16 @@ export function parseRoadmapYaml(yaml: string): Roadmap {
   const r = parseWith(RoadmapYaml, yaml, "roadmap");
   const ids = new Set<string>();
   for (const c of r.concepts) {
-    if (ids.has(c.id)) throw new CodemmError(`Invalid roadmap: duplicate concept id "${c.id}".`);
+    if (ids.has(c.id)) throw new CodeLearnError(`Invalid roadmap: duplicate concept id "${c.id}".`);
     ids.add(c.id);
   }
   for (const c of r.concepts) {
-    if (c.refs?.some((ref) => ref >= (r.sources?.length ?? 0))) throw new CodemmError(`Invalid roadmap: "${c.id}" has a ref out of range.`);
+    if (c.refs?.some((ref) => ref >= (r.sources?.length ?? 0))) throw new CodeLearnError(`Invalid roadmap: "${c.id}" has a ref out of range.`);
     if (r.sources?.length && (c.practice !== undefined || c.pitfalls?.length) && !c.refs?.length) {
-      throw new CodemmError(`Invalid roadmap: "${c.id}" needs at least one ref for its practice or pitfalls.`);
+      throw new CodeLearnError(`Invalid roadmap: "${c.id}" needs at least one ref for its practice or pitfalls.`);
     }
-    if (new Set(c.requires).size !== c.requires.length) throw new CodemmError(`Invalid roadmap: "${c.id}" lists a prerequisite more than once.`);
-    for (const req of c.requires) if (!ids.has(req)) throw new CodemmError(`Invalid roadmap: "${c.id}" requires unknown concept "${req}".`);
+    if (new Set(c.requires).size !== c.requires.length) throw new CodeLearnError(`Invalid roadmap: "${c.id}" lists a prerequisite more than once.`);
+    for (const req of c.requires) if (!ids.has(req)) throw new CodeLearnError(`Invalid roadmap: "${c.id}" requires unknown concept "${req}".`);
   }
   const indegree = new Map(r.concepts.map((c) => [c.id, c.requires.length]));
   const queue = r.concepts.filter((c) => c.requires.length === 0).map((c) => c.id);
@@ -202,7 +202,7 @@ export function parseRoadmapYaml(yaml: string): Roadmap {
   }
   if (seen !== r.concepts.length) {
     const cyclic = [...indegree].filter(([, n]) => n > 0).map(([id]) => id);
-    throw new CodemmError(`Invalid roadmap: prerequisites form a cycle among ${cyclic.join(", ")}.`);
+    throw new CodeLearnError(`Invalid roadmap: prerequisites form a cycle among ${cyclic.join(", ")}.`);
   }
   return r;
 }
@@ -238,7 +238,7 @@ export function parseQuizYaml(yaml: string): Quiz {
   try {
     return parseWith(Quiz, yaml, "quiz.yaml");
   } catch {
-    throw new CodemmError("Invalid quiz.yaml: write 5 to 10 questions with text (at most 1000 characters), each with 3 to 5 choices with text (at most 300 characters), exactly one correct: true, and why (at most 500 characters) on every wrong choice.");
+    throw new CodeLearnError("Invalid quiz.yaml: write 5 to 10 questions with text (at most 1000 characters), each with 3 to 5 choices with text (at most 300 characters), exactly one correct: true, and why (at most 500 characters) on every wrong choice.");
   }
 }
 
@@ -246,12 +246,12 @@ export function parseQuizYaml(yaml: string): Quiz {
 export function parseAnswersYaml(yaml: string, quiz: Quiz): Answers {
   const answers = parseWith(z.record(z.string().regex(/^[1-9][0-9]*$/), z.number().int().positive().nullable()), yaml, "answers.yaml");
   if (Object.entries(answers).some(([n, choice]) => !quiz.questions[Number(n) - 1] || (choice !== null && choice > quiz.questions[Number(n) - 1]!.choices.length))) {
-    throw new CodemmError("Invalid answers.yaml: use the question and choice numbers shown in the quiz.");
+    throw new CodeLearnError("Invalid answers.yaml: use the question and choice numbers shown in the quiz.");
   }
   return Object.fromEntries(quiz.questions.map((_, i) => [i + 1, answers[i + 1] ?? null]));
 }
 
-// Records Codemm itself writes. Each carries format_version so a future release can migrate forward.
+// Records code-learn itself writes. Each carries format_version so a future release can migrate forward.
 
 const TrackBase = z.object({
   format_version: z.literal(1),
@@ -265,8 +265,8 @@ const TrackBase = z.object({
   limits: z.object({ time_ms: z.number(), memory_mb: z.number() }),
   installedAt: z.string(),
 });
-/** Where a WASI track's toolchain is ($CODEMM_HOME/toolchains/<sha256>/) and how it runs; the url stays in track.yaml. */
-// Its paths are held to track.yaml's rules again, so a track.json changed outside Codemm can't map another folder.
+/** Where a WASI track's toolchain is ($CODE_LEARN_HOME/toolchains/<sha256>/) and how it runs; the url stays in track.yaml. */
+// Its paths are held to track.yaml's rules again, so a track.json changed outside code-learn can't map another folder.
 export const WasiRecord = z.object({
   sha256: z.string().regex(/^[0-9a-f]{64}$/), module: ArchivePath, dirs: z.record(z.string().refine(sandboxDir), ArchivePath), env: z.record(z.string(), z.string()),
 });
@@ -323,7 +323,7 @@ export const LearnerEventSchema = z.discriminatedUnion("kind", [
     total: z.number().int().positive(),
     assisted: z.boolean(),
     missed: z.object({
-      // Codemm records at most 50 of each; reading keeps 50, so a later Codemm that records more doesn't damage the log.
+      // code-learn records at most 50 of each; reading keeps 50, so a later code-learn that records more doesn't damage the log.
       visible: z.array(z.string()).transform((v) => v.slice(0, 50)),
       hidden: z.array(z.number().int().positive()).transform((h) => h.slice(0, 50)),
     }).optional(),
@@ -373,20 +373,20 @@ export function exampleRefs(text: string): number[] {
 /** A lesson as the agent saves it: static Markdown for one roadmap concept, and optional runnable examples. */
 export function parseLesson(input: unknown): LessonInput {
   const parsed = LessonInput.safeParse(input);
-  if (!parsed.success) throw new CodemmError(`Invalid lesson: ${describe(parsed.error)}`);
+  if (!parsed.success) throw new CodeLearnError(`Invalid lesson: ${describe(parsed.error)}`);
   const count = parsed.data.examples?.length ?? 0;
   const refs = exampleRefs(parsed.data.markdown);
   const missing = refs.find((n) => n < 1 || n > count);
-  if (missing !== undefined) throw new CodemmError(`Invalid lesson: the markdown places example ${missing}, but there are ${count} examples.`);
+  if (missing !== undefined) throw new CodeLearnError(`Invalid lesson: the markdown places example ${missing}, but there are ${count} examples.`);
   for (let n = 1; n <= count; n++) {
-    if (!refs.includes(n)) throw new CodemmError(`Invalid lesson: example ${n} is never placed. Put a block "\`\`\`example" with the line ${n} where it belongs.`);
+    if (!refs.includes(n)) throw new CodeLearnError(`Invalid lesson: example ${n} is never placed. Put a block "\`\`\`example" with the line ${n} where it belongs.`);
   }
   return parsed.data;
 }
 
 /** The learner's notes on a lesson share the lesson's size limit. */
 export function assertNotes(text: string): string {
-  if (Buffer.byteLength(text) > MAX_LESSON_BYTES) throw new CodemmError("Notes are larger than 64 KB.");
+  if (Buffer.byteLength(text) > MAX_LESSON_BYTES) throw new CodeLearnError("Notes are larger than 64 KB.");
   return text;
 }
 

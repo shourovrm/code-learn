@@ -27,7 +27,7 @@ describe("check events", () => {
   it("reads up to 50 visible names and 50 hidden indexes, and drops the rest instead of calling the log damaged", () => {
     const missed = { visible: Array.from({ length: 50 }, (_, i) => `visible/${i}`), hidden: Array.from({ length: 50 }, (_, i) => i + 1) };
     expect(LearnerEventSchema.parse({ ...check, missed })).toEqual({ ...check, missed });
-    // A later Codemm may record more; this one still reads the log.
+    // A later code-learn may record more; this one still reads the log.
     expect(LearnerEventSchema.parse({ ...check, missed: { visible: [...missed.visible, "extra"], hidden: [...missed.hidden, 51] } })).toEqual({ ...check, missed });
   });
 
@@ -85,7 +85,7 @@ describe("a WASI track's wasi block", () => {
     expect(bare).toEqual({ url: "https://example.org/x/run.wasm", sha256: SHA, module: "run.wasm", dirs: {}, env: {} });
   });
 
-  it("leaves sha256 optional: Codemm records the digest it downloads", () => {
+  it("leaves sha256 optional: code-learn records the digest it downloads", () => {
     expect(parseTrackYaml(yaml(ok.replace(`  sha256: ${SHA}\n`, ""))).wasi?.sha256).toBeUndefined();
   });
 
@@ -141,7 +141,7 @@ describe("TrackRecord", () => {
   const wasi = { sha256: "a".repeat(64), module: "python.wasm", dirs: { "/lib": "lib" }, env: {} };
 
   it("reads a Docker track's record as before", () => {
-    expect(TrackRecord.parse({ ...base, image: "codemm-track-py:1", imageId: "sha256:x" })).toMatchObject({ imageId: "sha256:x" });
+    expect(TrackRecord.parse({ ...base, image: "code-learn-track-py:1", imageId: "sha256:x" })).toMatchObject({ imageId: "sha256:x" });
   });
 
   it("reads a WASI track's record, which has no image", () => {

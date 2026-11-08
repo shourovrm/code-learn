@@ -8,7 +8,7 @@ import { downloader, electronFetch, electronGet, OfflineError, type Get } from '
 import { tempDir } from './testing/temp';
 
 const any = () => true;
-const file = () => join(tempDir('codemm-download-'), 'file');
+const file = () => join(tempDir('code-learn-download-'), 'file');
 /** A server's answer: a status, headers and a body the test feeds. */
 const answer = (body: Readable, status = 200, headers: Record<string, string> = {}): Get => async () => ({ status, header: (n) => headers[n], body });
 
@@ -70,7 +70,7 @@ describe('downloads (§3.1, §6.1)', () => {
   });
 
   it('a disk that fails to save is not being offline', async () => {
-    const saving = downloader(answer(Readable.from([Buffer.from('x')])))('https://x/f', join(tempDir('codemm-download-'), 'missing', 'file'), () => undefined, any);
+    const saving = downloader(answer(Readable.from([Buffer.from('x')])))('https://x/f', join(tempDir('code-learn-download-'), 'missing', 'file'), () => undefined, any);
     await expect(saving).rejects.toThrow(/ENOENT/);
     await expect(saving).rejects.not.toBeInstanceOf(OfflineError);
   });
@@ -145,10 +145,10 @@ describe("Electron's network stack: the system's proxy and certificates (§3.1)"
   });
 
   // Electron sends its browser user agent by default, and cursor.com answers a browser with a web page, not the script.
-  it('names itself Codemm, not a browser, before the request is sent', () => {
+  it('names itself code-learn, not a browser, before the request is sent', () => {
     const e = electron();
     void e.get('https://desktop.docker.com/a', docker, new AbortController().signal);
-    expect(e.made[0].headers).toEqual({ 'User-Agent': 'Codemm' });
+    expect(e.made[0].headers).toEqual({ 'User-Agent': 'code-learn' });
   });
 
   it('never requests a disallowed first URL, and stops after five redirects', async () => {
@@ -209,7 +209,7 @@ describe("core's toolchain download over Electron's network stack (core §4.5)",
   it('hands a redirect back unfollowed, with its location, for core to check', async () => {
     const e = electronAsFetch();
     const got = e.fetch('https://github.com/a.zip', init());
-    expect(e.made[0].headers).toEqual({ 'User-Agent': 'Codemm' });
+    expect(e.made[0].headers).toEqual({ 'User-Agent': 'code-learn' });
     e.made[0].emit('redirect', 302, 'GET', 'http://mirror.example/a.zip', {});
     const res = await got;
     expect([res.status, res.headers.get('location')]).toEqual([302, 'http://mirror.example/a.zip']);

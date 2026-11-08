@@ -1,8 +1,8 @@
-# Codemm desktop: handoff
+# code-learn desktop: handoff
 
 ## What this is
 
-An Electron, Vite, TypeScript and React app for the approved 1.0 scope. It follows `docs/desktop/DESIGN.md` (merged in #14), with the journey prototype (`~/Documents/Codemm/design/codemm-journeys.html`) for the look:
+An Electron, Vite, TypeScript and React app for the approved 1.0 scope. It follows `docs/desktop/DESIGN.md` (merged in #14), with the journey prototype (`~/Documents/code-learn/design/code-learn-journeys.html`) for the look:
 
 | Journey | Screens |
 |---|---|
@@ -13,7 +13,7 @@ An Electron, Vite, TypeScript and React app for the approved 1.0 scope. It follo
 | Progress | course map with mastery, course complete, tracks |
 | When things go wrong | the environment states below |
 
-The UI runs against a mock core. It is not wired to the real Codemm core yet; that is the wiring session's job, after #14 and #15 merge.
+The UI runs against a mock core. It is not wired to the real code-learn core yet; that is the wiring session's job, after #14 and #15 merge.
 
 ### Environment states
 
@@ -29,16 +29,16 @@ Each state has a mock scenario, a test, and a specific next step on screen. Infr
 | Docker stops mid-session | "This check wasn't counted." The code stays and is saved, with a button to check this computer | `docker-stops` |
 | Offline during setup | "You're offline." Try again builds the same proposal | `offline-setup` |
 | Low disk during setup | "Not enough disk space." Try again builds the same proposal | `low-disk` |
-| Setup gates fail | "Couldn't set up React.", then a new proposal: "Codemm has another way to set up React." | `setup-gates` |
+| Setup gates fail | "Couldn't set up React.", then a new proposal: "code-learn has another way to set up React." | `setup-gates` |
 | No agent installed | "Not installed" and a link to each agent's install page | `no-agent` |
-| Agent signed out | "Sign in to Codex, then try again." Codemm never asks for or reads credentials | `signed-out` |
+| Agent signed out | "Sign in to Codex, then try again." code-learn never asks for or reads credentials | `signed-out` |
 | Sign-in expires mid-session | the next agent call opens connect with the same line, then returns to where the learner was | `sign-in-expires` |
 | Agent plan limit reached | "Your agent's plan limit is reached. Try again later." | `plan-limit` |
 | Untested agent CLI version | "Untested version. It may still work." on the connect row | `untested-version` |
 
 Check this computer runs three checks in order: Docker is installed, Docker is running, and the sandbox works. Only the first failing check shows its fix. It re-checks every 5 seconds, and at once when the window regains focus, until all three pass.
 
-To click through a state, run `CODEMM_MOCK=no-docker npm start` (on Windows PowerShell: `$env:CODEMM_MOCK="no-docker"; npm start`). Packaged builds ignore the flag. A development run shares an installed Codemm's profile, and Codemm runs once per profile, so with Codemm open `npm start` only brings it to the front: quit Codemm first, or add `-- --user-data-dir=<a folder>`. `CODEMM_MOCK=slow-jobs` slows every agent job so its staged progress can be seen, and `quiet-jobs` adds the 90-second quiet line.
+To click through a state, run `CODE_LEARN_MOCK=no-docker npm start` (on Windows PowerShell: `$env:CODE_LEARN_MOCK="no-docker"; npm start`). Packaged builds ignore the flag. A development run shares an installed code-learn's profile, and code-learn runs once per profile, so with code-learn open `npm start` only brings it to the front: quit code-learn first, or add `-- --user-data-dir=<a folder>`. `CODE_LEARN_MOCK=slow-jobs` slows every agent job so its staged progress can be seen, and `quiet-jobs` adds the 90-second quiet line.
 
 ## Layout
 
@@ -48,13 +48,13 @@ src/shared/roadmap.ts  roadmap edit rules (§4.2): stable ids, refused moves and
 src/shared/models.json the recommended minimum model per agent, from docs/bench (§3.3)
 src/main/boot.ts       the entry point: a second launch shows the open window and quits
 src/main/main.ts       window, security settings, the IPC handler (sender check)
-src/main/ipc.ts        validates every call's method and arguments before Codemm sees them
-src/main/mock.ts       in-memory CodemmApi and its named environment scenarios
+src/main/ipc.ts        validates every call's method and arguments before code-learn sees them
+src/main/mock.ts       in-memory CodeLearnApi and its named environment scenarios
 src/main/links.ts      the only pages the app opens in the browser (Docker and agent install docs)
-src/preload/preload.ts exposes window.codemm.invoke(method, args) and nothing else
+src/preload/preload.ts exposes window.code-learn.invoke(method, args) and nothing else
 src/renderer/app/      App (routing, failure banner), Shell (sidebar), api client, router, useLoad, cache
 src/renderer/features/ connect, computer, learn, research, course, lessons, practice, progress, tracks
-src/renderer/ui/       Button, Field, Dialog, Markdown (safe agent text), Rail (the Codemm tutor), Emm, Icon, Mark
+src/renderer/ui/       Button, Field, Dialog, Markdown (safe agent text), Rail (the code-learn tutor), Emm, Icon, Mark
 src/renderer/styles/   fonts.css (all font choices), tokens.css, app.css (components and motion)
 e2e/smoke.spec.ts      Playwright: the main journey, plus the no-agent and no-Docker paths
 packaging.cjs          electron-builder settings; signing only from the environment (SIGNING.md)
@@ -85,11 +85,11 @@ The mock holds no solutions and no hidden tests, and it reports hidden results a
 
 ## Wiring: the real core and agents
 
-The app now runs the real core and the learner's agent. The mock only runs for tests and the dev switcher (`CODEMM_MOCK`).
+The app now runs the real core and the learner's agent. The mock only runs for tests and the dev switcher (`CODE_LEARN_MOCK`).
 
 ```
 src/main/wire.ts          composition root: bundled core, Docker and agent lookup, the live API
-src/main/live.ts          CodemmApi over core app functions, agent jobs and views
+src/main/live.ts          CodeLearnApi over core app functions, agent jobs and views
 src/main/views.ts         learner-safe projections and the reply filter (§2.2, D4)
 src/main/courseView.ts    the course as the learner sees it, from progress, lessons, setup and jobs
 src/main/connect.ts       agents: found or not, sign-in yes or no, tested version, recommended model
@@ -99,13 +99,13 @@ src/main/agent/           agents (launch, parse, status), bridge (spawn, cancel,
 src/main/core/            the core functions used, their shapes, and core's infrastructure failures
 scripts/bundle-core.mjs   esbuild bundles the repo's core into out/core: cli.mjs (the MCP server) and app.cjs (in-process)
 scripts/fetch-wasmtime.mjs  wasmtime 50 per chip, pinned by SHA-256, into vendor/wasmtime/<os>-<arch>; `npm run dist` runs it
-src/main/wasmtime.ts      the bundled wasmtime: wire.ts sets CODEMM_WASMTIME to it, and server.ts passes it to the agent's server
+src/main/wasmtime.ts      the bundled wasmtime: wire.ts sets CODE_LEARN_WASMTIME to it, and server.ts passes it to the agent's server
 build/entitlements.mac.inherit.plist  signs wasmtime (and Electron's helpers) with allow-unsigned-executable-memory, which wasmtime needs under the hardened runtime
 e2e/packaged.spec.ts      D1, in CI on macOS and Windows: no Node on PATH, the bundled MCP server, a JavaScript agent
 ```
 
 **The core it runs.** Main loads core's own functions from #23 in-process, with no adapters left: lessons, `getRoadmap`, consent proposals, honest skip and learner file saves.
-- Each job's server is `codemm mcp --course <c> --tools <job tools> --desktop`.
+- Each job's server is `code-learn mcp --course <c> --tools <job tools> --desktop`.
 - Each brief is core's `JOB_BRIEFS` (#26), followed by the job's details (`agent/briefs.ts`). The tutor's details include the learner's own code.
 - A research job gets a new course id and a server that saves only that course.
 - `coreApp.test.ts` checks the bundled core against the desktop's `CoreApp` types at compile time, and that each function is present at run time. It also checks that each job's tools equal core's `JOB_TOOLS`.
@@ -121,7 +121,7 @@ e2e/packaged.spec.ts      D1, in CI on macOS and Windows: no Node on PATH, the b
   - the computer check;
   - the live API flows;
   - the D4 canary across every IPC handler.
-- The packaged arm64 app, locally: it launched with only a fake JavaScript agent on PATH, its bundled `codemm mcp --tools list_tracks --desktop` answered `list_tracks` through Electron as Node, and the agent connected.
+- The packaged arm64 app, locally: it launched with only a fake JavaScript agent on PATH, its bundled `code-learn mcp --tools list_tracks --desktop` answered `list_tracks` through Electron as Node, and the agent connected.
 
 **Not verified yet:**
 - A real-agent journey (D17), and a real-core canary run with Docker.
@@ -133,8 +133,8 @@ e2e/packaged.spec.ts      D1, in CI on macOS and Windows: no Node on PATH, the b
 
 The main process writes a log for support to Electron's logs folder:
 
-- macOS: `~/Library/Logs/Codemm/codemm.log`
-- Windows: `%APPDATA%\Codemm\logs\codemm.log`
+- macOS: `~/Library/Logs/code-learn/code-learn.log`
+- Windows: `%APPDATA%\code-learn\logs\code-learn.log`
 
 The log records:
 - app start: version, platform and whether the app is packaged;
@@ -145,16 +145,16 @@ The log records:
 - IPC and main-process errors;
 - quit.
 
-It never records learner code, hidden data, briefs, tutor or agent text, or sign-in output (`src/main/log.ts`). Every value is redacted (home folder, tokens, keys, long secrets) and cut to one short line. The file rotates at 2 MB and keeps one older file, `codemm.1.log`. `log.test.ts` covers the redaction, the canary test checks the log holds no hidden material or learner text, and the packaged test checks the path and the connect line.
+It never records learner code, hidden data, briefs, tutor or agent text, or sign-in output (`src/main/log.ts`). Every value is redacted (home folder, tokens, keys, long secrets) and cut to one short line. The file rotates at 2 MB and keeps one older file, `code-learn.1.log`. `log.test.ts` covers the redaction, the canary test checks the log holds no hidden material or learner text, and the packaged test checks the path and the connect line.
 
-`desktop/package.json` now sets `productName: Codemm`, so the logs and `desktop.json` live under `Codemm`, not `codemm-desktop`: `~/Library/Application Support/Codemm` and `%APPDATA%\Codemm`.
+`desktop/package.json` now sets `productName: code-learn`, so the logs and `desktop.json` live under `code-learn`, not `code-learn-desktop`: `~/Library/Application Support/code-learn` and `%APPDATA%\code-learn`.
 
 ## Removed for 1.0 (owner's scope, 2026-10-17)
 
 - Usage and cost display: the runs-per-topic line.
 - Research-source display: the "Reading" list.
 - Review scheduling: the review card on the course map.
-- Assist in the app, including "Let Codemm edit" (deferred in §12: the tutor explains, the learner edits).
+- Assist in the app, including "Let code-learn edit" (deferred in §12: the tutor explains, the learner edits).
 - Predict questions and editable lesson text (§12); lessons are static Markdown with notes.
 - Linux installers.
 
@@ -197,17 +197,17 @@ It never records learner code, hidden data, briefs, tutor or agent text, or sign
   - polling stopped mid-install, and the course map never polled;
   - jobs could start during shutdown, a second Quit skipped the wait, and a running Check's containers escaped cleanup.
 
-**Leftover containers:** Codemm removes containers whose owner process is gone (`cleanupLeftovers` in `scripts/core-entry.ts`) at startup, on quit, and after each attempt Codemm ends, before the job relaunches or finishes. Quitting first stops every job and waits for running Checks, Try its, track installs and rebuilds. Containers from a crash go at the next start.
+**Leftover containers:** code-learn removes containers whose owner process is gone (`cleanupLeftovers` in `scripts/core-entry.ts`) at startup, on quit, and after each attempt code-learn ends, before the job relaunches or finishes. Quitting first stops every job and waits for running Checks, Try its, track installs and rebuilds. Containers from a crash go at the next start.
 
 ## Decisions
 
 - **No router or state library.** A `Route` union in `app/router.ts` covers about ten screens.
-- **No code editor library.** A plain textarea with a line gutter. highlight.js colors code, in the editor and in agent text (lessons, statements and Codemm's replies), when its own table knows a file's extension or a fence's info string, so Codemm names no language (DESIGN §2.1, §4.3, §4.10).
+- **No code editor library.** A plain textarea with a line gutter. highlight.js colors code, in the editor and in agent text (lessons, statements and code-learn's replies), when its own table knows a file's extension or a fence's info string, so code-learn names no language (DESIGN §2.1, §4.3, §4.10).
 - **Fonts.** Display is Schibsted Grotesk, text and UI is Atkinson Hyperlegible Next, and code is JetBrains Mono. They ship as woff2 files (latin subset, only the weights used) in `src/renderer/assets/fonts`, with their OFL licenses, which the installers also carry. Every family is set in `src/renderer/styles/fonts.css`. The wordmark is the outlined brand SVG from `docs/brand`.
 - **Real title bar.** `titleBarStyle: 'hidden'` plus a drag region, with window controls overlaid on Windows.
 - **Reordering.** Topics can be dragged. The grip button also opens a Move up/Move down menu, so dragging is never required.
 - **Copy changed from the prototype:**
-  - The setup-failed card states the actual problem, rather than "Codemm is trying another way."
+  - The setup-failed card states the actual problem, rather than "code-learn is trying another way."
   - The course picker has no chevron, because there is only one course.
 
 ## Verify

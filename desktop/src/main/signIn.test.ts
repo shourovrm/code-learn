@@ -13,8 +13,8 @@ function fake(platform: NodeJS.Platform) {
   const written: { file: string; text: string }[] = [];
   const deps: SignInDeps = {
     platform,
-    runtime: '/Applications/Codemm.app/Contents/MacOS/Codemm',
-    tempDir: () => '/tmp/codemm-signin',
+    runtime: '/Applications/code-learn.app/Contents/MacOS/code-learn',
+    tempDir: () => '/tmp/code-learn-signin',
     write: (file, text) => void written.push({ file, text }),
     inode: () => 4242,
     start: async (file, args, env) => void started.push({ file, args, ...(env && Object.keys(env).length ? { env } : {}) }),
@@ -27,18 +27,18 @@ describe("the agent's own sign-in, where the learner sees it", () => {
     const f = fake('darwin');
     await f.signIn('claude', { path: "/Users/o'neil/.local/bin/claude", js: false });
     const path = "'/Users/o'\\''neil/.local/bin/claude'";
-    // Terminal runs it a moment later: only the file Codemm allowed at Sign in runs, not one an install put there since.
-    const pin = `[ "$(/usr/bin/stat -L -f %i ${path})" = 4242 ] || { echo 'Claude Code changed. Sign in again from Codemm.'; exit 1; }`;
-    expect(f.written).toEqual([{ file: '/tmp/codemm-signin/Sign in to Claude Code.command', text: `#!/bin/sh\n${pin}\nexec ${path} 'auth' 'login'\n` }]);
-    expect(f.started).toEqual([{ file: '/usr/bin/open', args: ['/tmp/codemm-signin/Sign in to Claude Code.command'] }]);
+    // Terminal runs it a moment later: only the file code-learn allowed at Sign in runs, not one an install put there since.
+    const pin = `[ "$(/usr/bin/stat -L -f %i ${path})" = 4242 ] || { echo 'Claude Code changed. Sign in again from codeLearn.'; exit 1; }`;
+    expect(f.written).toEqual([{ file: '/tmp/code-learn-signin/Sign in to Claude Code.command', text: `#!/bin/sh\n${pin}\nexec ${path} 'auth' 'login'\n` }]);
+    expect(f.started).toEqual([{ file: '/usr/bin/open', args: ['/tmp/code-learn-signin/Sign in to Claude Code.command'] }]);
   });
 
   it('a Node-script Claude Code on a Mac signs in with this app as Node, in Terminal too', async () => {
     const f = fake('darwin');
     await f.signIn('claude', { path: '/lib/node_modules/@anthropic-ai/claude-code/cli.js', js: true });
     expect(f.written[0].text.split('\n').slice(1, 3)).toEqual([
-      `[ "$(/usr/bin/stat -L -f %i '/lib/node_modules/@anthropic-ai/claude-code/cli.js')" = 4242 ] || { echo 'Claude Code changed. Sign in again from Codemm.'; exit 1; }`,
-      "ELECTRON_RUN_AS_NODE='1' exec '/Applications/Codemm.app/Contents/MacOS/Codemm' '/lib/node_modules/@anthropic-ai/claude-code/cli.js' 'auth' 'login'",
+      `[ "$(/usr/bin/stat -L -f %i '/lib/node_modules/@anthropic-ai/claude-code/cli.js')" = 4242 ] || { echo 'Claude Code changed. Sign in again from codeLearn.'; exit 1; }`,
+      "ELECTRON_RUN_AS_NODE='1' exec '/Applications/code-learn.app/Contents/MacOS/code-learn' '/lib/node_modules/@anthropic-ai/claude-code/cli.js' 'auth' 'login'",
     ]);
   });
 
@@ -47,10 +47,10 @@ describe("the agent's own sign-in, where the learner sees it", () => {
     await f.signIn('claude', { path: 'C:\\Users\\Ann Lee\\.local\\bin\\claude.exe', js: false });
     // The path reaches PowerShell as an environment variable, never inside the command text.
     expect(f.started).toEqual([
-      { file: POWERSHELL, args: ['-NoProfile', '-NonInteractive', '-Command', CONSOLE], env: { CODEMM_FILE: 'C:\\Users\\Ann Lee\\.local\\bin\\claude.exe', CODEMM_ARGS: 'auth login' } },
+      { file: POWERSHELL, args: ['-NoProfile', '-NonInteractive', '-Command', CONSOLE], env: { CODE_LEARN_FILE: 'C:\\Users\\Ann Lee\\.local\\bin\\claude.exe', CODE_LEARN_ARGS: 'auth login' } },
     ]);
     // The Windows shell opens it, so a console program gets a window of its own.
-    expect(CONSOLE).toContain("New-Object Diagnostics.ProcessStartInfo $env:CODEMM_FILE, $env:CODEMM_ARGS; $i.UseShellExecute = $true");
+    expect(CONSOLE).toContain("New-Object Diagnostics.ProcessStartInfo $env:CODE_LEARN_FILE, $env:CODE_LEARN_ARGS; $i.UseShellExecute = $true");
     expect(f.written).toEqual([]);
   });
 
@@ -58,8 +58,8 @@ describe("the agent's own sign-in, where the learner sees it", () => {
     const f = fake('win32');
     await f.signIn('claude', { path: 'C:\\Users\\Ann Lee\\AppData\\Roaming\\npm\\node_modules\\cli.js', js: true });
     expect(f.started[0].env).toEqual({
-      CODEMM_FILE: '/Applications/Codemm.app/Contents/MacOS/Codemm',
-      CODEMM_ARGS: '"C:\\Users\\Ann Lee\\AppData\\Roaming\\npm\\node_modules\\cli.js" auth login',
+      CODE_LEARN_FILE: '/Applications/code-learn.app/Contents/MacOS/code-learn',
+      CODE_LEARN_ARGS: '"C:\\Users\\Ann Lee\\AppData\\Roaming\\npm\\node_modules\\cli.js" auth login',
       ELECTRON_RUN_AS_NODE: '1',
     });
   });
@@ -91,20 +91,20 @@ describe("the agent's own sign-in, where the learner sees it", () => {
   it("Claude Code's console window on Windows keeps the words before its arguments", async () => {
     const f = fake('win32');
     await f.signIn('claude', { path: 'C:\\node.exe', js: false, args: ['C:\\Program Files\\claude\\cli.js'], env: { X: '1' } });
-    expect(f.started[0].env).toEqual({ CODEMM_FILE: 'C:\\node.exe', CODEMM_ARGS: '"C:\\Program Files\\claude\\cli.js" auth login', X: '1' });
+    expect(f.started[0].env).toEqual({ CODE_LEARN_FILE: 'C:\\node.exe', CODE_LEARN_ARGS: '"C:\\Program Files\\claude\\cli.js" auth login', X: '1' });
   });
 
   it('a Node-script agent runs with this app as Node, as jobs do', async () => {
     const f = fake('darwin');
     await f.signIn('codex', { path: '/lib/node_modules/@openai/codex/bin/codex.js', js: true });
-    expect(f.started).toEqual([{ file: '/Applications/Codemm.app/Contents/MacOS/Codemm', args: ['/lib/node_modules/@openai/codex/bin/codex.js', 'login'], env: { ELECTRON_RUN_AS_NODE: '1' } }]);
+    expect(f.started).toEqual([{ file: '/Applications/code-learn.app/Contents/MacOS/code-learn', args: ['/lib/node_modules/@openai/codex/bin/codex.js', 'login'], env: { ELECTRON_RUN_AS_NODE: '1' } }]);
   });
 });
 
 describe.runIf(process.platform === 'win32')('on this Windows, for real', () => {
   it('opens a Node-script agent through PowerShell, its path with a space quoted, with this app as Node', { timeout: 60_000 }, async () => {
     // CI's Windows machine: Node stands in for this app, and the script for the agent's login.
-    const dir = join(tempDir('codemm-signin-'), 'Ann Lee');
+    const dir = join(tempDir('code-learn-signin-'), 'Ann Lee');
     mkdirSync(dir);
     const script = join(dir, 'cli.js');
     const out = join(dir, 'ran.json');
@@ -113,7 +113,7 @@ describe.runIf(process.platform === 'win32')('on this Windows, for real', () => 
     for (let i = 0; i < 100 && !existsSync(out); i++) await new Promise((r) => setTimeout(r, 300));
     // If it never ran, PowerShell's own words say why.
     const why = () => {
-      const env = { ...process.env, CODEMM_FILE: process.execPath, CODEMM_ARGS: `"${script}" auth login` };
+      const env = { ...process.env, CODE_LEARN_FILE: process.execPath, CODE_LEARN_ARGS: `"${script}" auth login` };
       const r = spawnSync(POWERSHELL, ['-NoProfile', '-NonInteractive', '-Command', CONSOLE], { env, encoding: 'utf8', timeout: 30_000 });
       return `PowerShell exit ${r.status}: ${r.stdout}${r.stderr}${r.error ?? ''}`;
     };

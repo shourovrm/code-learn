@@ -28,7 +28,7 @@ describe("Windows' registry PATH (§3.1)", () => {
   });
 
   it('expands the variables an installer defines beside its Path entry, as a new process would see them', () => {
-    // nvm-windows and pnpm, installed while Codemm is open: Codemm's own environment has neither variable.
+    // nvm-windows and pnpm, installed while code-learn is open: code-learn's own environment has neither variable.
     expect(user(['Path', 'REG_EXPAND_SZ', '%NVM_HOME%;%NVM_SYMLINK%;%PNPM_HOME%'], ['NVM_HOME', 'REG_SZ', 'C:\\Users\\me\\AppData\\Roaming\\nvm'], ['NVM_SYMLINK', 'REG_SZ', 'C:\\nvm4w\\nodejs'], ['PNPM_HOME', 'REG_EXPAND_SZ', '%LOCALAPPDATA%\\pnpm'])).toBe(
       'C:\\Users\\me\\AppData\\Roaming\\nvm;C:\\nvm4w\\nodejs;C:\\Users\\me\\AppData\\Local\\pnpm',
     );
@@ -80,7 +80,7 @@ describe('bringing PATH up to date (§3.1)', () => {
     return { deps, refresh: livePath(deps), calls, registry, reads: () => reads, tick: (ms: number) => (clock += ms) };
   }
 
-  it('asks reg.exe by absolute path, with argument arrays, for the machine and the user Path, and adds what a running Codemm missed', async () => {
+  it('asks reg.exe by absolute path, with argument arrays, for the machine and the user Path, and adds what a running code-learn missed', async () => {
     const f = fake();
     await f.refresh();
     expect(f.calls).toEqual([
@@ -172,7 +172,7 @@ describe('bringing PATH up to date (§3.1)', () => {
   });
 
   it('does nothing when a test staged its own PATH (the packaged and install tests: no Node, npm or Git)', async () => {
-    const f = fake({ env: { PATH: 'C:\\staged', CODEMM_TEST_FIXED_PATH: '1' } });
+    const f = fake({ env: { PATH: 'C:\\staged', CODE_LEARN_TEST_FIXED_PATH: '1' } });
     await f.refresh();
     expect(f.calls).toEqual([]);
     expect(f.deps.env.PATH).toBe('C:\\staged');

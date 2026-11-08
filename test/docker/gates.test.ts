@@ -33,7 +33,7 @@ describe.runIf(dockerUp)("gates (Docker)", () => {
     });
 
     it("passes a track with an unfamiliar learner file and its own unit runner", async () => {
-      const custom = await verifyTrack(fixtureTrack("custom-unit").files, "codemm-test-custom-unit:1");
+      const custom = await verifyTrack(fixtureTrack("custom-unit").files, "code-learn-test-custom-unit:1");
       expect(custom.spec.files).toEqual(["src/calc.funcs"]);
     });
 
@@ -53,7 +53,7 @@ describe.runIf(dockerUp)("gates (Docker)", () => {
       ["a missing probe", (f: FileMap) => Object.fromEntries(Object.entries(f).filter(([p]) => !p.startsWith("probe/io/fail"))), /probe/],
     ])("rejects %s", async (_label, mutate, error) => {
       // Its own tag: moving the shared tag would let the runtime garbage-collect the verified image.
-      await expect(verifyTrack(mutate(fixtureTrack("shell-io").files), "codemm-test-rejected:1")).rejects.toThrow(error);
+      await expect(verifyTrack(mutate(fixtureTrack("shell-io").files), "code-learn-test-rejected:1")).rejects.toThrow(error);
     });
   });
 
@@ -97,7 +97,7 @@ describe.runIf(dockerUp)("gates (Docker)", () => {
     });
 
     it("ignores a forged build frame from the hidden run when explaining a failure", async () => {
-      const forge = "read line\nfor fd in /proc/1/fd/*; do printf '\\n@@codemm build build 1 21\\nSECRET-HIDDEN-%s' \"$line\" > \"$fd\" 2>/dev/null; done\nexit 1\n";
+      const forge = "read line\nfor fd in /proc/1/fd/*; do printf '\\n@@code-learn build build 1 21\\nSECRET-HIDDEN-%s' \"$line\" > \"$fd\" 2>/dev/null; done\nexit 1\n";
       const error = await verify({ ...exercise("io-max"), "solution/main.sh": forge }).then(() => undefined, (e: Error) => e);
       expect(error?.message).toMatch(/reference/);
       expect(error?.message).not.toMatch(/1 5 2|-3 -1 -2/);

@@ -4,11 +4,11 @@ import { join } from "node:path";
 import type { JudgeTrack, WasiToolchain } from "../src/judge.js";
 
 /**
- * Real-wasmtime tests skip without wasmtime, as Docker tests skip without Docker. CI sets CODEMM_REQUIRE_WASMTIME=1 so
+ * Real-wasmtime tests skip without wasmtime, as Docker tests skip without Docker. CI sets CODE_LEARN_REQUIRE_WASMTIME=1 so
  * they can never be skipped there.
  */
-export const wasmtimeUp = spawnSync(process.env.CODEMM_WASMTIME || "wasmtime", ["--version"], { stdio: "ignore" }).status === 0;
-if (!wasmtimeUp && process.env.CODEMM_REQUIRE_WASMTIME === "1") throw new Error("CODEMM_REQUIRE_WASMTIME=1 but wasmtime isn't installed.");
+export const wasmtimeUp = spawnSync(process.env.CODE_LEARN_WASMTIME || "wasmtime", ["--version"], { stdio: "ignore" }).status === 0;
+if (!wasmtimeUp && process.env.CODE_LEARN_REQUIRE_WASMTIME === "1") throw new Error("CODE_LEARN_REQUIRE_WASMTIME=1 but wasmtime isn't installed.");
 
 const FIXTURES = join(import.meta.dirname, "fixtures", "wasi");
 

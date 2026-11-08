@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { CHANGED } from '../shared/api';
 import { live, practising, until } from './testing/fakes';
 
-describe('live CodemmApi: the activity: files, Try it, Check, Run and lesson examples (§4.5, §4.8, §4.10)', () => {
+describe('live CodeLearnApi: the activity: files, Try it, Check, Run and lesson examples (§4.5, §4.8, §4.10)', () => {
   it('forwards check progress to listeners, each visible test\'s result but nothing hidden, until they stop listening', async () => {
     const t = live();
     const { id } = await practising(t);
@@ -99,7 +99,7 @@ describe('live CodemmApi: the activity: files, Try it, Check, Run and lesson exa
     expect(await t.api.check(id, 'run-3')).toMatchObject({ stuck: true, later: true });
   });
 
-  it('saves by digest, and maps a file changed outside Codemm to CHANGED', async () => {
+  it('saves by digest, and maps a file changed outside code-learn to CHANGED', async () => {
     const t = live();
     const activity = await practising(t);
     const digest = await t.api.saveFile(activity.id, 'main.c', 'int main() { return count + 1; }', activity.files[0].digest);

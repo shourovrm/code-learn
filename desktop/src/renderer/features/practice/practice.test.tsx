@@ -2,7 +2,7 @@ import { parse } from 'yaml';
 import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import type { CodemmApi, JobProgress, TopicView } from '../../../shared/api';
+import type { CodeLearnApi, JobProgress, TopicView } from '../../../shared/api';
 import { xterm } from '../../testing/xterm';
 import { scenario } from '../../../main/mock';
 import { jobAt, jobBus, mockWithCourse, renderApp, until } from '../../test-utils';
@@ -10,7 +10,7 @@ import { jobAt, jobBus, mockWithCourse, renderApp, until } from '../../test-util
 vi.mock('@xterm/xterm', () => import('../../testing/xterm'));
 vi.mock('@xterm/addon-fit', () => import('../../testing/xterm'));
 
-async function open(options?: Parameters<typeof mockWithCourse>[0], before?: (api: CodemmApi) => void) {
+async function open(options?: Parameters<typeof mockWithCourse>[0], before?: (api: CodeLearnApi) => void) {
   const { api, course } = await mockWithCourse({ read: true, ...options });
   before?.(api);
   const view = renderApp({ to: 'practice', concept: course.topics[0].id }, api);
@@ -47,7 +47,7 @@ describe('practice', () => {
 
   it('opens the tutor with a line that fits any activity, a review or a repeat too', async () => {
     await open();
-    const rail = screen.getByRole('complementary', { name: 'Codemm' });
+    const rail = screen.getByRole('complementary', { name: 'code-learn' });
     expect(rail).toHaveTextContent('Ask me if you get stuck.');
     expect(rail).not.toHaveTextContent('Use what you just read.');
   });
@@ -83,7 +83,7 @@ describe('practice', () => {
 
   it('keeps the conversation when the learner leaves and comes back, and gives a failed question back', async () => {
     const { api, course, user } = await open();
-    await user.type(screen.getByRole('textbox', { name: 'Ask Codemm' }), 'Why?{Enter}');
+    await user.type(screen.getByRole('textbox', { name: 'Ask code-learn' }), 'Why?{Enter}');
     expect(await within(screen.getByRole('log')).findByText('Look at what you pass to setCount.')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Learn' }));
     await screen.findByRole('list', { name: 'Topics' });
@@ -93,11 +93,11 @@ describe('practice', () => {
 
     let answer!: (ok: boolean) => void;
     const ask = api.ask;
-    api.ask = (place, text) => new Promise((resolve, reject) => (answer = (ok) => (ok ? resolve(ask(place, text)) : reject(new Error('codemm:agent-failed')))));
-    await user.type(screen.getByRole('textbox', { name: 'Ask Codemm' }), 'And this?{Enter}');
+    api.ask = (place, text) => new Promise((resolve, reject) => (answer = (ok) => (ok ? resolve(ask(place, text)) : reject(new Error('code-learn:agent-failed')))));
+    await user.type(screen.getByRole('textbox', { name: 'Ask code-learn' }), 'And this?{Enter}');
     await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled());
     answer(false);
-    await vi.waitFor(() => expect(screen.getByRole('textbox', { name: 'Ask Codemm' })).toHaveValue('And this?'));
+    await vi.waitFor(() => expect(screen.getByRole('textbox', { name: 'Ask code-learn' })).toHaveValue('And this?'));
   });
 
   it('keeps unchecked code when the learner leaves and comes back', async () => {
@@ -109,17 +109,17 @@ describe('practice', () => {
     expect(await screen.findByRole('textbox', { name: 'Counter.jsx' })).toHaveValue('draft');
   });
 
-  it('reloads a file that changed outside Codemm', async () => {
+  it('reloads a file that changed outside code-learn', async () => {
     const { user, api, course } = await open();
     const activity = await api.activity(course.topics[0].id);
     await api.saveFile(activity.id, 'Counter.jsx', 'changed outside', activity.files[0].digest);
     await user.type(code(), 'x');
     await user.click(screen.getByRole('button', { name: 'Try it' }));
-    expect(await within(screen.getByRole('log')).findByText('This file changed outside Codemm, so it was reloaded.')).toBeInTheDocument();
+    expect(await within(screen.getByRole('log')).findByText('This file changed outside code-learn, so it was reloaded.')).toBeInTheDocument();
     expect(code()).toHaveValue('changed outside');
   });
 
-  it('reloads only the file that changed outside Codemm, keeping other unsaved edits', async () => {
+  it('reloads only the file that changed outside code-learn, keeping other unsaved edits', async () => {
     const { user, api, course } = await open();
     const activity = await api.activity(course.topics[0].id);
     await user.click(screen.getByRole('tab', { name: 'App.jsx' }));
@@ -128,7 +128,7 @@ describe('practice', () => {
     await api.saveFile(activity.id, 'Counter.jsx', 'changed outside', activity.files[0].digest);
     await user.type(code(), 'x');
     await user.click(screen.getByRole('button', { name: 'Try it' }));
-    await within(screen.getByRole('log')).findByText('This file changed outside Codemm, so it was reloaded.');
+    await within(screen.getByRole('log')).findByText('This file changed outside code-learn, so it was reloaded.');
     expect(code()).toHaveValue('changed outside');
     await user.click(screen.getByRole('tab', { name: 'App.jsx' }));
     expect((screen.getByRole('textbox', { name: 'App.jsx' }) as HTMLTextAreaElement).value).toContain(' // mine');
@@ -161,15 +161,15 @@ describe('practice', () => {
     expect(checks).toBe(0);
   });
 
-  it('keeps practice mode: Codemm explains, the learner writes the code', async () => {
+  it('keeps practice mode: code-learn explains, the learner writes the code', async () => {
     const { user } = await open();
-    await user.type(screen.getByRole('textbox', { name: 'Ask Codemm' }), 'Just fix it for me.{Enter}');
+    await user.type(screen.getByRole('textbox', { name: 'Ask code-learn' }), 'Just fix it for me.{Enter}');
     expect(await within(screen.getByRole('log')).findByText(/In practice mode, you write the code\./)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Hint' }));
     expect(await within(screen.getByRole('log')).findByText('Give me a hint.')).toBeInTheDocument();
   });
 
-  it('asks Codemm only after the latest code is saved, and not at all if the save fails', async () => {
+  it('asks code-learn only after the latest code is saved, and not at all if the save fails', async () => {
     const { api, user } = await open();
     const saveFile = api.saveFile;
     const saves: { text: string; finish: (ok: boolean) => void }[] = [];
@@ -182,7 +182,7 @@ describe('practice', () => {
     await write(user, 'count + 1');
     await user.click(screen.getByRole('button', { name: 'Hint' }));
     await vi.waitFor(() => expect(saves.map((s) => s.text)).toEqual(['count + 1']));
-    expect(asked).toEqual([]); // still saving: Codemm hasn't been asked
+    expect(asked).toEqual([]); // still saving: code-learn hasn't been asked
     saves[0].finish(true);
     await vi.waitFor(() => expect(asked).toEqual(['Give me a hint.']));
     await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Hint' })).toBeEnabled());
@@ -234,7 +234,7 @@ describe('practice', () => {
     expect(listening).toBe(0);
   });
 
-  it('takes one question at a time: asking is off while Codemm answers', async () => {
+  it('takes one question at a time: asking is off while code-learn answers', async () => {
     const { api, user } = await open();
     let answer!: () => void;
     let asked = 0;
@@ -245,7 +245,7 @@ describe('practice', () => {
     expect(screen.getByRole('button', { name: 'Hint' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Show me' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled();
-    await user.type(screen.getByRole('textbox', { name: 'Ask Codemm' }), 'And now?{Enter}');
+    await user.type(screen.getByRole('textbox', { name: 'Ask code-learn' }), 'And now?{Enter}');
     expect(asked).toBe(1);
     answer();
     await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Send' })).toBeEnabled());
@@ -253,22 +253,22 @@ describe('practice', () => {
     expect(asked).toBe(2);
   });
 
-  it("says Codemm is thinking while it answers, with the turn's latest step", async () => {
+  it("says code-learn is thinking while it answers, with the turn's latest step", async () => {
     let hear: (p: JobProgress) => void = () => undefined;
     const { api, user } = await open(undefined, (a) => (a.onJobProgress = (listener) => ((hear = listener), () => undefined)));
     let answer!: () => void;
     const ask = api.ask;
     api.ask = (place, text) => new Promise((done) => (answer = () => done(ask(place, text))));
     await user.click(screen.getByRole('button', { name: 'Hint' }));
-    const rail = screen.getByRole('complementary', { name: 'Codemm' });
-    expect(within(rail).getByRole('status')).toHaveTextContent('Codemm is thinking…');
+    const rail = screen.getByRole('complementary', { name: 'code-learn' });
+    expect(within(rail).getByRole('status')).toHaveTextContent('code-learn is thinking…');
     // A turn asked elsewhere, still running ahead of this one, isn't this question's.
     act(() => hear({ job: 't0', kind: 'tutor', stage: 0, steps: [{ kind: 'step', label: 'Reading the lesson' }], count: 1, thinking: true, elapsedMs: 60_000, idleMs: 0 }));
     expect(within(rail).queryByText('Reading the lesson')).not.toBeInTheDocument();
     act(() => hear({ job: 't1', kind: 'tutor', stage: 0, steps: [{ kind: 'step', label: 'Reading the activity' }], count: 1, thinking: true, elapsedMs: 0, idleMs: 0 }));
     expect(within(rail).getByText('Reading the activity')).toBeInTheDocument();
     answer();
-    await vi.waitFor(() => expect(within(rail).queryByText('Codemm is thinking…')).not.toBeInTheDocument());
+    await vi.waitFor(() => expect(within(rail).queryByText('code-learn is thinking…')).not.toBeInTheDocument());
     expect(within(rail).queryByText('Reading the activity')).not.toBeInTheDocument();
   });
 
@@ -426,7 +426,7 @@ describe('Continue after a pass', () => {
 
   it('still opens it after the screen re-renders under the result', async () => {
     const { user } = await pass();
-    await user.type(screen.getByRole('textbox', { name: 'Ask Codemm' }), 'Why?{Enter}');
+    await user.type(screen.getByRole('textbox', { name: 'Ask code-learn' }), 'Why?{Enter}');
     await within(screen.getByRole('log')).findByText('Look at what you pass to setCount.');
     await user.click(within(results()).getByRole('button', { name: 'Continue' }));
     await opensNext();
@@ -454,7 +454,7 @@ describe('Continue after a pass', () => {
   });
 });
 
-// A review that comes due is the topic Codemm offers next, as on the course map (§4.14), so Continue opens it on Practice.
+// A review that comes due is the topic code-learn offers next, as on the course map (§4.14), so Continue opens it on Practice.
 describe('Continue to a review', () => {
   // The first topic was mastered before. Passing the second masters it too, and then core offers the first one's review,
   // so no topic is Now (courseView).

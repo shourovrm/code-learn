@@ -18,7 +18,7 @@ const clock = (ms: number) => {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 };
 
-/** Codemm's last line for a run, and its tone. */
+/** code-learn's last line for a run, and its tone. */
 function ending(r: RunResult, limits: Record<'build' | 'run', number>): [string, 'ok' | 'fail' | 'quiet'] {
   if (r.kind === 'not-run') return [notRunLine(r.reason), 'fail'];
   const what = r.stage === 'build' ? 'The build' : 'The program';

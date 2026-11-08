@@ -5,7 +5,7 @@ import { join } from 'node:path';
 const made: string[] = [];
 
 /** A fresh folder under the OS temp folder. Each spec removes its own with `test.afterAll(removeTempDirs)`. */
-export function tempDir(prefix = 'codemm-e2e-'): string {
+export function tempDir(prefix = 'code-learn-e2e-'): string {
   const dir = mkdtempSync(join(tmpdir(), prefix));
   made.push(dir);
   return dir;

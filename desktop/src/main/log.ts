@@ -30,7 +30,7 @@ export function redact(value: string): string {
 const format = (value: string | number | boolean) => (typeof value === 'string' ? JSON.stringify(redact(value)).replace(/^"([\w.@:/~-]*)"$/, '$1') : String(value));
 
 export function createLog(dir: string, cap = CAP): Log {
-  const file = join(dir, 'codemm.log');
+  const file = join(dir, 'code-learn.log');
   return (event, fields = {}) => {
     try {
       const parts = Object.entries(fields).flatMap(([k, v]) => (v === undefined ? [] : [`${k}=${format(v)}`]));
@@ -42,7 +42,7 @@ export function createLog(dir: string, cap = CAP): Log {
       } catch {
         // No log yet.
       }
-      if (size > 0 && size + line.length > cap) renameSync(file, join(dir, 'codemm.1.log'));
+      if (size > 0 && size + line.length > cap) renameSync(file, join(dir, 'code-learn.1.log'));
       appendFileSync(file, line);
     } catch {
       // Logging never breaks the app.

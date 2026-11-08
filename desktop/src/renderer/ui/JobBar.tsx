@@ -63,7 +63,7 @@ type Props = {
 };
 
 /**
- * A job's progress as Emm filling up, from grey to Codemm green, as the job reaches each stage (§4.11). Full: the
+ * A job's progress as Emm filling up, from grey to code-learn green, as the job reaches each stage (§4.11). Full: the
  * named stages, the latest step or retry, the time so far, and a quiet line after 90 seconds. Compact: one line.
  */
 export function JobBar({ job, label, compact = false, noLine = false, emm = true }: Props) {

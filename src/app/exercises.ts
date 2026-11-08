@@ -1,6 +1,6 @@
 import { stringify } from "yaml";
 import { join } from "node:path";
-import { CodemmError } from "../errors.js";
+import { CodeLearnError } from "../errors.js";
 import { assertPortablePaths, type FileMap, subMap, validateFileMap } from "../files.js";
 import { type ExerciseGate, verifyQuiz, verifyExercise } from "../gates.js";
 import { type CaseFrames, expectedText, gradeIo, gradeQuiz, redact, type ShownResult, type Status, type TestResult, type TestSet } from "../grading.js";
@@ -84,7 +84,7 @@ export function nextStep(ws: string, bound?: string): NextStep {
     const track = store.readTrack(course.track);
     if (!track) return { kind: "setup", track: course.track };
     if (!track.styles.includes(course.style)) {
-      throw new CodemmError(`Track ${course.track} offers ${track.styles.join(", ")}, not style "${course.style}". Edit the roadmap's style.`);
+      throw new CodeLearnError(`Track ${course.track} offers ${track.styles.join(", ")}, not style "${course.style}". Edit the roadmap's style.`);
     }
     contract = { track: course.track, contract: trackContract(track, course.style) };
   }
@@ -95,7 +95,7 @@ export function nextStep(ws: string, bound?: string): NextStep {
   return { ...step, title, practice, pitfalls, style: course.style, ...contract, earlier: earlierExercises(course.course), ...learnerContext(course.course, step.concept) };
 }
 
-/** Writes each exercise gate as it starts to a job's progress file (`codemm mcp --progress`), by name only. */
+/** Writes each exercise gate as it starts to a job's progress file (`code-learn mcp --progress`), by name only. */
 export const gateProgressTo = (path: string) => ({ gate }: { gate: ExerciseGate }) => store.writeJobProgress(path, gate);
 
 /** `onProgress` hears which gate runs, by name only (DESIGN §6). */
@@ -164,7 +164,7 @@ function learnerFiles(record: ExerciseRecord, files: FileMap, editable: string[]
 const ioInput = /\.(in|gen)$/;
 
 function assertActivities(course: CourseRecord): asserts course is Exclude<CourseRecord, { style: "none" }> {
-  if (course.style === "none") throw new CodemmError("This course has lessons only. Turn activities on to practise.");
+  if (course.style === "none") throw new CodeLearnError("This course has lessons only. Turn activities on to practise.");
 }
 
 function loadExercise(ws: string, slug?: string, bound?: string) {
@@ -174,7 +174,7 @@ function loadExercise(ws: string, slug?: string, bound?: string) {
   const preferred = slug ?? (config.course === course.course ? config.current : undefined);
   const next = preferred ? undefined : pickFor(course);
   const chosen = preferred ?? (next?.kind === "practice" ? next.exercise : undefined);
-  if (!chosen) throw new CodemmError("No exercise to practice yet. Ask your agent for the next step (next_step).");
+  if (!chosen) throw new CodeLearnError("No exercise to practice yet. Ask your agent for the next step (next_step).");
   const { record, files } = store.readExercise(course.course, chosen);
   const context = { course, config, record, files, rel: learnerDir(course.course, record.slug) };
   if (record.style === "quiz") return { ...context, style: "quiz" as const, track: undefined, editable: ["answers.yaml"] };
@@ -230,7 +230,7 @@ export function readLearnerFiles(ws: string, slug: string, bound?: string): Reco
 /** Saves one learner file, refusing it if the file changed since the editor loaded `digest`. */
 export async function writeLearnerFile(ws: string, slug: string, path: string, text: string, digest: string, bound?: string): Promise<{ digest: string }> {
   const { editable, rel } = loadExercise(ws, slug, bound);
-  if (!editable.includes(path)) throw new CodemmError(`"${path}" isn't one of this exercise's files (${editable.join(", ")}).`);
+  if (!editable.includes(path)) throw new CodeLearnError(`"${path}" isn't one of this exercise's files (${editable.join(", ")}).`);
   validateFileMap({ [path]: text });
   return store.withWorkspaceLock(ws, async () => ({ digest: store.replaceLearnerFile(ws, rel, path, text, digest) }));
 }
@@ -277,7 +277,7 @@ async function judge(ws: string, ctx: ReturnType<typeof loadExercise>, includeHi
     }
   });
   const { record, files, rel } = ctx;
-  if (ctx.style === "quiz") throw new CodemmError("A quiz has no practice run. Check it when you're ready.");
+  if (ctx.style === "quiz") throw new CodeLearnError("A quiz has no practice run. Check it when you're ready.");
   await ensureImage(ctx.track);
   const track = store.judgeTrack(ctx.track);
   store.materialize(ws, rel, learnerFiles(record, files, ctx.editable));
@@ -317,8 +317,8 @@ async function judge(ws: string, ctx: ReturnType<typeof loadExercise>, includeHi
  */
 export async function runInteractive(ws: string, slug: string | undefined, bound: string | undefined, output: (text: string, stream: "stdout" | "stderr") => void, limits: ProgramOptions = {}): Promise<ProgramRun> {
   const ctx = loadExercise(ws, slug, bound);
-  if (ctx.style === "quiz") throw new CodemmError("A quiz has no program to run.");
-  if (!ctx.track.run) throw new CodemmError("This track has no run command, so Run isn't available.");
+  if (ctx.style === "quiz") throw new CodeLearnError("A quiz has no program to run.");
+  if (!ctx.track.run) throw new CodeLearnError("This track has no run command, so Run isn't available.");
   await ensureImage(ctx.track);
   store.materialize(ws, ctx.rel, learnerFiles(ctx.record, ctx.files, ctx.editable));
   const src = store.readLearnerFiles(ws, ctx.rel, ctx.track.files);
@@ -367,7 +367,7 @@ async function checkQuiz(ws: string, { course, config, record, files, rel }: Ret
   const quiz = parseQuizYaml(files["quiz.yaml"]!);
   const answers = parseAnswersYaml(store.readLearnerFiles(ws, rel, ["answers.yaml"])["answers.yaml"]!, quiz);
   // Grading one answer at a time would reveal the key before the recorded check, as Test would.
-  if (Object.values(answers).some((a) => a === null)) throw new CodemmError("Answer every question, then check.");
+  if (Object.values(answers).some((a) => a === null)) throw new CodeLearnError("Answer every question, then check.");
   const view = present(record.slug, gradeQuiz(quiz, answers), false);
   await store.updateWorkspace(ws, (c) => c.course === course.course ? { ...c, current: record.slug } : c);
   await store.withLock(store.courseLockPath(course.course), async () => {

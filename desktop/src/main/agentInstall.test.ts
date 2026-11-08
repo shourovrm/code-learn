@@ -37,7 +37,7 @@ function fake(
   const deps: AgentInstallDeps = {
     platform,
     arch: platform === 'win32' ? 'x64' : 'arm64',
-    tempDir: () => (platform === 'win32' ? 'C:\\Temp\\codemm-agent' : '/tmp/codemm-agent'),
+    tempDir: () => (platform === 'win32' ? 'C:\\Temp\\code-learn-agent' : '/tmp/code-learn-agent'),
     freeBytes: async () => 50 * GiB,
     download: async (url, file, progress, allowed, maxBytes) => {
       downloads.push({ url, file, allowed: allowed ? allowed(url) : false });
@@ -85,13 +85,13 @@ describe('installing an agent for the learner', () => {
     ]);
     // An Apple-issued Developer ID for Anthropic's team, checked by codesign itself: not display output, and not a codesign from PATH.
     expect(commands(f.calls)).toEqual([
-      `/usr/bin/codesign --verify --strict -R=anchor apple generic and certificate leaf[subject.OU] = "Q6L2SF6YDW" /tmp/codemm-agent/claude`,
-      '/tmp/codemm-agent/claude install',
+      `/usr/bin/codesign --verify --strict -R=anchor apple generic and certificate leaf[subject.OU] = "Q6L2SF6YDW" /tmp/code-learn-agent/claude`,
+      '/tmp/code-learn-agent/claude install',
     ]);
     // The version and the manifest are small: a huge reply never fills the disk or memory.
     expect(f.caps).toEqual([1024, 1024 * 1024, 2 * 1024 ** 3]);
-    expect(f.executable).toEqual(['/tmp/codemm-agent/claude']);
-    expect(f.removed).toEqual(['/tmp/codemm-agent']);
+    expect(f.executable).toEqual(['/tmp/code-learn-agent/claude']);
+    expect(f.removed).toEqual(['/tmp/code-learn-agent']);
   });
 
   it('Claude Code on Windows: the .exe, its Authenticode signer checked through an environment variable, then its own install', async () => {
@@ -100,16 +100,16 @@ describe('installing an agent for the learner', () => {
     expect(f.downloads.at(-1)!.url).toBe('https://downloads.claude.ai/claude-code-releases/2.1.302/win32-x64/claude.exe');
     const sign = f.calls[0];
     expect(sign.file).toBe('C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe');
-    expect(sign.env).toEqual({ CODEMM_FILE: 'C:\\Temp\\codemm-agent\\claude.exe' });
-    expect(sign.args.join(' ')).not.toContain('codemm-agent');
-    expect(commands(f.calls).at(-1)).toBe('C:\\Temp\\codemm-agent\\claude.exe install');
+    expect(sign.env).toEqual({ CODE_LEARN_FILE: 'C:\\Temp\\code-learn-agent\\claude.exe' });
+    expect(sign.args.join(' ')).not.toContain('code-learn-agent');
+    expect(commands(f.calls).at(-1)).toBe('C:\\Temp\\code-learn-agent\\claude.exe install');
   });
 
   it('refuses a binary whose checksum differs from the manifest, and runs nothing', async () => {
     const f = fake('darwin', { sha256: async () => 'b'.repeat(64) });
     expect(await run(f, 'claude')).toEqual({ phase: 'failed', problem: 'unverified' });
     expect(f.calls).toEqual([]);
-    expect(f.removed).toEqual(['/tmp/codemm-agent']);
+    expect(f.removed).toEqual(['/tmp/code-learn-agent']);
   });
 
   it('refuses a binary Anthropic did not sign, and never runs it', async () => {
@@ -136,16 +136,16 @@ describe('installing an agent for the learner', () => {
     expect(full.downloads).toEqual([]);
   });
 
-  it('fails when the agent\'s own install step fails, or leaves nothing Codemm can find', async () => {
-    expect(await run(fake('darwin', { answers: { '/tmp/codemm-agent/claude install': { code: 1, output: '' } } }), 'claude')).toEqual({ phase: 'failed', problem: 'failed' });
+  it('fails when the agent\'s own install step fails, or leaves nothing code-learn can find', async () => {
+    expect(await run(fake('darwin', { answers: { '/tmp/code-learn-agent/claude install': { code: 1, output: '' } } }), 'claude')).toEqual({ phase: 'failed', problem: 'failed' });
     expect(await run(fake('darwin', { find: () => null }), 'claude')).toEqual({ phase: 'failed', problem: 'failed' });
   });
 
   it('Codex on a Mac: OpenAI\'s official script, run as `sh <file>` without prompts, then the binary checked against OpenAI\'s signature', async () => {
     const f = fake('darwin');
     expect(await run(f, 'codex')).toEqual({ phase: 'done' });
-    expect(f.downloads).toEqual([{ url: 'https://releases.openai.com/codex/install.sh', file: '/tmp/codemm-agent/install.sh', allowed: true }]);
-    expect(f.calls[0]).toEqual({ file: '/bin/sh', args: ['/tmp/codemm-agent/install.sh'], env: { CODEX_NON_INTERACTIVE: '1' } });
+    expect(f.downloads).toEqual([{ url: 'https://releases.openai.com/codex/install.sh', file: '/tmp/code-learn-agent/install.sh', allowed: true }]);
+    expect(f.calls[0]).toEqual({ file: '/bin/sh', args: ['/tmp/code-learn-agent/install.sh'], env: { CODEX_NON_INTERACTIVE: '1' } });
     expect(commands(f.calls).slice(1)).toEqual([
       `/usr/bin/codesign --verify --strict -R=anchor apple generic and certificate leaf[subject.OU] = "2DC432GLL2" /Users/me/.codex/packages/standalone/current/codex`,
     ]);
@@ -157,7 +157,7 @@ describe('installing an agent for the learner', () => {
     expect(f.downloads[0].url).toBe('https://releases.openai.com/codex/install.ps1');
     expect(f.calls[0]).toEqual({
       file: 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
-      args: ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', 'C:\\Temp\\codemm-agent\\install.ps1'],
+      args: ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', 'C:\\Temp\\code-learn-agent\\install.ps1'],
       env: { CODEX_NON_INTERACTIVE: '1' },
     });
   });
@@ -167,7 +167,7 @@ describe('installing an agent for the learner', () => {
     expect(await run(f, 'codex')).toEqual({ phase: 'failed', problem: 'unverified' });
   });
 
-  it('fails when the Codex script exits 0 but leaves nothing Codemm can find, offline if it says so', async () => {
+  it('fails when the Codex script exits 0 but leaves nothing code-learn can find, offline if it says so', async () => {
     expect(await run(fake('darwin', { find: () => null }), 'codex')).toEqual({ phase: 'failed', problem: 'failed' });
     const offline = fake('darwin', { find: () => null, answers: { '/bin/sh': { code: 0, output: 'curl: (6) Could not resolve host: releases.openai.com' } } });
     expect(await run(offline, 'codex')).toEqual({ phase: 'failed', problem: 'offline' });
@@ -217,28 +217,28 @@ describe('installing an agent for the learner', () => {
   it("Cursor on a Mac: Cursor's script from cursor.com, run as `bash <file>`, then the Node.js it installed checked against the Node.js Foundation's signature", async () => {
     const f = macCursor();
     expect(await run(f, 'cursor')).toEqual({ phase: 'done' });
-    expect(f.downloads).toEqual([{ url: 'https://cursor.com/install', file: '/tmp/codemm-agent/install.sh', allowed: true }]);
+    expect(f.downloads).toEqual([{ url: 'https://cursor.com/install', file: '/tmp/code-learn-agent/install.sh', allowed: true }]);
     expect(f.caps).toEqual([1024 * 1024]);
     // bash, not sh: the script uses bash's [[ ]] and ${var//}.
-    expect(f.calls[0]).toEqual({ file: '/bin/bash', args: ['/tmp/codemm-agent/install.sh'] });
+    expect(f.calls[0]).toEqual({ file: '/bin/bash', args: ['/tmp/code-learn-agent/install.sh'] });
     expect(f.timeouts[0]).toBe(15 * 60_000);
     // Cursor signs nothing itself: the check is the Node.js Foundation's Apple team on the node that runs Cursor's code.
     expect(commands(f.calls).slice(1)).toEqual([
       `/usr/bin/codesign --verify --strict -R=anchor apple generic and certificate leaf[subject.OU] = "HX7739G8FX" ${CURSOR_MAC}/node`,
     ]);
-    expect(f.removed).toEqual(['/tmp/codemm-agent']);
+    expect(f.removed).toEqual(['/tmp/code-learn-agent']);
   });
 
   it("Cursor on Windows: Cursor's PowerShell script as a file, never `irm | iex`, then node.exe's OpenJS Foundation signature", async () => {
-    // The script's Git for Windows line is about Cursor's private workers, which Codemm doesn't use: it never shows.
+    // The script's Git for Windows line is about Cursor's private workers, which code-learn doesn't use: it never shows.
     const f = winCursor({ [SCRIPT_RUN]: { code: 0, output: GIT_LINE } });
     expect(await run(f, 'cursor')).toEqual({ phase: 'done' });
-    expect(f.downloads).toEqual([{ url: 'https://cursor.com/install?win32=true', file: 'C:\\Temp\\codemm-agent\\install.ps1', allowed: true }]);
-    expect(f.calls[0]).toEqual({ file: PS, args: ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', 'C:\\Temp\\codemm-agent\\install.ps1'] });
+    expect(f.downloads).toEqual([{ url: 'https://cursor.com/install?win32=true', file: 'C:\\Temp\\code-learn-agent\\install.ps1', allowed: true }]);
+    expect(f.calls[0]).toEqual({ file: PS, args: ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', 'C:\\Temp\\code-learn-agent\\install.ps1'] });
     expect(f.timeouts[0]).toBe(15 * 60_000);
     const sign = f.calls[1];
     expect([sign.file, ...sign.args.slice(0, 3)].join(' ')).toBe(SIGN_CHECK);
-    expect(sign.env).toEqual({ CODEMM_FILE: NODE_EXE.path });
+    expect(sign.env).toEqual({ CODE_LEARN_FILE: NODE_EXE.path });
     expect(f.calls).toHaveLength(2);
     expect(JSON.stringify(f.install.status('cursor'))).not.toContain('Git');
     const failed = winCursor({ [SCRIPT_RUN]: { code: 1, output: GIT_LINE } });
@@ -246,9 +246,9 @@ describe('installing an agent for the learner', () => {
     expect(JSON.stringify(failed.install.status('cursor'))).not.toContain('Git');
   });
 
-  it("Cursor on Windows, found the way Codemm finds it: the version's own node.exe is what's checked", async () => {
+  it("Cursor on Windows, found the way code-learn finds it: the version's own node.exe is what's checked", async () => {
     // The tree Cursor's script leaves in %LOCALAPPDATA%\cursor-agent, with an older version beside the new one.
-    const local = tempDir('codemm-local-');
+    const local = tempDir('code-learn-local-');
     const root = join(local, 'cursor-agent');
     mkdirSync(root, { recursive: true });
     writeFileSync(join(root, 'cursor-agent.cmd'), '@echo off\r\n');
@@ -258,7 +258,7 @@ describe('installing an agent for the learner', () => {
     }
     const f = winCursor({}, { find: (bin) => find(bin, { platform: 'win32', path: '', home: local, localAppData: local, appData: local }) });
     expect(await run(f, 'cursor')).toEqual({ phase: 'done' });
-    expect(f.calls.at(-1)!.env).toEqual({ CODEMM_FILE: join(root, 'versions', '2026.10.22-27dcf5f', 'node.exe') });
+    expect(f.calls.at(-1)!.env).toEqual({ CODE_LEARN_FILE: join(root, 'versions', '2026.10.22-27dcf5f', 'node.exe') });
   });
 
   it("refuses a Cursor other than the version the script installs: a stale copy left by a failed run doesn't pass", async () => {
@@ -294,7 +294,7 @@ describe('installing an agent for the learner', () => {
     expect(offline.calls).toHaveLength(1);
   });
 
-  it("fails when Cursor's script fails, times out, or leaves nothing Codemm can find, and checks nothing then", async () => {
+  it("fails when Cursor's script fails, times out, or leaves nothing code-learn can find, and checks nothing then", async () => {
     const failed = winCursor({ [SCRIPT_RUN]: { code: 1, output: 'tar.exe exited with code 1' } });
     expect(await run(failed, 'cursor')).toEqual({ phase: 'failed', problem: 'failed' });
     expect(failed.calls).toHaveLength(1);

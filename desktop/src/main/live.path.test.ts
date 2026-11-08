@@ -1,5 +1,5 @@
 // @vitest-environment node
-// An agent or Docker installed while Codemm is open, on Windows: its installer adds a folder to the PATH in the
+// An agent or Docker installed while code-learn is open, on Windows: its installer adds a folder to the PATH in the
 // registry, which a running process never sees in its own environment (§3.1).
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -17,7 +17,7 @@ import { tempDir } from './testing/temp';
  * empty: a runner's own folders (System32 holds a docker.exe on GitHub's) would answer first.
  */
 function windows() {
-  const env: NodeJS.ProcessEnv = { PATH: '', LOCALAPPDATA: tempDir('codemm-local-') };
+  const env: NodeJS.ProcessEnv = { PATH: '', LOCALAPPDATA: tempDir('code-learn-local-') };
   const registry = { machine: '', user: '' };
   let clock = 0;
   const refresh = livePath({
@@ -27,14 +27,14 @@ function windows() {
     now: () => clock,
   });
   // Only PATH: the usual folders are find's own tests.
-  const where = (): Where => ({ platform: 'win32', path: env.PATH ?? '', home: tempDir('codemm-home-'), searchDirs: [] });
+  const where = (): Where => ({ platform: 'win32', path: env.PATH ?? '', home: tempDir('code-learn-home-'), searchDirs: [] });
   return { env, registry, refresh, where, later: () => (clock += 2_001) };
 }
 
 describe('found once installed, with no restart (§3.1)', () => {
-  it('Connect shows an agent installed while Codemm was open on the next look', async () => {
+  it('Connect shows an agent installed while code-learn was open on the next look', async () => {
     const w = windows();
-    const connect = connector({ find: (bin) => find(bin, w.where()), signedIn: async () => true, version: async () => '2.1.283' }, desktopState(tempDir('codemm-state-')));
+    const connect = connector({ find: (bin) => find(bin, w.where()), signedIn: async () => true, version: async () => '2.1.283' }, desktopState(tempDir('code-learn-state-')));
     const { api } = live({}, { connect, livePath: w.refresh });
     expect((await api.agents()).find((a) => a.id === 'claude')!.state).toBe('missing');
 
@@ -48,7 +48,7 @@ describe('found once installed, with no restart (§3.1)', () => {
     expect((await api.connect('claude')).state).toBe('connected');
   });
 
-  it('Check this computer finds Docker installed while Codemm was open on the next check', async () => {
+  it('Check this computer finds Docker installed while code-learn was open on the next check', async () => {
     const w = windows();
     const computer = computerCheck({ find: () => find('docker', w.where()), state: async () => 'ready', sandbox: async () => ({ ok: true, detail: 'blocked' }), now: () => 0 }, 'win32');
     const { api } = live({}, { computer, livePath: w.refresh });
@@ -62,7 +62,7 @@ describe('found once installed, with no restart (§3.1)', () => {
     expect((await api.computer()).ready).toBe(true);
   });
 
-  it('a job starts on the PATH as it is now, which the agent and its Codemm server inherit', async () => {
+  it('a job starts on the PATH as it is now, which the agent and its code-learn server inherit', async () => {
     const order: string[] = [];
     // Done only a moment later: a job that didn't wait for it would start first.
     const refresh = () => new Promise<void>((resolve) => setTimeout(() => (order.push('fresh'), resolve()), 5));

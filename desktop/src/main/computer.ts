@@ -1,6 +1,6 @@
 // "Check this computer" (DESIGN §6.1): Docker is installed, it's running with
 // Linux containers, and the sandbox works. Only the first failing row is a
-// problem; the ones after it wait. Where Codemm installs Docker Desktop, a
+// problem; the ones after it wait. Where code-learn installs Docker Desktop, a
 // docker command alone, with no engine answering, isn't installed yet. On
 // Windows, an engine that doesn't answer says what WSL needs, when that's why.
 import type { CheckId, Computer, ComputerCheck, DockerInstall, Platform } from '../shared/api';
@@ -16,9 +16,9 @@ export interface Probe {
   /** Core doctor's network-isolation check, with why it failed and, when known, the cause on this computer. */
   sandbox(): Promise<{ ok: boolean; detail: string; kind?: 'offline' | 'disk' | 'docker' }>;
   now(): number;
-  /** When Codemm last opened or installed Docker Desktop. Only then is a silent Docker "starting". */
+  /** When code-learn last opened or installed Docker Desktop. Only then is a silent Docker "starting". */
   startedAt?(): number | undefined;
-  /** Codemm can install Docker Desktop here, and the install it started. */
+  /** code-learn can install Docker Desktop here, and the install it started. */
   canInstall?: boolean;
   /** Docker Desktop's own app is here (a docker command can come without it). */
   desktopInstalled?(): boolean;
@@ -42,7 +42,7 @@ export const platformOf = (p: NodeJS.Platform): Platform => (p === 'darwin' ? 'm
 
 /**
  * A re-checkable check: it remembers a sandbox that passed. A Docker that doesn't answer is "starting" only for
- * 3 minutes after Codemm opened or installed it, or after this check first saw Docker Desktop's app running (the
+ * 3 minutes after code-learn opened or installed it, or after this check first saw Docker Desktop's app running (the
  * learner opened it); otherwise it's stopped, and the fix is to open it (§6.1). What WSL needs comes before either:
  * Docker's engine can't start without it.
  * A sandbox that fails within 3 minutes of Docker coming up is still being checked; after that, the fix is a restart.
@@ -55,7 +55,7 @@ export function computerCheck(probe: Probe, platform: NodeJS.Platform = process.
   /** When this check first saw Docker Desktop's app running with its engine down. */
   let openAt: number | undefined;
   let lastReason: string | undefined;
-  /** Set once wasmtime ran: it stays while Codemm runs. */
+  /** Set once wasmtime ran: it stays while code-learn runs. */
   let wasi = false;
   /** Whether the last check found a docker command, running or not. */
   let installed = false;
@@ -116,7 +116,7 @@ export function computerCheck(probe: Probe, platform: NodeJS.Platform = process.
 }
 
 /**
- * Waits while Docker is starting, which is only after Codemm opened or installed it: setup and checks started
+ * Waits while Docker is starting, which is only after code-learn opened or installed it: setup and checks started
  * then wait for the daemon, within the same 3-minute window Check this computer shows. A stopped Docker fails fast (§6.1).
  */
 export async function waitWhileStarting(computer: () => Promise<Computer>, nap: () => Promise<void>): Promise<void> {

@@ -38,7 +38,7 @@ function useHighlighter(code: boolean, set: (hljs: HLJSApi | undefined) => void)
 }
 
 /**
- * Agent-written text (an activity's statement, Codemm's replies), its code colored once highlight.js arrives, as a
+ * Agent-written text (an activity's statement, code-learn's replies), its code colored once highlight.js arrives, as a
  * lesson's is. It renders again only when the text changes or highlight.js arrives, not on each keystroke in the
  * editor or the rail.
  */

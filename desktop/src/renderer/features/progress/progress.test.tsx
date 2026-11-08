@@ -1,11 +1,11 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import type { CodemmApi } from '../../../shared/api';
+import type { CodeLearnApi } from '../../../shared/api';
 import { timing } from '../../app/useLoad';
 import { mockWithCourse, mockWithRoadmap, renderApp } from '../../test-utils';
 
-async function master(api: CodemmApi, topics: number) {
+async function master(api: CodeLearnApi, topics: number) {
   for (let i = 0; i < topics; i++) {
     await api.course();
     const now = (await api.course())!.topics.find((t) => t.state === 'now')!;
@@ -22,20 +22,20 @@ describe('a course read that fails after one worked', () => {
     const { api } = await mockWithCourse({ read: true });
     const course = api.course.bind(api);
     let failing = false;
-    api.course = () => (failing ? Promise.reject(new Error("codemm:offline")) : course());
+    api.course = () => (failing ? Promise.reject(new Error("code-learn:offline")) : course());
     renderApp({ to: 'learn' }, api);
     expect(await screen.findByRole('button', { name: 'Continue' })).toBeInTheDocument();
     failing = true;
     window.dispatchEvent(new Event('focus'));
     // A status (the sidebar keeps its own, for updates): this one says what happened.
-    const notice = await screen.findByText(/Codemm couldn't refresh this/);
+    const notice = await screen.findByText(/code-learn couldn't refresh this/);
     expect(notice).toHaveAttribute('role', 'status');
-    expect(notice).toHaveTextContent("Codemm couldn't refresh this. You're offline.");
+    expect(notice).toHaveTextContent("code-learn couldn't refresh this. You're offline.");
     expect(screen.getByRole('button', { name: 'Continue' })).toBeInTheDocument();
     failing = false;
     await user.click(screen.getByRole('button', { name: 'Try again' }));
     await screen.findByRole('button', { name: 'Continue' });
-    expect(screen.queryByText(/Codemm couldn't refresh this/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/code-learn couldn't refresh this/)).not.toBeInTheDocument();
   });
 });
 
@@ -144,23 +144,23 @@ describe('course map', () => {
     expect(await screen.findByRole('heading', { name: 'JSX', level: 1 })).toBeInTheDocument();
   });
 
-  it("says Codemm's records need a repair, and how", async () => {
+  it("says code-learn's records need a repair, and how", async () => {
     const { api } = await mockWithCourse();
-    api.course = () => Promise.reject(new Error("codemm:repair\nThe learning log /h/events.jsonl has an invalid entry on line 3. Fix or remove that line, then retry."));
+    api.course = () => Promise.reject(new Error("code-learn:repair\nThe learning log /h/events.jsonl has an invalid entry on line 3. Fix or remove that line, then retry."));
     renderApp({ to: 'learn' }, api);
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent("Codemm's records need a repair.");
+    expect(alert).toHaveTextContent("code-learn's records need a repair.");
     expect(alert).toHaveTextContent('The learning log /h/events.jsonl has an invalid entry on line 3. Fix or remove that line, then retry.');
-    expect(alert).not.toHaveTextContent('codemm:repair');
+    expect(alert).not.toHaveTextContent('code-learn:repair');
   });
 
-  it("shows Codemm's own message for any other failure, not a connection problem", async () => {
+  it("shows code-learn's own message for any other failure, not a connection problem", async () => {
     const { api } = await mockWithCourse();
     api.course = () => Promise.reject(new Error('Track python@3 offers unit, not style "io".'));
     renderApp({ to: 'learn' }, api);
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent('Track python@3 offers unit, not style "io".');
-    expect(alert).not.toHaveTextContent("Couldn't reach Codemm.");
+    expect(alert).not.toHaveTextContent("Couldn't reach codeLearn.");
   });
 });
 
@@ -301,7 +301,7 @@ describe('course path', () => {
 });
 
 describe('usage', () => {
-  const usage = (over: Partial<NonNullable<Awaited<ReturnType<CodemmApi['usage']>>>> = {}) => ({
+  const usage = (over: Partial<NonNullable<Awaited<ReturnType<CodeLearnApi['usage']>>>> = {}) => ({
     kinds: {},
     total: { input: 182_400, output: 12_300, cachedInput: 90_000, costUsd: 0.4231, runs: 6 },
     ...over,
@@ -316,7 +316,7 @@ describe('usage', () => {
     // Agent names stay on the connect screen, and token counts are the agent's bookkeeping.
     expect(section).not.toHaveTextContent('Claude');
     expect(section).not.toHaveTextContent(/token/i);
-    // Codemm can't tell a plan from an API key, so it says nothing about either, and promises nothing about charges.
+    // code-learn can't tell a plan from an API key, so it says nothing about either, and promises nothing about charges.
     expect(section).not.toHaveTextContent('plan');
     expect(section).not.toHaveTextContent('charge');
   });

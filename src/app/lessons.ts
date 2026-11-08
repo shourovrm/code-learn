@@ -1,4 +1,4 @@
-import { CodemmError } from "../errors.js";
+import { CodeLearnError } from "../errors.js";
 import { assertPortablePaths, type FileMap, subMap, validateFileMap } from "../files.js";
 import { CASE_OUTPUT_MB, expectedText } from "../grading.js";
 import { runIo, runUnit } from "../judge.js";
@@ -17,7 +17,7 @@ function assertExampleFits(n: number, files: FileMap, track: TrackRecord, style:
   const fits = learner.length === track.files.length && track.files.every((f) => f in files);
   if (!fits || (style === "unit" && learner.length === Object.keys(files).length)) {
     const tests = style === "unit" ? ", and its tests under tests/" : "";
-    throw new CodemmError(`Example ${n} must hold exactly the track's learner files (${track.files.join(", ")})${tests}.`);
+    throw new CodeLearnError(`Example ${n} must hold exactly the track's learner files (${track.files.join(", ")})${tests}.`);
   }
 }
 
@@ -57,17 +57,17 @@ export async function saveLesson(ws: string, input: unknown, bound?: string): Pr
   const courseId = activeCourse(ws, bound).course;
   const save = async () => {
     const course = store.readCourse(courseId)!;
-    if (!course.concepts.some((c) => c.id === lesson.concept)) throw new CodemmError(`"${lesson.concept}" is not in the roadmap for ${courseId}.`);
-    if (store.listLessons(courseId).some((l) => l.id === lesson.id)) throw new CodemmError(`Lesson id "${lesson.id}" is already used in ${courseId}. Pick a new id.`);
+    if (!course.concepts.some((c) => c.id === lesson.concept)) throw new CodeLearnError(`"${lesson.concept}" is not in the roadmap for ${courseId}.`);
+    if (store.listLessons(courseId).some((l) => l.id === lesson.id)) throw new CodeLearnError(`Lesson id "${lesson.id}" is already used in ${courseId}. Pick a new id.`);
     const track = examples.length > 0 && course.track ? store.readTrack(course.track) : undefined;
     const style = course.style === "quiz" ? undefined : course.style === "none" ? track?.styles[0] : course.style;
     if (examples.length > 0) {
-      if (!track || !style) throw new CodemmError(course.track ? `Examples run in ${course.track}, which isn't set up yet. Save the lesson without examples.` : "Examples need an installed track. Save the lesson without examples.");
+      if (!track || !style) throw new CodeLearnError(course.track ? `Examples run in ${course.track}, which isn't set up yet. Save the lesson without examples.` : "Examples need an installed track. Save the lesson without examples.");
       examples.forEach((files, i) => assertExampleFits(i + 1, files, track, style));
       await ensureImage(track);
       for (const [i, files] of examples.entries()) {
         const run = await runOne(track, style, files);
-        if (!run.clean) throw new CodemmError(`Example ${i + 1} didn't run cleanly (exit ${run.exit}):\n${cap(run.errors || run.output, 2000)}`);
+        if (!run.clean) throw new CodeLearnError(`Example ${i + 1} didn't run cleanly (exit ${run.exit}):\n${cap(run.errors || run.output, 2000)}`);
       }
     }
     const { markdown, examples: _, ...meta } = lesson;
@@ -91,8 +91,8 @@ export async function runExampleLive(
 ): Promise<ProgramRun> {
   const { record, examples } = store.readLesson(activeCourse(ws, bound).course, lessonId);
   const files = Number.isInteger(index) ? examples[index - 1] : undefined;
-  if (!files || !record.track || !record.style) throw new CodemmError(`Lesson "${lessonId}" has no example ${index}.`);
-  if (record.style !== "io") throw new CodemmError(`Example ${index} runs as tests, so it has no live run.`);
+  if (!files || !record.track || !record.style) throw new CodeLearnError(`Lesson "${lessonId}" has no example ${index}.`);
+  if (record.style !== "io") throw new CodeLearnError(`Example ${index} runs as tests, so it has no live run.`);
   const track = installedTrack(record.track);
   assertExampleFits(index, files, track, record.style);
   await ensureImage(track);
@@ -104,7 +104,7 @@ export async function runExampleLive(
 export async function runExample(ws: string, lessonId: string, index: number, bound?: string): Promise<ExampleRun> {
   const { record, examples } = store.readLesson(activeCourse(ws, bound).course, lessonId);
   const files = Number.isInteger(index) ? examples[index - 1] : undefined;
-  if (!files || !record.track || !record.style) throw new CodemmError(`Lesson "${lessonId}" has no example ${index}.`);
+  if (!files || !record.track || !record.style) throw new CodeLearnError(`Lesson "${lessonId}" has no example ${index}.`);
   const track = installedTrack(record.track);
   assertExampleFits(index, files, track, record.style);
   await ensureImage(track);

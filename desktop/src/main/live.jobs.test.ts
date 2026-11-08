@@ -10,7 +10,7 @@ import { desktopState } from './state';
 import { usageStore } from './usage';
 import { HELD_BACK } from './views';
 
-describe('live CodemmApi: agent jobs: models, lanes, stalls, the tutor, progress and quitting (§3.2, §4.11)', () => {
+describe('live CodeLearnApi: agent jobs: models, lanes, stalls, the tutor, progress and quitting (§3.2, §4.11)', () => {
   it('runs every job with the chosen model: the recommended one until the learner picks another', async () => {
     const t = live();
     await researched(t);
@@ -22,7 +22,7 @@ describe('live CodemmApi: agent jobs: models, lanes, stalls, the tutor, progress
   });
 
   it("records what each job's agent reported, under its course and kind, for the course on screen", async () => {
-    const usage = usageStore(tempDir('codemm-usage-'));
+    const usage = usageStore(tempDir('code-learn-usage-'));
     const t = live(
       {
         tutor: (job) => {
@@ -50,7 +50,7 @@ describe('live CodemmApi: agent jobs: models, lanes, stalls, the tutor, progress
     expect((await t.api.usage())!.total.runs).toBe(1);
   });
 
-  it("gives every job core's abandoned-container cleanup, for an attempt Codemm ends", async () => {
+  it("gives every job core's abandoned-container cleanup, for an attempt code-learn ends", async () => {
     const t = live();
     await researched(t);
     const before = t.c.cleanups;
@@ -66,7 +66,7 @@ describe('live CodemmApi: agent jobs: models, lanes, stalls, the tutor, progress
     };
     const replies = await t.api.ask({ activityId: activity.id }, 'Just fix it for me.');
     // Without the material there's nothing to check a reply against, so nothing goes out.
-    expect(replies).toEqual([{ from: 'codemm', text: HELD_BACK }, { from: 'codemm', text: HELD_BACK }]);
+    expect(replies).toEqual([{ from: 'code-learn', text: HELD_BACK }, { from: 'code-learn', text: HELD_BACK }]);
   });
 
   it("filters a tutor reply against the turn's own course, even if another course is approved while it runs", async () => {
@@ -84,7 +84,7 @@ describe('live CodemmApi: agent jobs: models, lanes, stalls, the tutor, progress
     t.app.hiddenMaterial = (c, slug) => (c === course ? material(c, slug) : []);
     approveOther = () => void desktopState(t.dir).update((s) => ({ ...s, approved: 'another-course' }));
     const replies = await t.api.ask({ activityId: activity.id }, 'Just fix it for me.');
-    expect(replies).toEqual([{ from: 'codemm', text: HELD_BACK }]);
+    expect(replies).toEqual([{ from: 'code-learn', text: HELD_BACK }]);
   });
 
   it('checks a lesson question\'s reply against an exercise the tutor opened during the turn', async () => {
@@ -106,7 +106,7 @@ describe('live CodemmApi: agent jobs: models, lanes, stalls, the tutor, progress
     await until(t.api, (c) => c.topics[0].activity === 'open');
     t.c.current = undefined;
     const replies = await t.api.ask({ lessonId: course.topics[0].lessons[0].id }, 'Show me the answer.');
-    expect(replies).toEqual([{ from: 'codemm', text: HELD_BACK }]);
+    expect(replies).toEqual([{ from: 'code-learn', text: HELD_BACK }]);
   });
 
   it("checks a lesson question's reply against every exercise of the course, even while a draft roadmap is active", async () => {
@@ -128,7 +128,7 @@ describe('live CodemmApi: agent jobs: models, lanes, stalls, the tutor, progress
     }
     t.c.current = undefined;
     const replies = await t.api.ask({ lessonId: course.topics[0].lessons[0].id }, 'Show me the answer.');
-    expect(replies).toEqual([{ from: 'codemm', text: HELD_BACK }]);
+    expect(replies).toEqual([{ from: 'code-learn', text: HELD_BACK }]);
   });
 
   it('checks a roadmap-change reply against an exercise saved while the change ran', async () => {
@@ -168,7 +168,7 @@ describe('live CodemmApi: agent jobs: models, lanes, stalls, the tutor, progress
     const t = live({ tutor: () => ({ text: [`Just write ${CANARY}`, 'Think about what changes.'], session: 'session-1' }) });
     const activity = await practising(t);
     const replies = await t.api.ask({ activityId: activity.id }, 'Just fix it for me.');
-    expect(replies).toEqual([{ from: 'codemm', text: HELD_BACK }, { from: 'codemm', text: 'Think about what changes.' }]);
+    expect(replies).toEqual([{ from: 'code-learn', text: HELD_BACK }, { from: 'code-learn', text: 'Think about what changes.' }]);
     await t.api.ask({ activityId: activity.id }, 'Why?');
     expect(t.jobs.ran.filter((j) => j.kind === 'tutor').map((j) => j.resume)).toEqual([undefined, 'session-1']);
     expect(t.jobs.ran.find((j) => j.kind === 'tutor')!.brief).toContain('int main() { /* yours */ }');
@@ -284,7 +284,7 @@ describe('live CodemmApi: agent jobs: models, lanes, stalls, the tutor, progress
     const t = live({
       lesson: async (job) => {
         job.onEvent?.({ type: 'session', id: 's1' });
-        job.onEvent?.({ type: 'tool_call', id: 'c1', name: 'codemm.save_lesson' });
+        job.onEvent?.({ type: 'tool_call', id: 'c1', name: 'code-learn.save_lesson' });
         job.onEvent?.({ type: 'progress', step: { kind: 'step', label: 'Saving the lesson' } });
         during = await t.api.jobProgress();
         const concept = t.c.roadmap!.concepts[0].id;
@@ -306,16 +306,16 @@ describe('live CodemmApi: agent jobs: models, lanes, stalls, the tutor, progress
   });
 
   it("gives an author's server a gate file, and shows the gate it names during the save", async () => {
-    const progressDir = mkdtempSync(join(tmpdir(), 'codemm-progress-'));
+    const progressDir = mkdtempSync(join(tmpdir(), 'code-learn-progress-'));
     const heard: JobProgress[] = [];
     const t = live({
       author: async (job) => {
         const args = job.server(['save_exercise']).args;
         const file = args[args.indexOf('--progress') + 1];
-        job.onEvent?.({ type: 'tool_call', id: 'c1', name: 'codemm.save_exercise' });
+        job.onEvent?.({ type: 'tool_call', id: 'c1', name: 'code-learn.save_exercise' });
         writeFileSync(file, JSON.stringify({ format_version: 1, gate: 'mutants' }));
         // Another tool's result during the save leaves its gate in place.
-        job.onEvent?.({ type: 'tool_call', id: 'c0', name: 'codemm.next_step' });
+        job.onEvent?.({ type: 'tool_call', id: 'c0', name: 'code-learn.next_step' });
         job.onEvent?.({ type: 'tool_result', id: 'c0', error: false });
         expect(existsSync(file)).toBe(true);
         await vi.waitFor(() => expect(heard.some((p) => p.part?.done === 3)).toBe(true), { timeout: 2000 });
@@ -334,7 +334,7 @@ describe('live CodemmApi: agent jobs: models, lanes, stalls, the tutor, progress
     await vi.waitFor(() => expect(heard.some((p) => p.kind === 'author' && p.ended)).toBe(true), { timeout: 4000 });
     const gate = heard.find((p) => p.part?.done === 3)!;
     expect(gate).toMatchObject({ kind: 'author', stage: 2, part: { done: 3, total: 3 } });
-    expect(gate.steps[0]).toEqual({ kind: 'step', label: 'Codemm is checking that the tests catch mistakes' });
+    expect(gate.steps[0]).toEqual({ kind: 'step', label: 'code-learn is checking that the tests catch mistakes' });
     // Other jobs' servers get no gate file.
     expect(t.jobs.ran.filter((j) => j.kind !== 'author').every((j) => !j.server([]).args.includes('--progress'))).toBe(true);
   });
@@ -432,7 +432,7 @@ describe('live CodemmApi: agent jobs: models, lanes, stalls, the tutor, progress
     expect(t.jobs.ran).toHaveLength(ran);
   });
 
-  it('reading the course, a lesson or an activity starts no agent: only Codemm\'s own steps do (D9)', async () => {
+  it('reading the course, a lesson or an activity starts no agent: only code-learn\'s own steps do (D9)', async () => {
     const t = live();
     const activity = await practising(t);
     const lesson = (await t.api.course())!.topics[0].lessons[0].id;
@@ -453,8 +453,8 @@ describe('live CodemmApi: agent jobs: models, lanes, stalls, the tutor, progress
     const t = live({ tutor: (job) => ({ text: [`Answer to: ${job.brief.split('They ask: ')[1]}`], session: `session-${++n}` }) });
     const activity = await practising(t);
     const [first, second] = await Promise.all([t.api.ask({ activityId: activity.id }, 'Why one?'), t.api.ask({ activityId: activity.id }, 'Why two?')]);
-    expect(first).toEqual([{ from: 'codemm', text: 'Answer to: Why one?' }]);
-    expect(second).toEqual([{ from: 'codemm', text: 'Answer to: Why two?' }]);
+    expect(first).toEqual([{ from: 'code-learn', text: 'Answer to: Why one?' }]);
+    expect(second).toEqual([{ from: 'code-learn', text: 'Answer to: Why two?' }]);
     expect(t.jobs.ran.filter((j) => j.kind === 'tutor').map((j) => j.resume)).toEqual([undefined, 'session-1']);
   });
 
@@ -525,7 +525,7 @@ describe('live CodemmApi: agent jobs: models, lanes, stalls, the tutor, progress
     expect(stalled).not.toHaveProperty('later');
   });
 
-  it('an agent Codemm could not stop says so, in the foreground and as stalled background work', async () => {
+  it('an agent code-learn could not stop says so, in the foreground and as stalled background work', async () => {
     const t = live({ tutor: () => ({ ok: false, problem: 'unstoppable' }) });
     const activity = await practising(t);
     await expect(t.api.ask({ activityId: activity.id }, 'Why?')).rejects.toThrow(UNSTOPPABLE);
@@ -543,7 +543,7 @@ describe('live CodemmApi: agent jobs: models, lanes, stalls, the tutor, progress
     expect(await until(t.api, (c) => c.stalled !== undefined)).toMatchObject({ stalled: 'failed', stalledWork: 'lesson' });
   });
 
-  it('starts no agent at all once one could not be stopped, until Codemm quits', async () => {
+  it('starts no agent at all once one could not be stopped, until code-learn quits', async () => {
     const t = live({ tutor: () => ({ ok: false, problem: 'unstoppable' }) });
     const activity = await practising(t);
     await expect(t.api.ask({ activityId: activity.id }, 'Why?')).rejects.toThrow(UNSTOPPABLE);
@@ -557,7 +557,7 @@ describe('live CodemmApi: agent jobs: models, lanes, stalls, the tutor, progress
     const activity = await practising(t);
     await expect(t.api.ask({ activityId: activity.id }, 'Why?')).rejects.toThrow(UNSTOPPABLE);
     await t.api.saveFile(activity.id, activity.files[0].path, 'count + 1', activity.files[0].digest);
-    // Mastering the topic makes the next lesson due: Codemm starts no agent, and says why.
+    // Mastering the topic makes the next lesson due: code-learn starts no agent, and says why.
     await t.api.check(activity.id, 'run-1');
     expect((await until(t.api, (c) => c.stalled !== undefined)).stalled).toBe('unstoppable');
   });
@@ -590,7 +590,7 @@ describe('live CodemmApi: agent jobs: models, lanes, stalls, the tutor, progress
     await t.api.retryJobs();
     await until(t.api, (c) => c.stalled === 'unstoppable');
     release();
-    expect(await ask).toContain('codemm:unstoppable');
+    expect(await ask).toContain('code-learn:unstoppable');
     expect(t.jobs.ran.filter((j) => j.kind === 'tutor')).toHaveLength(0);
   });
 });

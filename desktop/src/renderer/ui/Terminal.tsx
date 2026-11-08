@@ -9,7 +9,7 @@ export interface TerminalHandle {
   command(cmd: string): void;
   /** Program output, as it comes. stderr shows in the error color. */
   write(text: string, stream?: 'stdout' | 'stderr'): void;
-  /** One of Codemm's own lines, such as a summary, on a line of its own. */
+  /** One of code-learn's own lines, such as a summary, on a line of its own. */
   line(text: string, tone?: 'ok' | 'fail' | 'quiet'): void;
   clear(): void;
   /** Moves keyboard focus into the pane, for typing. */

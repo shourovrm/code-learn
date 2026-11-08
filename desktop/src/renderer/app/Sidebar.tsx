@@ -21,7 +21,7 @@ function sectionOf(route: Route): Section {
   return 'learn';
 }
 
-/** Practice is the activity of the topic Codemm offers now. Its screen says when that waits for the lessons or isn't ready. */
+/** Practice is the activity of the topic code-learn offers now. Its screen says when that waits for the lessons or isn't ready. */
 function practiceRoute(course: CourseView | null | undefined): Route {
   if (!course) return { to: 'goal' };
   const offered = offeredTopic(course.topics);
@@ -124,7 +124,7 @@ function UpdateNotice({ slim = false }: { slim?: boolean }) {
   // The slim sidebar has room for one word; the sentence is still read out.
   if (slim) {
     return (
-      <div role="status" aria-label="Codemm updates" className="slim-update">
+      <div role="status" aria-label="code-learn updates" className="slim-update">
         {update?.kind === 'available' && (
           <>
             <span className="sr-only">A new version is available.</span>
@@ -142,7 +142,7 @@ function UpdateNotice({ slim = false }: { slim?: boolean }) {
   }
   // One status region stays in place, so a screen reader hears the news when it arrives, without a focus move.
   return (
-    <div role="status" aria-label="Codemm updates" className={update?.kind === 'available' || update?.kind === 'ready' ? 'update' : undefined}>
+    <div role="status" aria-label="code-learn updates" className={update?.kind === 'available' || update?.kind === 'ready' ? 'update' : undefined}>
       {update?.kind === 'available' && (
         <>
           <span>A new version is available.</span>

@@ -1,5 +1,5 @@
 // Agents on the connect screen (DESIGN §3.1, §3.3): found or not, the sign-in
-// check (a yes or no; Codemm never touches credentials), the tested-version
+// check (a yes or no; code-learn never touches credentials), the tested-version
 // warning and the recommended minimum model.
 import { NO_AGENT, SIGNED_OUT, type Agent, type AgentId, type AgentInstall } from '../shared/api';
 import { modelChoices, modelFor } from '../shared/models';
@@ -27,7 +27,7 @@ export interface AgentSetup {
   canInstall(id: AgentId): boolean;
   install(id: AgentId): void;
   status(id: AgentId): AgentInstall | undefined;
-  /** Starts the agent's own login where the learner sees it. Codemm never reads, stores or types credentials. */
+  /** Starts the agent's own login where the learner sees it. code-learn never reads, stores or types credentials. */
   signIn(id: AgentId, exe: Executable): Promise<void>;
 }
 
@@ -68,7 +68,7 @@ export function connector(lookup: Lookup, state: ReturnType<typeof desktopState>
   }
 
   /**
-   * The agent's CLI, unless Codemm has started installing it and no install is done yet. A failed attempt may have left
+   * The agent's CLI, unless code-learn has started installing it and no install is done yet. A failed attempt may have left
    * a binary nothing checked, and a later failure (offline, say) must not clear an earlier rejection, so nothing of it
    * runs this session, not even --version, and Try again installs again. An agent the learner installed themselves is
    * theirs to trust, as in a terminal; so is one found after a relaunch.
@@ -78,7 +78,7 @@ export function connector(lookup: Lookup, state: ReturnType<typeof desktopState>
     return install && install.phase !== 'done' ? null : lookup.find(AGENT_CLIS[id].bin);
   }
 
-  /** Thrown when Codemm starts installing an agent while its view is being looked at: the view starts over. */
+  /** Thrown when code-learn starts installing an agent while its view is being looked at: the view starts over. */
   const STARTED_INSTALL = Symbol('started install');
 
   /** The agent's sign-in check, run only if the agent may run right now: a reinstall may have started meanwhile. */
@@ -103,7 +103,7 @@ export function connector(lookup: Lookup, state: ReturnType<typeof desktopState>
     const install = setup.status(id);
     if (exe) {
       if (!versions.has(id)) versions.set(id, await lookup.version(id, exe));
-      // Just installed by Codemm: check its sign-in, and connect it if it's signed in and still the one tried last.
+      // Just installed by code-learn: check its sign-in, and connect it if it's signed in and still the one tried last.
       if (install?.phase === 'done' && !signedIn.has(id) && due(id)) {
         const ok = await checkSignIn(id);
         remember(id, ok);
@@ -177,7 +177,7 @@ export function connector(lookup: Lookup, state: ReturnType<typeof desktopState>
       return view(id);
     },
 
-    /** Whether anything of the agent may run now: false once Codemm has started installing it, until that is done. */
+    /** Whether anything of the agent may run now: false once code-learn has started installing it, until that is done. */
     usable: (id: AgentId) => usable(id) !== null,
 
     /** The agent jobs run with, and its model. Rejects with NO_AGENT or SIGNED_OUT, which open the connect screen. */
@@ -193,7 +193,7 @@ export function connector(lookup: Lookup, state: ReturnType<typeof desktopState>
     },
 
     /**
-     * Runs the sign-in check again, as after a job fails for an unknown reason. While Codemm is installing the agent
+     * Runs the sign-in check again, as after a job fails for an unknown reason. While code-learn is installing the agent
      * again, nothing of it runs, and the job ends as signed out. Null: the check couldn't answer.
      */
     async recheck(id: AgentId): Promise<boolean | null> {

@@ -10,19 +10,19 @@ import { tempDir } from "./temp.js";
 
 let home: string;
 beforeEach(() => {
-  home = tempDir("codemm-home-");
-  vi.stubEnv("CODEMM_HOME", home);
+  home = tempDir("code-learn-home-");
+  vi.stubEnv("CODE_LEARN_HOME", home);
 });
 afterEach(() => vi.unstubAllEnvs());
 
-/** A PID that belonged to a Codemm process that has since exited. */
+/** A PID that belonged to a code-learn process that has since exited. */
 const deadPid = () => {
   const r = spawnSync(process.execPath, ["-e", "console.log(process.pid)"], { encoding: "utf8" });
   return Number(r.stdout.trim());
 };
 
 describe("stageRunFolder", () => {
-  it("makes a fresh folder under Codemm's home, not the OS temp folder, named after its owner", () => {
+  it("makes a fresh folder under code-learn's home, not the OS temp folder, named after its owner", () => {
     const a = stageRunFolder();
     const b = stageRunFolder();
     expect(a.dir).not.toBe(b.dir);
@@ -32,15 +32,15 @@ describe("stageRunFolder", () => {
   });
 
   it("uses the real path, so a linked home (or a Windows short name) is never what the engine is asked to mount", () => {
-    const link = join(tempDir("codemm-link-"), "home-link");
+    const link = join(tempDir("code-learn-link-"), "home-link");
     symlinkSync(home, link);
-    vi.stubEnv("CODEMM_HOME", link);
+    vi.stubEnv("CODE_LEARN_HOME", link);
     expect(runsDir()).toBe(join(realpathSync.native(home), "runs"));
     expect(stageRunFolder().dir.startsWith(join(realpathSync.native(home), "runs"))).toBe(true);
   });
 
   it("works with a home folder that doesn't exist yet and a non-ASCII name", () => {
-    vi.stubEnv("CODEMM_HOME", join(home, "Ñandú", "José Müller"));
+    vi.stubEnv("CODE_LEARN_HOME", join(home, "Ñandú", "José Müller"));
     const run = stageRunFolder();
     expect(existsSync(run.dir)).toBe(true);
     expect(run.dir).toContain("José Müller");
@@ -80,7 +80,7 @@ describe("leftover run folders", () => {
     expect(existsSync(crashed)).toBe(false);
   });
 
-  it("are removed when their Codemm process is gone, and a live process's folders are left alone", () => {
+  it("are removed when their code-learn process is gone, and a live process's folders are left alone", () => {
     const crashed = leftover(`${deadPid()}-abc123`);
     const live = leftover(`${process.ppid}-abc123`);
     const mine = stageRunFolder();
@@ -89,7 +89,7 @@ describe("leftover run folders", () => {
     expect(existsSync(mine.dir)).toBe(true);
   });
 
-  it("removeAbandonedRuns says how many it removed, and never touches what Codemm didn't make", () => {
+  it("removeAbandonedRuns says how many it removed, and never touches what code-learn didn't make", () => {
     mkdirSync(runsDir(), { recursive: true });
     const gone = deadPid();
     leftover(`${gone}-aaaaaa`);
@@ -101,7 +101,7 @@ describe("leftover run folders", () => {
     mkdirSync(join(runsDir(), "2024-05-01"));
     mkdirSync(join(runsDir(), `${gone}-cccccc-more`));
     writeFileSync(join(runsDir(), `${gone}-dddddd`), "a file");
-    const target = tempDir("codemm-target-");
+    const target = tempDir("code-learn-target-");
     writeFileSync(join(target, "keep"), "x");
     symlinkSync(target, join(runsDir(), `${gone}-eeeeee`));
     expect(removeAbandonedRuns()).toBe(2);

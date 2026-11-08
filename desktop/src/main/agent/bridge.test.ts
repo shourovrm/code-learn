@@ -20,8 +20,8 @@ const alive = (pid: number) => {
 
 describe('bridge (D5)', () => {
   it('runs a JavaScript agent with the app itself as Node', () => {
-    const target = spawnable({ path: '/x/codex.js', js: true }, ['exec'], '/Applications/Codemm.app/Contents/MacOS/Codemm');
-    expect(target).toMatchObject({ file: '/Applications/Codemm.app/Contents/MacOS/Codemm', args: ['/x/codex.js', 'exec'] });
+    const target = spawnable({ path: '/x/codex.js', js: true }, ['exec'], '/Applications/code-learn.app/Contents/MacOS/code-learn');
+    expect(target).toMatchObject({ file: '/Applications/code-learn.app/Contents/MacOS/code-learn', args: ['/x/codex.js', 'exec'] });
     expect(target.env.ELECTRON_RUN_AS_NODE).toBe('1');
     expect(spawnable({ path: '/bin/claude', js: false }, ['-p']).env.ELECTRON_RUN_AS_NODE).toBe(process.env.ELECTRON_RUN_AS_NODE);
   });
@@ -38,7 +38,7 @@ describe('bridge (D5)', () => {
 
   // No shell anywhere: a brief reaches the agent exactly as written, on Windows too (CI runs this there).
   it('a brief with newlines, quotes, !, %PATH% and backticks reaches the agent byte for byte', async () => {
-    const dir = tempDir('codemm-args-');
+    const dir = tempDir('code-learn-args-');
     const script = join(dir, 'index.js');
     writeFileSync(script, 'console.log(JSON.stringify({ argv: process.argv.slice(2), as: process.env.CURSOR_INVOKED_AS }))\n');
     const brief = 'Line one\n\n"Quoted" and \'single\' text!\r\nNot a variable: %PATH% !PATH! $env:PATH `whoami` $(id)\n& | < > ^ ; C:\\dir\\ "C:\\with space\\" \\\\"x\\\\" trailing\\\\';
@@ -62,13 +62,13 @@ describe('bridge (D5)', () => {
   });
 
   it("passes the app's environment unchanged (O1)", async () => {
-    process.env.CODEMM_TEST_VALUE = 'kept';
+    process.env.CODE_LEARN_TEST_VALUE = 'kept';
     try {
       const events: unknown[] = [];
-      await run(...node(`console.log(JSON.stringify({ v: process.env.CODEMM_TEST_VALUE }))`), parse, { onEvent: (e) => events.push(e) });
+      await run(...node(`console.log(JSON.stringify({ v: process.env.CODE_LEARN_TEST_VALUE }))`), parse, { onEvent: (e) => events.push(e) });
       expect(events).toEqual([{ v: 'kept' }]);
     } finally {
-      delete process.env.CODEMM_TEST_VALUE;
+      delete process.env.CODE_LEARN_TEST_VALUE;
     }
   });
 

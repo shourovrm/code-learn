@@ -37,7 +37,7 @@ describe('on this computer, for real', () => {
     if (!/^\s*(EnableLUA|ConsentPromptBehaviorAdmin)\s+REG_DWORD\s+0x0\s*$/m.test(uac.output)) ctx.skip();
     // Robocopy given folders that aren't there is an error, exit code 16: the code comes back unchanged, with two words
     // in the arguments as WSL's setup has.
-    const r = await real.run(POWERSHELL, ['-NoProfile', '-NonInteractive', '-Command', ELEVATED], { env: { CODEMM_FILE: 'C:\\Windows\\System32\\Robocopy.exe', CODEMM_ARGS: '--install --no-distribution' }, timeoutMs: 45_000 });
+    const r = await real.run(POWERSHELL, ['-NoProfile', '-NonInteractive', '-Command', ELEVATED], { env: { CODE_LEARN_FILE: 'C:\\Windows\\System32\\Robocopy.exe', CODE_LEARN_ARGS: '--install --no-distribution' }, timeoutMs: 45_000 });
     expect(r).toMatchObject({ code: 16 });
   });
 });

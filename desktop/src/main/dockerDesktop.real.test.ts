@@ -1,11 +1,11 @@
 // @vitest-environment node
 // Opt-in, on a Mac with network: the real download from Docker and the real signature checks, stopping short
-// of installing. CODEMM_REAL_DOCKER_DOWNLOAD=1 npx vitest run src/main/dockerDesktop.real.test.ts
+// of installing. CODE_LEARN_REAL_DOCKER_DOWNLOAD=1 npx vitest run src/main/dockerDesktop.real.test.ts
 import { describe, expect, it } from 'vitest';
 import { dockerDesktop, nodeDesktopDeps } from './dockerDesktop';
 import { fetchGet } from './download';
 
-const real = process.env.CODEMM_REAL_DOCKER_DOWNLOAD === '1' && process.platform === 'darwin';
+const real = process.env.CODE_LEARN_REAL_DOCKER_DOWNLOAD === '1' && process.platform === 'darwin';
 
 describe.skipIf(!real)("Docker's real download (opt-in)", () => {
   it('downloads Docker Desktop for this Mac and accepts it only because Docker signed it', { timeout: 20 * 60_000 }, async () => {

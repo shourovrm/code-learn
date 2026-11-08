@@ -3,7 +3,7 @@ import { EmmFill } from './EmmFill';
 /**
  * An install's progress (§6.1) as Emm filling up, like every other long step: one share per stage reached, the
  * download filling its own share with its real fraction (`part`, 0 to 1), beside the stage's words. Compact, for a
- * card. It shows no time: Codemm doesn't know when an install began.
+ * card. It shows no time: code-learn doesn't know when an install began.
  */
 export function StageFill({ label, stages, stage, part = 0, text }: { label: string; stages: number; stage: number; part?: number; text: string }) {
   const within = Math.max(0, Math.min(1, part));

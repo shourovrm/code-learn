@@ -17,14 +17,14 @@ export interface Where {
   appData?: string;
   localAppData?: string;
   programFiles?: string;
-  /** Test-only: the folders searched after PATH, in place of the usual ones (CODEMM_TEST_SEARCH_DIRS). */
+  /** Test-only: the folders searched after PATH, in place of the usual ones (CODE_LEARN_TEST_SEARCH_DIRS). */
   searchDirs?: string[];
 }
 
 /** This computer: its platform, its PATH and its folders, split on its own separator like every PATH here. */
 export function here(env: NodeJS.ProcessEnv = process.env): Where {
-  // CODEMM_TEST_SEARCH_DIRS is set only by the macOS journey, to stage "no Docker" with Docker Desktop installed.
-  const searchDirs = env.CODEMM_TEST_SEARCH_DIRS?.split(delimiter).filter(Boolean);
+  // CODE_LEARN_TEST_SEARCH_DIRS is set only by the macOS journey, to stage "no Docker" with Docker Desktop installed.
+  const searchDirs = env.CODE_LEARN_TEST_SEARCH_DIRS?.split(delimiter).filter(Boolean);
   return {
     platform: process.platform, path: env.PATH ?? '', home: homedir(), appData: env.APPDATA, localAppData: env.LOCALAPPDATA, programFiles: env.ProgramFiles,
     ...(searchDirs ? { searchDirs } : {}),
@@ -147,7 +147,7 @@ export function find(bin: string, w: Where = here()): Executable | null {
       if (isFile(cmd)) {
         const target = shimTarget(cmd);
         if (target && (target.js ? existsSync(target.path) : isWindowsProgram(target.path))) return target;
-        // Not an npm shim: Cursor's PowerShell launcher, whose own node.exe Codemm runs on its index.js (§3.1).
+        // Not an npm shim: Cursor's PowerShell launcher, whose own node.exe code-learn runs on its index.js (§3.1).
         const cursor = bin === CURSOR_BIN ? cursorExecutable(dir) : null;
         if (cursor) return cursor;
       }

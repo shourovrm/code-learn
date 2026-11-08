@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as app from "../src/app.js";
 import { ensureImage } from "../src/app/shared.js";
-import { CodemmError } from "../src/errors.js";
+import { CodeLearnError } from "../src/errors.js";
 import type { FileMap } from "../src/files.js";
 import { checkTrackFiles, type TrackProgress, verifyExercise, verifyTrack } from "../src/gates.js";
 import * as judge from "../src/judge.js";
@@ -78,8 +78,8 @@ const ROADMAP = "goal: Echo\ntrack: echo-wasi@1\nstyle: io\nconcepts:\n  - { id:
 let downloads = 0;
 let home: string;
 beforeEach(() => {
-  home = tempDir("codemm-home-");
-  vi.stubEnv("CODEMM_HOME", home);
+  home = tempDir("code-learn-home-");
+  vi.stubEnv("CODE_LEARN_HOME", home);
   downloads = 0;
   setToolchainFetch(async (url) => {
     downloads += 1;
@@ -127,7 +127,7 @@ describe("verifyTrack on a WASI track", () => {
 
   it("fails gate toolchain on a module that doesn't compile", async () => {
     vi.mocked(wasi.compileModule).mockImplementationOnce(async () => {
-      throw new CodemmError("The toolchain's module didn't compile with wasmtime 50.0.0 (bad magic).");
+      throw new CodeLearnError("The toolchain's module didn't compile with wasmtime 50.0.0 (bad magic).");
     });
     await expect(verifyTrack(track())).rejects.toThrow(/Gate "toolchain" failed: The toolchain's module didn't compile/);
     expect(judge.runSets).not.toHaveBeenCalled();
@@ -151,7 +151,7 @@ describe("verifyTrack on a WASI track", () => {
 
   it("refuses before downloading anything when this computer has no wasmtime", async () => {
     vi.mocked(wasi.wasmtime).mockImplementation(() => {
-      throw new CodemmError("no wasmtime", "docker", "no-wasmtime");
+      throw new CodeLearnError("no wasmtime", "docker", "no-wasmtime");
     });
     await expect(verifyTrack(track())).rejects.toMatchObject({ code: "no-wasmtime" });
     expect(downloads).toBe(0);
@@ -177,7 +177,7 @@ describe("a WASI track's exercises", () => {
   });
 
   it("need the toolchain folder, else a rebuild", async () => {
-    await expect(ensureImage(record())).rejects.toMatchObject({ kind: "image-missing", message: expect.stringMatching(/codemm track rebuild echo-wasi@1/) });
+    await expect(ensureImage(record())).rejects.toMatchObject({ kind: "image-missing", message: expect.stringMatching(/code-learn track rebuild echo-wasi@1/) });
     await verifyTrack(track());
     await expect(ensureImage(record())).resolves.toBeUndefined();
   });
@@ -224,14 +224,14 @@ describe("installing a WASI track", () => {
 
   it("tells authors the track's engine", async () => {
     await app.saveTrack(track());
-    const ws = tempDir("codemm-ws-");
+    const ws = tempDir("code-learn-ws-");
     await app.saveRoadmap(ws, "echo", ROADMAP);
     expect(app.nextStep(ws)).toMatchObject({ kind: "author", contract: { engine: "wasi", run: "/work/src/answer.txt" } });
   });
 
   it("refuses a Docker track on a computer with wasmtime and no container runtime", async () => {
     vi.mocked(sandbox.containerCli).mockImplementation(() => {
-      throw new CodemmError("No container runtime found.", "docker", "no-runtime");
+      throw new CodeLearnError("No container runtime found.", "docker", "no-runtime");
     });
     const docker = { ...track(), "track.yaml": track()["track.yaml"]!.replace(/wasi: .*\n/, ""), Dockerfile: "FROM scratch\n" };
     await expect(app.saveTrack(docker)).rejects.toThrow(/no container runtime[\s\S]*WASI track/);
@@ -258,7 +258,7 @@ describe("installing a WASI track", () => {
 
   it("rebuilds a missing toolchain and re-checks every exercise", async () => {
     await app.saveTrack(track());
-    const ws = tempDir("codemm-ws-");
+    const ws = tempDir("code-learn-ws-");
     await app.saveRoadmap(ws, "echo", ROADMAP);
     await app.saveExercise(ws, exercise());
     removeToolchains();
