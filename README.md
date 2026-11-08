@@ -1,87 +1,65 @@
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/brand/code-learn-logo-dark.svg">
-    <img src="docs/brand/code-learn-logo.svg" alt="code-learn" width="360">
-  </picture>
-</p>
+# code-learn
 
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/brand/emm-dark.svg">
-    <img src="docs/brand/emm.svg" alt="Emm, the code-learn chameleon" width="120">
-  </picture>
-</p>
+code-learn is a Linux app for learning to code by practice: your own coding agent writes the lessons and graded exercises, and code-learn checks, grades and tracks your progress.
 
-<p align="center"><strong>Supercharge your coding journey with your own coding agent.</strong></p>
+> [!NOTE]
+> code-learn is a fork of [Codemm](https://github.com/iignaite/Codemm) (MIT), version 1.0.0-beta.10. Codemm runs every exercise in Docker and ships for macOS and Windows. code-learn is Linux only and has no Docker: each language is installed on your computer into its own removable folder, and every check runs in a [bubblewrap](https://github.com/containers/bubblewrap) sandbox. The rest of the design (agents writing tracks, roadmaps and exercises; code-learn verifying and grading them) is Codemm's.
 
-<p align="center">
-  <a href="https://github.com/iignaite/Codemm/actions/workflows/ci.yml"><img src="https://github.com/iignaite/Codemm/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-0E2754" alt="License: MIT"></a>
-  <img src="https://img.shields.io/badge/app-macOS%20%7C%20Windows%20%28beta%29-0E2754" alt="App: macOS and Windows (beta)">
-</p>
+## Overview
 
-<p align="center">
-  <a href="https://codemm.vercel.app/#watch"><img src="site/public/video/code-learn-launch-poster.jpg" alt="The code-learn app on Count Tree Nodes, with 3 of 6 tests passed. Click to watch the one-minute launch video." width="720"></a>
-  <br>
-  <a href="https://codemm.vercel.app/#watch"><strong>▶ Watch the one-minute video</strong></a>
-</p>
+Your agent (Claude Code, Codex or Cursor, signed in with your own account) writes everything a course needs: a roadmap of topics, a lesson per topic, and exercises with hidden tests. code-learn launches the agent with only code-learn's tools, checks each exercise before you see it, runs your code in a sandbox and keeps a per-topic mastery score. code-learn never calls a model API, and it never reads, stores or asks for credentials.
 
-## What is code-learn
-
-code-learn is an open-source app for learning to code by practice. Your own coding agent (Claude Code or Codex, with your own account) writes the lessons and exercises. code-learn checks each exercise against its tests, grades your code in a sandbox, and tracks what you've mastered.
-
-code-learn launches your agent; it never calls a model API, and it never reads, stores or asks for credentials. It ships no languages: your agent sets up each language or framework the first time you need it, and code-learn checks that it works.
+code-learn ships no languages. The first time a course needs a language or framework, your agent writes a *track*: a list of [conda-forge](https://conda-forge.org) packages (for example `python=3.13` and `pytest`), an optional setup command, and two small probe programs. code-learn installs the packages with [micromamba](https://mamba.readthedocs.io) into `~/.code-learn/envs/<track>@<version>/`, then installs the track only if a correct probe passes and a wrong probe fails, with the network off.
 
 ## How it works
 
-1. **Connect your agent** and let code-learn check this computer (Docker installed, running, and the sandbox working).
+1. **Connect your agent.** code-learn checks this computer: bubblewrap and a systemd user session are present, and a self-test inside the sandbox confirms there is no network, no home folder and no writable system folder.
 2. **Say what you want to learn.** Your agent writes a roadmap of topics. You can approve it, ask for changes, or rename, reorder, add and remove topics yourself.
-3. **Agree to setup once.** Your agent proposes an environment for the language (a Dockerfile, a `track.yaml` and small probe programs). code-learn shows you the files and builds exactly those, only after you agree, and installs the track only if its probes pass with the network off.
+3. **Agree to setup once.** Your agent proposes a track. code-learn shows you its files and installs exactly those, only after you agree. Installing downloads the packages and runs the setup command with network access, inside a sandbox that can write only the track's own folder.
 4. **Read the lesson** for each topic, and keep notes beside it.
-5. **Do the activity.** Your agent writes an exercise: a statement, starter code, a reference solution, 2–4 deliberately broken variants, and visible and hidden tests. code-learn accepts it only if the reference passes, the starter fails, and the tests catch every broken variant. You edit the code, use **Try it** for the visible tests, then **Check**.
-6. **Ask code-learn** when you're stuck. It explains and hints; it doesn't edit your code. Skip means "come back later", never "mastered".
+5. **Do the activity.** Your agent writes an exercise: a statement, starter code, a reference solution, 2 to 4 deliberately broken variants, and visible and hidden tests. code-learn accepts it only if the reference passes, the starter fails, and the tests catch every broken variant. You edit the code, use **Try it** for the visible tests, then **Check**.
+6. **Ask code-learn** when you're stuck. It explains and hints; it doesn't edit your code.
 
-**What counts.** Try it is never recorded. Check records an attempt, except for a check of the unedited starter or one that failed for a reason outside your code (Docker stopped, for example). Mastery moves only on an exercise's first check, or when you beat your best score on it; re-checking a solved exercise adds nothing. Difficulty goes up (to at most 3) after a first-try pass without assistance, and down (to 1) after repeated failures.
+Try it is never recorded. Check records an attempt, except for a check of the unedited starter or one that failed for a reason outside your code, such as a sandbox problem. Mastery moves only on an exercise's first check, or when you beat your best score on it.
 
-## Install (beta)
+## Requirements
 
-A private beta is planned once the packaged app passes its macOS and Windows journeys. When a beta build is published on the [Releases page](https://github.com/iignaite/Codemm/releases), download the installer for your computer:
+- Linux on x86_64, logged in to a desktop session with systemd (most distributions).
+- bubblewrap 0.9 or later. Install it with your package manager, for example `sudo pacman -S bubblewrap` (Arch, CachyOS), `sudo apt install bubblewrap` (Debian, Ubuntu), `sudo dnf install bubblewrap` (Fedora) or `sudo zypper install bubblewrap` (openSUSE).
+- Claude Code or Codex, installed and signed in. Cursor is experimental.
+- About 5 GB of free disk space for each track you install. A Python track with pytest takes about 450 MB.
 
-- **macOS** (Apple Silicon or Intel): the `.dmg`. Beta builds are unsigned: open the app once, then choose System Settings, Privacy & Security, Open Anyway.
-- **Windows** (x64): the installer. Beta builds are unsigned: in the SmartScreen prompt, choose More info, then Run anyway.
+The desktop app bundles micromamba. From a terminal you also need Node.js 22 or later and micromamba 2 on your `PATH` (or `CODE_LEARN_MICROMAMBA` set to its path).
 
-You also need:
+## Install
 
-- **Docker Desktop**, running. On Windows, use the WSL 2 backend with Linux containers. No Docker? See below.
-- **Claude Code or Codex**, installed and signed in. Cursor is experimental.
-
-The app bundles code-learn, so you don't need Node.js, npm or a terminal. The public 1.0 will be signed.
-
-### No Docker? (school or work computers)
-
-Installing Docker Desktop needs admin rights, which school and work computers often don't give. Without Docker, the desktop app can still run io practice (programs that read input and print output) in interpreted languages that have a WebAssembly (WASI) build, such as Python. It bundles [wasmtime](https://wasmtime.dev), a sandbox that runs as your own user, with no admin rights. In Check this computer, choose **Continue without Docker**.
-
-For everything else, such as unit tests, frameworks and compiled languages, ask whoever manages the computer to install Docker Desktop once ([Docker's terms](https://docs.docker.com/subscription/desktop-license/) list education among free uses), or use a computer that has Docker.
-
-## Use from a terminal
-
-code-learn also works directly from your agent in a terminal. This needs Node.js 22 or newer and Docker (or [wasmtime](https://wasmtime.dev) 50 on `PATH`, for the practice above), and installs from source (code-learn isn't on npm):
+code-learn has no published release yet, so you build it from source:
 
 ```bash
-git clone https://github.com/iignaite/Codemm.git
+git clone https://github.com/shourovrm/code-learn.git
+cd code-learn
+npm ci
+npm run build
 ```
 
+### Desktop app
+
 ```bash
-cd code-learn && npm ci && npm run build && npm link
+cd desktop
+npm ci
+npm run dist
 ```
 
-Check that Docker and the sandbox work:
+`npm run dist` downloads micromamba 2.10.0 (checked against its pinned SHA-256) and writes an AppImage and a pacman package to `desktop/release/`. Run the AppImage directly, or install the package with `sudo pacman -U desktop/release/code-learn-*.pacman`. Running an AppImage needs FUSE 2 (`fuse2` on Arch).
+
+### Terminal
 
 ```bash
+npm link
 code-learn doctor
 ```
 
-Then, in an empty project folder:
+`code-learn doctor` checks bubblewrap, the systemd user session, micromamba and your data folder, then runs the isolation self-test. In an empty project folder, run:
 
 ```bash
 code-learn init
@@ -89,15 +67,10 @@ code-learn init
 
 This sets up Claude Code, Codex and Cursor; use `--host claude` (repeatable) to pick specific ones. It adds an MCP server entry for each agent, a code-learn section in `AGENTS.md`, an author subagent and the Claude Code practice hook. Existing config is merged, never replaced. Open the folder in your agent and say what you want to learn.
 
-**The practice hook is Claude Code-only, and a practice aid rather than a lock.** In Claude Code it blocks the `Edit`, `Write`, `MultiEdit` and `NotebookEdit` tools on files under `exercises/` unless you run `code-learn assist on` (assisted attempts count for less). Writes through the shell aren't blocked. In Codex and Cursor, the instructions in `AGENTS.md` ask the agent not to edit your files, but nothing enforces it.
-
-> [!NOTE]
-> Codex loads `.codex/config.toml` only for projects you've marked as trusted, and asks before each code-learn tool call. To skip those prompts, add `default_tools_approval_mode = "approve"` under `[mcp_servers.code-learn]`; that also skips your approval for `save_track`, which runs a network build.
-
 | Command | What it does |
 |---|---|
 | `code-learn init [--host claude\|codex\|cursor]` | Set up this project for your agent(s) |
-| `code-learn doctor [--fix]` | Check Docker and prove the sandbox has no network |
+| `code-learn doctor [--fix]` | Check the sandbox, micromamba and isolation; `--fix` stops sandboxes a crashed run left |
 | `code-learn status` | Your progress and the next step |
 | `code-learn test [exercise]` | Run the visible tests (not recorded) |
 | `code-learn check [exercise]` | Run every test and record the attempt |
@@ -105,40 +78,41 @@ This sets up Claude Code, Codex and Cursor; use `--host claude` (repeatable) to 
 | `code-learn assist on\|off` | Let your agent edit exercise files (counts for less) |
 | `code-learn tracks` | List installed tracks |
 | `code-learn track add <folder>` | Install a track from a folder |
-| `code-learn track rebuild <id@version>` | Rebuild a track image and re-verify its exercises |
+| `code-learn track rebuild <id@version>` | Reinstall a track's toolchain and re-verify its exercises |
+| `code-learn track remove <id@version>` | Delete a track and its toolchain folder |
 
-Your agent uses the MCP tools `list_tracks`, `save_track`, `save_roadmap`, `get_roadmap`, `next_step`, `save_exercise`, `get_exercise`, `check`, `progress`, `save_lesson`, `get_lesson` and `mark_lesson_read`.
+The practice hook works in Claude Code only. It blocks the `Edit`, `Write`, `MultiEdit` and `NotebookEdit` tools on files under `exercises/` unless you run `code-learn assist on`. Writes through the shell aren't blocked, and in Codex and Cursor only the instructions in `AGENTS.md` ask the agent not to edit your files.
 
-## What's verified
+## Removing what code-learn installed
 
-| | Verified | Not yet |
-|---|---|---|
-| **Desktop app** | Unit and packaged smoke tests in CI on macOS and Windows | The full journeys with real agents on a packaged build: macOS (D17) and a whole course on Windows (D18) |
-| **Terminal** | Claude Code and Codex end to end on macOS with Docker Desktop ([1.0 release evidence](docs/release-evidence-1.0.md)); core unit tests on macOS, Linux and Windows, and Docker tests on Linux, in CI | Windows with a real agent; Podman; Cursor |
-| **Models** | The [cross-model bench](docs/bench/results.md) recommends a minimum model per agent | The bench measured the terminal flow (tutor plus author subagent). The desktop app runs each job separately, with fewer tools, and isn't benchmarked yet. |
+`code-learn track remove python@1` (or **Remove** under Tracks in the app) deletes that track's folder in `~/.code-learn/envs/`. It is refused while a course uses the track. `~/.code-learn/pkgs/` holds micromamba's download cache, which you can delete at any time. Deleting `~/.code-learn` removes everything code-learn installed; nothing else on your computer changes.
 
-## Good to know
+## Sandbox
 
-- **Setup runs code your agent wrote, with network access**, like `npm install` in someone else's project. Agree only to setups you'd run yourself. Checks always run with the network off and with memory, CPU, process and time limits.
-- **Grading is on the honor system.** Hidden tests are hidden from your agent's tools, not from your computer, and code in the sandbox could fake its own result. code-learn is built for self-learners, not graded classwork.
-- **code-learn proves an exercise is consistent, not that its statement is right.** If something reads wrong, tell code-learn.
-- **Docker Desktop can use a lot of memory**, up to half of your computer's by default. On a Mac, you can lower it in Docker Desktop under Settings, Resources, Advanced, Memory limit. On Windows with WSL 2, WSL sets this limit instead, also half by default; [Docker's settings page](https://docs.docker.com/desktop/settings-and-maintenance/settings/) points to where to change it. Too low a limit can make setups and checks fail, even for correct code; raise it again if they do.
-- **Your data** (tracks, courses and attempt history) lives in `~/.code-learn`; set `CODE_LEARN_HOME` to move it. The app keeps your exercise files in `~/code-learn`; from a terminal, your project folder holds `code-learn.json` and `exercises/`.
+Every check, Run and install step runs in bubblewrap inside its own systemd user scope:
+
+- **Checks and Run** see your system's `/usr` read-only, the track's packages at `/opt/env` and its files at `/opt/track` read-only, your exercise files at `/work/src` read-only, the tests at `/work/tests`, and a 256 MB `/tmp`. They have no network, can't see your home folder or `~/.code-learn`, and are limited in memory, processes (256) and CPU (2 cores).
+- **Install steps** have network access and can write only the track's staging folder and micromamba's cache.
+- **Grading is on the honor system.** Code in the sandbox could fake its own result, as in Codemm. code-learn is built for self-learners, not graded classwork.
+
+The full specification is in [docs/DESIGN.md §4.6](docs/DESIGN.md).
+
+## Tests
+
+```bash
+npm run typecheck
+npm test                  # core: unit tests and the sandbox integration suite
+cd desktop && npm test    # desktop app
+```
+
+The sandbox tests run when bubblewrap and a systemd user session are present; set `CODE_LEARN_REQUIRE_SANDBOX=1` to make a missing sandbox fail instead of skip. `CODE_LEARN_REAL_MICROMAMBA=1` also runs the tests that install real conda-forge packages (a JDK and Maven; several minutes and network).
 
 ## Documentation
 
-- [Docs index](docs/README.md)
-- [Architecture](docs/architecture.md): how the parts connect and how the data is stored, with diagrams
-- [Design](docs/DESIGN.md): the core spec, formats and gates
-- [Desktop design](docs/desktop/DESIGN.md): the app, the agent bridge and the acceptance criteria
-- [Security](docs/SECURITY.md): the sandbox, trust boundaries and known limits
-- [Bench results](docs/bench/results.md): how models from weak to strong do with code-learn
-- [Changelog](CHANGELOG.md)
-
-## Contributing
-
-Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md) first; code-learn stays small on purpose.
+- [Design](docs/DESIGN.md): the core spec, formats and gates; §4.6 is code-learn's native engine
+- [Desktop design](docs/desktop/DESIGN.md): the app, the agent bridge and the acceptance criteria (still describes Codemm's Docker screens in places)
+- [Architecture](docs/architecture.md) and [Security](docs/SECURITY.md), from Codemm
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE). code-learn keeps Codemm's copyright notice alongside its own.
