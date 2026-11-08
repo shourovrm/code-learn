@@ -1,55 +1,77 @@
+import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as app from "../src/app.js";
-import * as gates from "../src/gates.js";
-import { CodeLearnError } from "../src/errors.js";
+import { readFileMap } from "../src/files.js";
 import * as store from "../src/store.js";
-import { fakeDocker, posix } from "./fake-docker.js";
+import { fakeMicromamba } from "./fake-micromamba.js";
+import { installFixtureTrack } from "./installed-track.js";
+import { sandboxReady } from "./sandbox-ready.js";
 import { tempDir } from "./temp.js";
 
-// The gates are stood in for: the track's image verifies, then re-checking an exercise meets a Docker failure.
-vi.mock("../src/gates.js", async (original) => ({
-  ...(await original<typeof import("../src/gates.js")>()),
-  verifyTrack: vi.fn(async () => ({ spec: {}, image: "code-learn-track-shell-io:1-candidate", imageId: "sha256:new" })),
-  verifyExercise: vi.fn(async () => {
-    throw new CodeLearnError("The container runtime failed during the run, so it wasn't counted. Run `code-learn doctor`, then retry.", "docker");
-  }),
-}));
+const fixtures = join(import.meta.dirname, "fixtures");
+const OFFLINE = 'echo "critical libmamba Could not resolve host: conda.anaconda.org" >&2; exit 1';
 
 beforeEach(() => vi.stubEnv("CODE_LEARN_HOME", tempDir("code-learn-home-")));
 afterEach(() => vi.unstubAllEnvs());
 
-describe.runIf(posix)("rebuilding a track", () => {
-  it("passes on this computer's Docker failure, with its kind, instead of calling it changed behaviour", async () => {
-    const { id, version } = store.parseTrackRef("shell-io@1");
-    store.writeTrackRecord("shell-io@1", {
-      format_version: 1, id, version, styles: ["io"], files: ["main.sh"], run: "sh main.sh",
-      limits: { time_ms: 2000, memory_mb: 256 }, image: "code-learn-track-shell-io:1", imageId: "sha256:old", installedAt: new Date().toISOString(),
-    });
-    await app.saveRoadmap(tempDir("code-learn-ws-"), "shell", "goal: Shell\ntrack: shell-io@1\nstyle: io\nconcepts:\n  - { id: sh.basics, title: Basics, requires: [] }\n");
-    store.commitFolder(store.exerciseDir("shell", "e1"), { "README.md": "x" }, {
-      "exercise.json": { format_version: 1, slug: "e1", style: "io", concepts: ["sh.basics"], difficulty: 1, track: "shell-io@1", createdAt: new Date().toISOString(), expected: {} },
-    });
-    fakeDocker("builds");
-    const rebuild = app.rebuildTrack("shell-io@1");
-    await expect(rebuild).rejects.toMatchObject({ kind: "docker", message: expect.stringMatching(/container runtime failed/) });
-    await expect(rebuild).rejects.not.toThrow(/behaves differently/);
-    expect(store.readTrack("shell-io@1")?.imageId).toBe("sha256:old");
-    // The track's gates run as it was installed: a stricter speed gate added since must not strand its courses.
-    expect(vi.mocked(gates.verifyTrack)).toHaveBeenCalledWith(expect.anything(), "code-learn-track-shell-io:1-candidate", undefined, { rebuild: true });
+/** A workspace with a shell course on the installed shell-io track and one saved exercise, checked in the real sandbox. */
+async function courseWithExercise(style: "io" | "none" = "io"): Promise<void> {
+  const ws = tempDir("code-learn-ws-");
+  installFixtureTrack("shell-io");
+  await app.saveRoadmap(ws, "shell", readFileSync(join(fixtures, "roadmaps", "shell-io.yaml"), "utf8"));
+  await app.saveExercise(ws, readFileMap(join(fixtures, "exercises", "io-max")));
+  // Activities off keeps the track and its exercises (DESIGN §5).
+  if (style === "none") await app.saveRoadmap(ws, "shell", readFileSync(join(fixtures, "roadmaps", "shell-io.yaml"), "utf8").replace("style: io", "style: none"));
+}
+
+/** Marks the installed toolchain, so a test can tell whether it was replaced. */
+const markInstalledToolchain = () => writeFileSync(join(store.envDir("shell-io@1"), "env", "installed-marker"), "old");
+const installedMarkerExists = () => existsSync(join(store.envDir("shell-io@1"), "env", "installed-marker"));
+const leftoverFolders = () => readdirSync(store.envsDir()).filter((name) => name.startsWith("."));
+
+describe.runIf(sandboxReady())("rebuilding a track", () => {
+  it("replaces the toolchain and records what was installed, after every exercise gives the same results", async () => {
+    await courseWithExercise();
+    markInstalledToolchain();
+    fakeMicromamba();
+    await expect(app.rebuildTrack("shell-io@1")).resolves.toEqual({ rebuilt: "shell-io@1", exercises: 1 });
+    expect(installedMarkerExists()).toBe(false);
+    expect(existsSync(join(store.envDir("shell-io@1"), "env", "bin", "fake-tool"))).toBe(true);
+    expect(store.readTrack("shell-io@1")?.toolchain.resolved).toEqual(["coreutils-1.0-0"]);
+    expect(leftoverFolders()).toEqual([]);
   });
 
   it("re-checks a lessons-only course's exercises in their own style, so its retained track still rebuilds", async () => {
-    const { id, version } = store.parseTrackRef("shell-io@1");
-    store.writeTrackRecord("shell-io@1", {
-      format_version: 1, id, version, styles: ["io"], files: ["main.sh"], run: "sh main.sh",
-      limits: { time_ms: 2000, memory_mb: 256 }, image: "code-learn-track-shell-io:1", imageId: "sha256:old", installedAt: new Date().toISOString(),
-    });
-    await app.saveRoadmap(tempDir("code-learn-ws-"), "shell", "goal: Shell\ntrack: shell-io@1\nstyle: none\nconcepts:\n  - { id: sh.basics, title: Basics, requires: [] }\n");
-    store.commitFolder(store.exerciseDir("shell", "e1"), { "README.md": "x" }, {
-      "exercise.json": { format_version: 1, slug: "e1", style: "io", concepts: ["sh.basics"], difficulty: 1, track: "shell-io@1", createdAt: new Date().toISOString(), expected: {} },
-    });
-    fakeDocker("builds");
-    await expect(app.rebuildTrack("shell-io@1")).rejects.toMatchObject({ kind: "docker" });
-    expect(vi.mocked(gates.verifyExercise)).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ course: "shell", style: "io" }), expect.anything(), expect.anything());
+    await courseWithExercise("none");
+    fakeMicromamba();
+    await expect(app.rebuildTrack("shell-io@1")).resolves.toEqual({ rebuilt: "shell-io@1", exercises: 1 });
+  });
+
+  it("leaves the installed toolchain untouched when an exercise's results differ on the new one", async () => {
+    await courseWithExercise();
+    // A stored expected output the reference no longer produces, as a changed tool would cause.
+    const stored = store.readExercise("shell", "max-of-line");
+    const changed = { ...stored.record, expected: { ...stored.record.expected, "hidden/01": "not-the-max\n" } };
+    rmSync(store.exerciseDir("shell", "max-of-line"), { recursive: true });
+    store.commitFolder(store.exerciseDir("shell", "max-of-line"), stored.files, { "exercise.json": changed });
+    markInstalledToolchain();
+    fakeMicromamba();
+    const rebuild = app.rebuildTrack("shell-io@1");
+    await expect(rebuild).rejects.toThrow(/behaves differently, so it wasn't accepted:\nshell\/max-of-line: results changed/);
+    expect(installedMarkerExists()).toBe(true);
+    expect(store.readTrack("shell-io@1")?.toolchain.resolved).toEqual(["fake-1.0-0"]);
+    expect(leftoverFolders()).toEqual([]);
+  });
+
+  it("passes on this computer's failure, with its kind, instead of calling it changed behaviour", async () => {
+    await courseWithExercise();
+    markInstalledToolchain();
+    fakeMicromamba(OFFLINE);
+    const rebuild = app.rebuildTrack("shell-io@1");
+    await expect(rebuild).rejects.toMatchObject({ kind: "offline" });
+    await expect(rebuild).rejects.not.toThrow(/behaves differently/);
+    expect(installedMarkerExists()).toBe(true);
+    expect(store.readTrack("shell-io@1")?.toolchain.resolved).toEqual(["fake-1.0-0"]);
   });
 });

@@ -1,15 +1,15 @@
 import { quizFiles, quizRoadmap } from "./quiz-fixture.js";
-import { chmodSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as app from "../src/app.js";
 import { readFileMap } from "../src/files.js";
-import { parseTrackYaml } from "../src/schemas.js";
-import { createServer, findEngines, needsEngines, parseToolList, type ServerOptions, TOOL_NAMES } from "../src/mcp.js";
+import { createServer, parseToolList, type ServerOptions, TOOL_NAMES } from "../src/mcp.js";
 import * as store from "../src/store.js";
-import { fakeDocker, posix } from "./fake-docker.js";
+import { fixtureTrackFiles, installFixtureTrack, installTrack } from "./installed-track.js";
+import { sandboxReady } from "./sandbox-ready.js";
 import { tempDir } from "./temp.js";
 
 /** The per-job server: `code-learn mcp --tools`, `--course` and `--desktop`. */
@@ -78,20 +78,17 @@ describe("--course", () => {
     await expect(call("save_roadmap", { course: "second", roadmap: roadmap("Changed") })).rejects.toThrow(/only course "first"/);
   });
 
-  it("authors into the job's course while the learner has another course selected", async () => {
+  it.runIf(sandboxReady())("authors into the job's course while the learner has another course selected", async () => {
     // The job's course has an installed track; the selected one is a draft whose track isn't installed.
-    const { id, version } = store.parseTrackRef("shell-io@1");
-    store.writeTrackRecord("shell-io@1", {
-      format_version: 1, id, version, styles: ["io"], files: ["main.sh"], run: "sh main.sh",
-      limits: { time_ms: 2000, memory_mb: 256 }, image: "code-learn-track-shell-io:1", imageId: "sha256:fake", installedAt: new Date().toISOString(),
-    });
-    await app.saveRoadmap(ws, "first", roadmap("First"));
+    installFixtureTrack("shell-io");
+    await app.saveRoadmap(ws, "first", readFileSync(join(import.meta.dirname, "fixtures", "roadmaps", "shell-io.yaml"), "utf8"));
     await app.saveRoadmap(ws, "second", roadmap("Second").replace("shell-io@1", "other@1"));
-    fakeDocker("missing");
     const { call } = await connect({ course: "first" });
     const files = readFileMap(join(import.meta.dirname, "fixtures", "exercises", "io-max"));
-    // Bound to "first", the save reaches the sandbox; unbound, it would stop at "other@1 is not installed".
-    await expect(call("save_exercise", { files })).rejects.toThrow(/container runtime/i);
+    // Bound to "first", the save checks the exercise on shell-io@1; unbound, it would stop at "other@1 is not installed".
+    await call("save_exercise", { files });
+    expect(app.listExercises(ws, "first").map((e) => e.exercise)).toEqual(["max-of-line"]);
+    expect(app.listExercises(ws, "second")).toEqual([]);
   });
 
   it("rejects an invalid course id", () => {
@@ -100,18 +97,16 @@ describe("--course", () => {
 });
 
 describe("--progress", () => {
-  it.runIf(posix)("writes which gate save_exercise runs to the job's progress file, by name only", async () => {
+  it.runIf(sandboxReady())("writes which gate save_exercise runs to the job's progress file, by name only", async () => {
     const fixtures = join(import.meta.dirname, "fixtures");
-    const track = readFileMap(join(fixtures, "tracks", "shell-io"));
-    store.commitFolder(store.trackDir("shell-io@1"), track, {
-      "track.json": { format_version: 1, ...parseTrackYaml(track["track.yaml"]!), image: "code-learn-track-shell-io:1", imageId: "sha256:fake", installedAt: new Date().toISOString() },
-    });
+    installFixtureTrack("shell-io");
     await app.saveRoadmap(ws, "shell", readFileSync(join(fixtures, "roadmaps", "shell-io.yaml"), "utf8"));
     const progress = join(tempDir("code-learn-progress-"), "job.json");
     const { call } = await connect({ course: "shell", progress });
-    fakeDocker("streams");
-    // Every fake run prints the same output, so the starter passes too and its gate fails.
-    await expect(call("save_exercise", { files: readFileMap(join(fixtures, "exercises", "io-max")) })).rejects.toThrow(/starter unsolved/);
+    // A starter that already solves the exercise fails the "starter unsolved" gate.
+    const files = readFileMap(join(fixtures, "exercises", "io-max"));
+    files["starter/main.sh"] = files["solution/main.sh"]!;
+    await expect(call("save_exercise", { files })).rejects.toThrow(/starter unsolved/);
     expect(JSON.parse(readFileSync(progress, "utf8"))).toEqual({ format_version: 1, gate: "starter" });
   });
 
@@ -122,7 +117,6 @@ describe("--progress", () => {
 
 describe("--desktop", () => {
   it("makes save_track propose instead of install", async () => {
-    fakeDocker("missing");
     const { call } = await connect({ desktop: true });
     const track = readFileMap(join(import.meta.dirname, "fixtures", "tracks", "shell-io"));
     expect(await call("save_track", { files: track })).toEqual({ proposed: "shell-io@1", note: "The learner decides in code-learn. End your turn." });
@@ -140,7 +134,6 @@ describe("--desktop with --course", () => {
   };
 
   it("refuses a proposal for the course's track that lacks the course's style, as a save the agent can fix", async () => {
-    fakeDocker("missing");
     await app.saveRoadmap(ws, "first", roadmap("First"));
     const { call } = await connect({ course: "first", desktop: true });
     await expect(call("save_track", { files: unitOnly() })).rejects.toThrow(/Course "first" needs style "io".*offers unit/);
@@ -177,13 +170,10 @@ describe("lesson tools", () => {
   });
 });
 
-describe.runIf(posix)("hidden data through the tools", () => {
+describe.runIf(sandboxReady())("hidden data through the tools", () => {
   it("no tool's output carries a hidden input, expected output, solution or mutant", async () => {
     const fixtures = join(import.meta.dirname, "fixtures");
-    const track = readFileMap(join(fixtures, "tracks", "shell-io"));
-    store.commitFolder(store.trackDir("shell-io@1"), track, {
-      "track.json": { format_version: 1, ...parseTrackYaml(track["track.yaml"]!), image: "code-learn-track-shell-io:1", imageId: "sha256:fake", installedAt: new Date().toISOString() },
-    });
+    installFixtureTrack("shell-io");
     await app.saveRoadmap(ws, "shell", readFileSync(join(fixtures, "roadmaps", "shell-io.yaml"), "utf8"));
     // Every hidden part of the exercise carries a canary.
     const files = readFileMap(join(fixtures, "exercises", "io-max"));
@@ -196,9 +186,8 @@ describe.runIf(posix)("hidden data through the tools", () => {
     });
     const { client, call } = await connect();
     const { path } = await call("get_exercise", { slug: "max-of-line" });
-    writeFileSync(join(path, "main.sh"), "echo 3\n");
-    // The fake prints each case's input as its output and errors, so a hidden case's would carry its canary.
-    fakeDocker("echoes");
+    // The program prints each case's input as its output and as its errors, so a hidden case's would carry its canary.
+    writeFileSync(join(path, "main.sh"), "tee /dev/stderr\n");
     expect((await call("check", { slug: "max-of-line" })).tests).toHaveLength(4);
     // Whole responses, every content block and any structured content, not only the first text.
     const calls: [string, Record<string, unknown>][] = [["get_exercise", { slug: "max-of-line" }], ["check", { slug: "max-of-line" }], ["progress", {}], ["next_step", {}], ["get_roadmap", {}], ["list_tracks", {}]];
@@ -210,89 +199,89 @@ describe.runIf(posix)("hidden data through the tools", () => {
   });
 });
 
-describe.runIf(posix)("reference-gate diagnostics through save_exercise", () => {
+describe("failure output", () => {
+  it("starts every failure with code-learn's own first line, so the agent's files can't put a code there", async () => {
+    const { call } = await connect();
+    const message = await call("save_roadmap", { course: "c", roadmap: "goal: *code-learn:sandbox-busy\n" }).then(() => "saved", (e: Error) => e.message);
+    expect(message).toMatch(/^code-learn:error\n/);
+    expect(message).not.toMatch(/^code-learn:sandbox-busy/);
+  });
+});
+
+describe.runIf(sandboxReady())("reference-gate diagnostics through save_exercise", () => {
   const fixtures = join(import.meta.dirname, "fixtures");
-  const install = async (kind: "io" | "unit") => {
-    const track = readFileMap(join(fixtures, "tracks", `shell-${kind}`));
-    store.commitFolder(store.trackDir(`shell-${kind}@1`), track, {
-      "track.json": { format_version: 1, ...parseTrackYaml(track["track.yaml"]!), image: `code-learn-track-shell-${kind}:1`, imageId: "sha256:fake", installedAt: new Date().toISOString() },
-    });
+  const install = async (kind: "io" | "unit", files = fixtureTrackFiles(`shell-${kind}`)) => {
+    installTrack(files);
     await app.saveRoadmap(ws, "shell", `goal: Shell\ntrack: shell-${kind}@1\nstyle: ${kind}\nconcepts:\n  - { id: sh.basics, title: Basics, requires: [] }\n  - { id: sh.loops, title: Loops, requires: [sh.basics] }\n`);
   };
-  // The solution's source, in every solution file, so a run that prints its source would show it.
-  const withCanary = (files: Record<string, string>) =>
-    Object.fromEntries(Object.entries(files).map(([path, text]) => [path, path.startsWith("solution/") ? `CANARY-SOLUTION-LINE ${text}` : text]));
+  /** The exercise with `solution` as every solution file, so a reference that prints its own source would show CANARY. */
+  const withSolution = (exercise: string, solution: string) => {
+    const files = readFileMap(join(fixtures, "exercises", exercise));
+    for (const path of Object.keys(files)) if (path.startsWith("solution/")) files[path] = solution;
+    return files;
+  };
   const failure = async (call: (name: string, args: Record<string, unknown>) => Promise<unknown>, files: Record<string, string>) =>
     call("save_exercise", { files }).then(() => "saved", (e: Error) => e.message);
 
-  it.each([["leaks-build", /doesn't build/], ["leaks", /run every input/]] as const)("an io reference that fails (%s) is described without its output", async (scenario, reason) => {
-    await install("io");
+  it("an io reference that doesn't build is described without the build's output", async () => {
+    // A build command that prints the source it was given, as a compiler error can.
+    const track = fixtureTrackFiles("shell-io");
+    track["track.yaml"] = track["track.yaml"]!.replace(/^build: .*$/m, `build: "cat main.sh >&2; exit 1"`);
+    await install("io", track);
     const { call } = await connect();
-    fakeDocker(scenario);
-    const message = await failure(call, withCanary(readFileMap(join(fixtures, "exercises", "io-max"))));
+    const message = await failure(call, withSolution("io-max", "# CANARY-SOLUTION-LINE\n"));
     expect(message).toMatch(/Gate "reference passes"/);
-    expect(message).toMatch(reason);
+    expect(message).toMatch(/doesn't build/);
     expect(message).not.toContain("CANARY");
     // Actionable without the output: author jobs can't build anything themselves.
-    if (scenario === "leaks-build") expect(message).toMatch(/with the track's build command \(`sh -n main\.sh`\)/);
+    expect(message).toMatch(/with the track's build command \(`cat main\.sh >&2; exit 1`\)/);
     expect(message).not.toMatch(/yourself/);
   });
 
-  it("a container that dies at start after the code wrote to stderr is described without that output", async () => {
+  it("an io reference that fails its cases is described without its output", async () => {
     await install("io");
     const { call } = await connect();
-    fakeDocker("leaks-start");
-    const message = await failure(call, withCanary(readFileMap(join(fixtures, "exercises", "io-max"))));
-    expect(message).toMatch(/container couldn't start/);
+    const message = await failure(call, withSolution("io-max", "# CANARY-SOLUTION-LINE\ncat main.sh >&2\nexit 1\n"));
+    expect(message).toMatch(/Gate "reference passes"/);
+    expect(message).toMatch(/run every input/);
     expect(message).not.toContain("CANARY");
-    // This computer's problem says so on its first line, which only code-learn writes: the desktop reads that, never the wording.
-    expect(message).toMatch(/^code-learn:container-start\n/);
-  });
-
-  it("starts every other failure with code-learn's own first line, so the agent's files can't put a code there", async () => {
-    const { call } = await connect();
-    const message = await call("save_roadmap", { course: "c", roadmap: "goal: *code-learn:runtime-busy\n" }).then(() => "saved", (e: Error) => e.message);
-    expect(message).toMatch(/^code-learn:error\n/);
-    expect(message).not.toMatch(/^code-learn:runtime-busy/);
   });
 
   it("a unit reference that fails is described by test and status, without its messages", async () => {
-    await install("unit");
+    // A test runner that reports each test's own output as its message, so a leak would show.
+    const track = fixtureTrackFiles("shell-unit");
+    track["test.sh"] = track["test.sh"]!.replace(
+      `printf '{"name":"%s","status":"%s"}' "$name" "$status" >> "$OUT"`,
+      `message=$(tr -d '"\\\n' < /tmp/test.log)\n  printf '{"name":"%s","status":"%s","message":"%s"}' "$name" "$status" "$message" >> "$OUT"`,
+    );
+    await install("unit", track);
     const { call } = await connect();
-    fakeDocker("leaks");
-    const message = await failure(call, withCanary(readFileMap(join(fixtures, "exercises", "unit-max"))));
+    const message = await failure(call, withSolution("unit-max", "maxof() { echo CANARY-SOLUTION-LINE >&2; false; }\n"));
     expect(message).toMatch(/Gate "reference passes"/);
     // Visible tests by name, so the agent knows which to fix; hidden ones only by number; no messages.
-    expect(message).toMatch(/visible\/t: fail/);
+    expect(message).toMatch(/visible\/first_is_max: fail/);
     expect(message).toMatch(/hidden #1: fail/);
     expect(message).not.toContain("CANARY");
   });
 });
 
-describe.runIf(posix)("mutants in gate diagnostics", () => {
+describe.runIf(sandboxReady())("mutants in gate diagnostics", () => {
   const fixtures = join(import.meta.dirname, "fixtures");
-  /** io-max with its zero-start mutant (which ends like the solution) in a folder whose name says what it does. */
+  /** io-max with a mutant that behaves like the solution, in a folder whose name says what it would do. */
   const files = (extra: Record<string, string> = {}) => {
     const map = readFileMap(join(fixtures, "exercises", "io-max"));
     for (const path of Object.keys(map)) {
-      if (path.startsWith("mutants/zero-start/")) {
-        map[path.replace("mutants/zero-start/", "mutants/CANARY-forgets-negatives/")] = map[path]!;
-        delete map[path];
-      }
+      if (path.startsWith("mutants/zero-start/")) delete map[path];
     }
-    return { ...map, ...extra };
+    return { ...map, "mutants/CANARY-forgets-negatives/main.sh": map["solution/main.sh"]!, ...extra };
   };
   beforeEach(async () => {
-    const track = readFileMap(join(fixtures, "tracks", "shell-io"));
-    store.commitFolder(store.trackDir("shell-io@1"), track, {
-      "track.json": { format_version: 1, ...parseTrackYaml(track["track.yaml"]!), image: "code-learn-track-shell-io:1", imageId: "sha256:fake", installedAt: new Date().toISOString() },
-    });
+    installFixtureTrack("shell-io");
     await app.saveRoadmap(ws, "shell", readFileSync(join(fixtures, "roadmaps", "shell-io.yaml"), "utf8"));
   });
 
   it("names a mutant that passes every hidden test by its number, never its folder", async () => {
     const { call } = await connect();
-    fakeDocker("srcout");
     const message = await call("save_exercise", { files: files() }).then(() => "saved", (e: Error) => e.message);
     expect(message).toMatch(/Gate "mutants caught" failed: mutant #1 /);
     expect(message).not.toContain("CANARY");
@@ -300,7 +289,6 @@ describe.runIf(posix)("mutants in gate diagnostics", () => {
 
   it("names a mutant whose folder doesn't fit by its number, and counts its other files", async () => {
     const { call } = await connect();
-    fakeDocker("srcout");
     const message = await call("save_exercise", { files: files({ "mutants/CANARY-forgets-negatives/CANARY-notes.txt": "x" }) }).then(() => "saved", (e: Error) => e.message);
     expect(message).toMatch(/mutant #1 may only contain the track's learner files \(main\.sh\); found 1 other file/);
     expect(message).not.toContain("CANARY");
@@ -317,41 +305,6 @@ describe("file maps through the real MCP SDK", () => {
       expect(text).toMatch(/must be text/);
       expect(text).not.toContain("CANARY");
     }
-  });
-});
-
-describe("the engines this computer has (DESIGN §4.5)", () => {
-  const instructions = async (options: ServerOptions) => (await connect(options)).client.getInstructions();
-
-  it("tells the agent in the server instructions to write WASI tracks when no container runtime is installed", async () => {
-    expect(await instructions({ engines: { docker: false, wasi: true } })).toMatch(/This computer has no container runtime \(Docker or Podman\) installed, so write WASI tracks/);
-  });
-
-  it("says when wasmtime is missing too, and says nothing when a container runtime is installed", async () => {
-    expect(await instructions({ engines: { docker: false, wasi: false } })).toMatch(/installed and no wasmtime, so no track can run here/);
-    await client?.close();
-    expect(await instructions({ engines: { docker: true, wasi: false } })).toBeUndefined();
-    await client?.close();
-    expect(await instructions({})).toBeUndefined();
-  });
-
-  it.runIf(posix)("finds a container CLI, installed whether or not it runs, and wasmtime, without asking a daemon", () => {
-    const wasmtime = join(tempDir("code-learn-fake-wasmtime-"), "wasmtime");
-    writeFileSync(wasmtime, "#!/bin/sh\necho 'wasmtime 50.0.0'\n");
-    chmodSync(wasmtime, 0o755);
-    fakeDocker("missing");
-    vi.stubEnv("CODE_LEARN_WASMTIME", wasmtime);
-    expect(findEngines()).toEqual({ docker: false, wasi: true });
-    fakeDocker("down");
-    vi.stubEnv("CODE_LEARN_WASMTIME", join(tempDir("code-learn-no-wasmtime-"), "wasmtime"));
-    expect(findEngines()).toEqual({ docker: true, wasi: false });
-  });
-
-  it("checks engines only for a server that chooses or writes a track", () => {
-    expect(needsEngines(undefined)).toBe(true);
-    expect(needsEngines(["list_tracks", "save_track"])).toBe(true);
-    expect(needsEngines(["list_tracks", "save_roadmap"])).toBe(true);
-    expect(needsEngines(["next_step", "save_exercise"])).toBe(false);
   });
 });
 

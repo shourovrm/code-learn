@@ -1,16 +1,16 @@
 import { createHash } from "node:crypto";
-import { chmodSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as app from "../src/app.js";
 import { readFileMap } from "../src/files.js";
-import { parseTrackYaml } from "../src/schemas.js";
 import type { LearnerEvent } from "../src/learner.js";
 import * as store from "../src/store.js";
-import { fakeDocker, posix } from "./fake-docker.js";
+import { fixtureTrackFiles, installFixtureTrack, installTrack } from "./installed-track.js";
+import { sandboxReady } from "./sandbox-ready.js";
 import { tempDir } from "./temp.js";
 
-/** Use cases that need no container runtime: tracks and exercises are written straight into the store. */
+/** Use cases that need no installing: tracks and exercises are written straight into the store. */
 
 let ws: string;
 beforeEach(() => {
@@ -21,12 +21,12 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
+/** The shell-io fixture track installed under another id and version, offering `styles` (a record-only change). */
 function installFake(ref = "shell-io@1", styles: ("io" | "unit")[] = ["io"]): void {
   const { id, version } = store.parseTrackRef(ref);
-  store.writeTrackRecord(ref, {
-    format_version: 1, id, version, styles, files: ["main.sh"], run: "sh main.sh",
-    limits: { time_ms: 2000, memory_mb: 256 }, image: `code-learn-track-${id}:${version}`, imageId: "sha256:fake", installedAt: new Date().toISOString(),
-  });
+  const files = fixtureTrackFiles("shell-io");
+  files["track.yaml"] = files["track.yaml"]!.replace(/^id: .*$/m, `id: ${id}`).replace(/^version: .*$/m, `version: ${version}`);
+  installTrack(files, (record) => ({ ...record, styles }));
 }
 
 function addExercise(course: string, slug: string, concept: string, track = "shell-io@1", readme = "Print the max."): void {
@@ -135,7 +135,7 @@ describe("roadmap draft", () => {
   });
 
   // A read-only file stands in for a full disk only on POSIX and for a non-root user.
-  it.runIf(posix && process.getuid?.() !== 0)("still gives the fresh start when the same roadmap is saved again after the retry couldn't be recorded", async () => {
+  it.runIf(process.getuid?.() !== 0)("still gives the fresh start when the same roadmap is saved again after the retry couldn't be recorded", async () => {
     await app.saveRoadmap(ws, "shell", roadmap());
     for (let i = 0; i < 2; i++) store.appendEvent("shell", event({ kind: "check", exercise: "e1", concepts: ["sh.loops"], difficulty: 1, passed: 0, total: 1, assisted: false }));
     const withPrereq = "  - { id: sh.basics, title: Basics, requires: [] }\n  - { id: sh.vars, title: Variables, requires: [] }\n  - { id: sh.loops, title: Loops, requires: [sh.basics, sh.vars] }\n";
@@ -161,18 +161,14 @@ describe("the author step", () => {
     });
 
   it("gives a fresh author the exact target and the installed track's learner-safe contract", async () => {
-    const files = readFileMap(join(import.meta.dirname, "fixtures", "tracks", "custom-unit"));
-    const spec = parseTrackYaml(files["track.yaml"]!);
-    store.commitFolder(store.trackDir("custom-unit@1"), files, {
-      "track.json": { format_version: 1, ...spec, image: "code-learn-track-custom-unit:1", imageId: "sha256:fake", installedAt: new Date().toISOString() },
-    });
+    const files = fixtureTrackFiles("custom-unit");
+    installFixtureTrack("custom-unit");
     await app.saveRoadmap(ws, "calc", "goal: Calculator\ntrack: custom-unit@1\nstyle: unit\nconcepts:\n  - { id: calc.add, title: Adding numbers, requires: [] }\n");
     expect(app.nextStep(ws)).toEqual({
       kind: "author", concept: "calc.add", title: "Adding numbers", difficulty: 1, lesson: null, style: "unit", track: "custom-unit@1",
       contract: {
-        engine: "docker",
         files: ["src/calc.funcs"],
-        test: "sh /opt/judge/run-checks",
+        test: "sh /opt/track/run-checks",
         limits: { time_ms: 5000, memory_mb: 128 },
         examples: {
           solution: { "src/calc.funcs": files["probe/unit/pass/src/calc.funcs"] },
@@ -251,23 +247,12 @@ describe("error kinds", () => {
     expect(() => app.nextStep(ws)).toThrow(expect.objectContaining({ kind: "no-course", message: expect.stringMatching(/No course in this workspace yet/) }));
   });
 
-  // The fake docker is a shell script, so these run where a shell does.
-  it.runIf(posix)("calls a Docker failure while inspecting the image a Docker problem, not a missing image", async () => {
+  it("names a track whose toolchain folder is missing, so the desktop can offer a rebuild", async () => {
     installFake();
     await app.saveRoadmap(ws, "shell", roadmap());
     addExercise("shell", "e1", "sh.basics");
-    fakeDocker("inspect-fails");
-    const failure = await app.testExercise(ws, "e1").catch((e: Error) => e);
-    // Docker answers, so it's a runtime that failed to inspect, not one that stopped. The desktop acts on the code.
-    expect(failure).toMatchObject({ kind: "docker", code: "image-inspect" });
-  });
-
-  it.runIf(posix)("names a missing track image", async () => {
-    installFake();
-    await app.saveRoadmap(ws, "shell", roadmap());
-    addExercise("shell", "e1", "sh.basics");
-    fakeDocker("no-image");
-    await expect(app.testExercise(ws, "e1")).rejects.toMatchObject({ kind: "image-missing", message: expect.stringMatching(/is missing or changed/) });
+    rmSync(store.envDir("shell-io@1"), { recursive: true });
+    await expect(app.testExercise(ws, "e1")).rejects.toMatchObject({ kind: "toolchain-missing", message: expect.stringMatching(/toolchain for shell-io@1 is missing/) });
   });
 });
 
@@ -319,7 +304,6 @@ describe("lessons", () => {
   });
 
   it("refuses examples before the track is set up, and examples that don't follow its contract, without running anything", async () => {
-    fakeDocker("missing");
     const withExample = (files: Record<string, string>) => ({ ...lesson("ex"), markdown: "Try it:\n\n```example\n1\n```\n", examples: [files] });
     await expect(app.saveLesson(ws, withExample({ "main.sh": "echo 1\n" }))).rejects.toThrow(/isn't set up yet/);
     installFake();
@@ -448,21 +432,21 @@ describe("setup proposals", () => {
   const track = () => readFileMap(join(import.meta.dirname, "fixtures", "tracks", "shell-io"));
   const proposed = { proposed: "shell-io@1", note: "The learner decides in code-learn. End your turn." };
 
-  // With no docker on PATH, anything that tried to build would fail differently.
-  beforeEach(() => fakeDocker("missing"));
+  // With no micromamba, anything that tried to install would fail with no-micromamba.
+  beforeEach(() => vi.stubEnv("CODE_LEARN_MICROMAMBA", join(tempDir("code-learn-nowhere-"), "micromamba")));
 
-  it("stores a proposal and builds nothing; approving a roadmap builds nothing either", async () => {
+  it("stores a proposal and installs nothing; approving a roadmap installs nothing either", async () => {
     expect(await app.proposeTrack(track())).toEqual(proposed);
     await app.saveRoadmap(ws, "shell", roadmap());
     expect(app.listTracks()).toEqual([]);
     const [p] = app.listProposals();
-    expect(p).toMatchObject({ track: "shell-io@1", engine: "docker", digest: expect.stringMatching(/^[0-9a-f]{64}$/), files: track() });
+    expect(p).toMatchObject({ track: "shell-io@1", digest: expect.stringMatching(/^[0-9a-f]{64}$/), files: track() });
   });
 
   it("replaces an older proposal for the same track", async () => {
     await app.proposeTrack(track());
     const first = app.listProposals()[0]!.digest;
-    await app.proposeTrack({ ...track(), Dockerfile: `${track().Dockerfile}# again\n` });
+    await app.proposeTrack({ ...track(), "notes.md": "# again\n" });
     expect(app.listProposals().map((p) => p.digest)).not.toContain(first);
     expect(app.listProposals()).toHaveLength(1);
     await expect(app.installProposal("shell-io@1", first)).rejects.toThrow(/changed or is gone/);
@@ -471,18 +455,15 @@ describe("setup proposals", () => {
   it("refuses to install files that changed after the learner saw them", async () => {
     await app.proposeTrack(track());
     const { digest } = app.listProposals()[0]!;
-    writeFileSync(join(process.env.CODE_LEARN_HOME!, "proposals", "shell-io@1", digest, "files", "Dockerfile"), "FROM evil\n");
+    writeFileSync(join(process.env.CODE_LEARN_HOME!, "proposals", "shell-io@1", digest, "files", "main.sh"), "echo evil\n");
     await expect(app.installProposal("shell-io@1", digest)).rejects.toThrow(/changed or is gone/);
     await expect(app.installProposal("shell-io@1", "0".repeat(64))).rejects.toThrow(/changed or is gone/);
   });
 
   it("reports an identical installed track, and refuses a different one under the same version", async () => {
-    const spec = parseTrackYaml(track()["track.yaml"]!);
-    store.commitFolder(store.trackDir("shell-io@1"), track(), {
-      "track.json": { format_version: 1, ...spec, image: "code-learn-track-shell-io:1", imageId: "sha256:fake", installedAt: new Date().toISOString() },
-    });
+    installFixtureTrack("shell-io");
     expect(await app.proposeTrack(track())).toEqual({ installed: "shell-io@1", unchanged: true });
-    await expect(app.proposeTrack({ ...track(), Dockerfile: "FROM other\n" })).rejects.toThrow(/already installed/);
+    await expect(app.proposeTrack({ ...track(), "main.sh": "echo other\n" })).rejects.toThrow(/already installed/);
     expect(app.listProposals()).toEqual([]);
   });
 
@@ -490,16 +471,18 @@ describe("setup proposals", () => {
     await app.proposeTrack({ ...track(), "proposal.json": "{}" });
     const [p] = app.listProposals();
     expect(p!.files["proposal.json"]).toBe("{}");
-    await expect(app.installProposal("shell-io@1", p!.digest)).rejects.toThrow(/container runtime|Docker/i);
+    // Installing would stage a toolchain, which needs micromamba: refused before anything is built.
+    await expect(app.installProposal("shell-io@1", p!.digest)).rejects.toMatchObject({ code: "no-micromamba" });
   });
 
   it.each([
-    ["no Dockerfile", (t: Record<string, string>) => { delete t.Dockerfile; }],
-    ["a probe without its fail solution", (t: Record<string, string>) => { delete t["probe/io/fail/main.sh"]; }],
-  ])("refuses to propose a track with %s", async (_label, change) => {
+    ["a Dockerfile", (t: Record<string, string>) => { t.Dockerfile = "FROM alpine\n"; }, /Gate "valid".*Dockerfile/],
+    ["no toolchain block", (t: Record<string, string>) => { t["track.yaml"] = t["track.yaml"]!.replace(/^toolchain:.*$/m, ""); }, /toolchain/],
+    ["a probe without its fail solution", (t: Record<string, string>) => { delete t["probe/io/fail/main.sh"]; }, /Gate "valid"/],
+  ])("refuses to propose a track with %s", async (_label, change, message) => {
     const t = track();
     change(t);
-    await expect(app.proposeTrack(t)).rejects.toThrow(/Gate "valid"/);
+    await expect(app.proposeTrack(t)).rejects.toThrow(message);
     expect(app.listProposals()).toEqual([]);
   });
 
@@ -571,14 +554,13 @@ describe("lessons only", () => {
   });
 });
 
-it("keeps lesson examples on a retained track's coding style when activities are off", async () => {
+it.runIf(sandboxReady())("keeps lesson examples on a retained track's coding style when activities are off", async () => {
   installFake();
   await app.saveRoadmap(ws, "shell", roadmap().replace("style: io", "style: none"));
   expect(app.getRoadmap(ws, undefined, true).contract).toMatchObject({ run: "sh main.sh" });
-  fakeDocker("missing");
-  // A valid io example reaches the sandbox, rather than being mistaken for a unit example needing tests/.
-  await expect(app.saveLesson(ws, { id: "ex", concept: "sh.basics", title: "Example", markdown: "```example\n1\n```", examples: [{ "main.sh": "echo 1" }] })).rejects.toThrow(/container runtime/i);
-  expect(app.listLessons(ws)).toEqual([]);
+  // A valid io example runs in the sandbox, rather than being mistaken for a unit example needing tests/.
+  await expect(app.saveLesson(ws, { id: "ex", concept: "sh.basics", title: "Example", markdown: "```example\n1\n```", examples: [{ "main.sh": "echo 1" }] })).resolves.toEqual({ lesson: "ex" });
+  expect(app.listLessons(ws)).toHaveLength(1);
 });
 
 it("re-saves a course without making it active when asked, so another course's draft stays active", async () => {
@@ -590,8 +572,37 @@ it("re-saves a course without making it active when asked, so another course's d
 });
 
 it("allows proposing a coding track retained by a lessons-only course", async () => {
-  // As in "setup proposals": nothing on PATH, so a runner with wasmtime and no Docker gets the same answer.
-  fakeDocker("missing");
   await app.saveRoadmap(ws, "shell", roadmap().replace("style: io", "style: none"));
   expect(await app.proposeTrack(readFileMap(join(import.meta.dirname, "fixtures", "tracks", "shell-io")))).toMatchObject({ proposed: "shell-io@1" });
+});
+
+describe("removing a track", () => {
+  it("deletes the record and the toolchain folder, and lists the track no more", async () => {
+    installFixtureTrack("shell-io");
+    expect(existsSync(store.envDir("shell-io@1"))).toBe(true);
+    expect(await app.removeTrack("shell-io@1")).toEqual({ removed: "shell-io@1" });
+    expect(existsSync(store.envDir("shell-io@1"))).toBe(false);
+    expect(store.readTrack("shell-io@1")).toBeUndefined();
+    expect(app.listTracks()).toEqual([]);
+  });
+
+  it("refuses while a course uses the track, names the course, and keeps both folders", async () => {
+    installFixtureTrack("shell-io");
+    await app.saveRoadmap(ws, "shell", roadmap());
+    await expect(app.removeTrack("shell-io@1")).rejects.toThrow(/used by course "shell"/);
+    expect(existsSync(store.envDir("shell-io@1"))).toBe(true);
+    expect(app.listTracks()).toHaveLength(1);
+  });
+
+  it("refuses a track that isn't installed", async () => {
+    await expect(app.removeTrack("shell-io@1")).rejects.toThrow(/shell-io@1/);
+  });
+
+  it("removes only the version asked for", async () => {
+    installFake("shell-io@1");
+    installFake("shell-io@2");
+    await app.removeTrack("shell-io@1");
+    expect(app.listTracks().map((t) => t.track)).toEqual(["shell-io@2"]);
+    expect(existsSync(store.envDir("shell-io@2"))).toBe(true);
+  });
 });

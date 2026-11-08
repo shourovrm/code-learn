@@ -1,19 +1,27 @@
+import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as app from "../src/app.js";
 import { doctor } from "../src/doctor.js";
 import { readFileMap } from "../src/files.js";
-import { buildImage, inspectImage, runtimeHelp, startHelp } from "../src/sandbox.js";
-import { parseTrackYaml } from "../src/schemas.js";
+import { ownedScopes } from "../src/sandbox.js";
 import * as store from "../src/store.js";
-import { fakeDocker, posix } from "./fake-docker.js";
+import { fakeMicromamba } from "./fake-micromamba.js";
+import { installFixtureTrack } from "./installed-track.js";
+import { sandboxReady } from "./sandbox-ready.js";
 import { tempDir } from "./temp.js";
 
-/** The environment matrix: what learners see when Docker is missing, stopped, offline or out of disk. */
+/** The environment matrix: what learners see when micromamba is missing, the network is down, or the disk is full. */
 
 const fixtures = join(import.meta.dirname, "fixtures");
 const track = () => readFileMap(join(fixtures, "tracks", "shell-io"));
+const unitTrack = () => readFileMap(join(fixtures, "tracks", "shell-unit"));
+
+/** A program that grows a string until the sandbox's memory limit kills it. */
+const MEMORY_HOG = `awk 'BEGIN { s = "x"; while (1) s = s s }'\n`;
+
+const OFFLINE = 'echo "critical libmamba Could not resolve host: conda.anaconda.org" >&2; exit 1';
 
 beforeEach(() => {
   vi.stubEnv("CODE_LEARN_HOME", tempDir("code-learn-home-"));
@@ -23,65 +31,33 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
+const missingMicromamba = () => vi.stubEnv("CODE_LEARN_MICROMAMBA", join(tempDir("code-learn-nowhere-"), "micromamba"));
+
 describe("doctor", () => {
-  it("says what to install when Docker isn't installed, and skips the container checks", async () => {
-    fakeDocker("missing");
+  it("says what to install when micromamba isn't installed, and still checks the rest", async () => {
+    missingMicromamba();
     const checks = await doctor(false);
-    expect(checks.find((c) => c.name === "container runtime")).toEqual({
-      name: "container runtime",
-      ok: false,
-      detail: `No container runtime found. ${runtimeHelp()}`,
-    });
+    expect(checks.find((c) => c.name === "package manager")).toMatchObject({ ok: false, kind: "sandbox", detail: expect.stringMatching(/micromamba isn't installed.*Install micromamba 2/s) });
     expect(checks.find((c) => c.name === "code-learn home")?.ok).toBe(true);
-    expect(checks.map((c) => c.name)).not.toContain("network isolation");
-  });
-
-  it.runIf(posix)("says to start Docker, not install it, when it's installed but not running", async () => {
-    fakeDocker("down");
-    const checks = await doctor(false);
-    expect(checks.find((c) => c.name === "container CLI")?.ok).toBe(true);
-    const runtime = checks.find((c) => c.name === "container runtime")!;
-    expect(runtime).toMatchObject({ ok: false, detail: `The container runtime isn't running. ${startHelp()}` });
-    expect(runtime.detail).not.toMatch(/install/i);
   });
 });
 
-describe.runIf(posix)("building a track image", () => {
-  it("returns the ID its own build produced, never whatever the shared tag points at later", async () => {
-    fakeDocker("builds");
-    const built = await buildImage(tempDir("code-learn-context-"), "code-learn-track-shell-io:1");
-    expect(built).toMatchObject({ ok: true, imageId: "sha256:built" });
-  });
-
-  it("reports each build step as a count, and nothing of the build's output", async () => {
-    fakeDocker("builds");
-    const steps: unknown[] = [];
-    await buildImage(tempDir("code-learn-context-"), "code-learn-track-shell-io:1", undefined, (step) => steps.push(step));
-    expect(steps).toEqual([{ done: 1, total: 3 }, { done: 2, total: 3 }, { done: 3, total: 3 }]);
-  });
-
-  it("keeps building when a step listener throws", async () => {
-    fakeDocker("builds");
-    const built = await buildImage(tempDir("code-learn-context-"), "code-learn-track-shell-io:1", undefined, () => {
-      throw new Error("listener bug");
-    });
-    expect(built).toMatchObject({ ok: true, imageId: "sha256:built" });
-  });
-
-  it("blames the runtime, not the track, when a build reports no image ID", async () => {
-    fakeDocker("no-iid");
-    const built = await buildImage(tempDir("code-learn-context-"), "code-learn-track-shell-io:1");
-    expect(built).toMatchObject({ ok: false, problem: { kind: "docker", message: expect.stringMatching(/didn't report the image ID.*not a problem with the track files/s) } });
+describe("installing a track", () => {
+  it("is an infrastructure failure when micromamba is missing, and installs nothing", async () => {
+    missingMicromamba();
+    const failure = app.saveTrack(track());
+    await expect(failure).rejects.toMatchObject({ name: "CodeLearnError", kind: "sandbox", code: "no-micromamba" });
+    await expect(failure).rejects.not.toThrow(/Gate/);
+    expect(app.listTracks()).toEqual([]);
   });
 });
 
-describe.runIf(posix)("installing a track", () => {
+describe.runIf(sandboxReady())("installing a track in the sandbox", () => {
   it.each([
-    ["down", /isn't running/, "docker"],
-    ["offline", /couldn't reach the network.*no such host.*not a problem with the track files/s, "offline"],
-    ["disk-full", /ran out of disk space.*not a problem with the track files/s, "disk"],
-  ] as const)("is an infrastructure failure when Docker is %s, and installs nothing", async (scenario, message, kind) => {
-    fakeDocker(scenario);
+    ["offline", OFFLINE, /couldn't reach the package server.*Check the internet connection/s, "offline"],
+    ["out of disk", 'echo "write /opt/env/lib: no space left on device" >&2; exit 1', /The disk is full/, "disk"],
+  ] as const)("is an infrastructure failure when this computer is %s, and installs nothing", async (_label, extra, message, kind) => {
+    fakeMicromamba(extra);
     const failure = app.saveTrack(track());
     await expect(failure).rejects.toThrow(message);
     // The desktop tells these apart by kind, not by reading the English.
@@ -90,10 +66,22 @@ describe.runIf(posix)("installing a track", () => {
     expect(app.listTracks()).toEqual([]);
   });
 
+  it("blames the track, with the setup's own output, when its setup fails", async () => {
+    fakeMicromamba();
+    const files = track();
+    files["track.yaml"] = files["track.yaml"]!.replace(/^toolchain:.*$/m, `toolchain: { packages: ["coreutils"], setup: "echo setup-went-wrong >&2; exit 1" }`);
+    const failure = await app.saveTrack(files).then(() => ({ kind: "none", message: "" }), (e: { kind?: string; message: string }) => e);
+    expect(failure.message).toMatch(/Gate "toolchain" failed: the setup command failed[\s\S]*setup-went-wrong/);
+    expect(failure.kind).toBeUndefined();
+    expect(app.listTracks()).toEqual([]);
+  });
+
+  /** The shell-unit track with `script` as its test runner, so a probe's own output can be chosen. */
+  const unitTrackRunning = (script: string) => ({ ...unitTrack(), "test.sh": script });
+
   it("shows the end of a probe's own output, so the agent can see why its test runner found nothing", async () => {
-    fakeDocker("notests");
-    const unit = readFileMap(join(import.meta.dirname, "fixtures", "tracks", "shell-unit"));
-    const failure = app.saveTrack(unit);
+    fakeMicromamba();
+    const failure = app.saveTrack(unitTrackRunning("echo 'No test files found, exiting with code 1'\nexit 1\n"));
     await expect(failure).rejects.toThrow(/Gate "probe pass"[\s\S]*No test files found, exiting with code 1/);
     // Shown once, even when a test's message already carries the runner's output.
     const message = await failure.then(() => "", (e: Error) => e.message);
@@ -101,142 +89,75 @@ describe.runIf(posix)("installing a track", () => {
   });
 
   it("blames the track, not this computer, when a probe's own output mentions a full disk", async () => {
-    fakeDocker("notests-disk");
-    const unit = readFileMap(join(import.meta.dirname, "fixtures", "tracks", "shell-unit"));
-    const failure = await app.saveTrack(unit).then(() => ({ kind: "none", message: "" }), (e: { kind?: string; message: string }) => e);
+    fakeMicromamba();
+    const failure = await app.saveTrack(unitTrackRunning("echo 'write /tmp/cache: no space left on device'\nexit 1\n")).then(
+      () => ({ kind: "none", message: "" }),
+      (e: { kind?: string; message: string }) => e,
+    );
     expect(failure.message).toMatch(/Gate "probe pass"[\s\S]*no space left on device/);
     expect(failure.kind).not.toBe("disk");
   });
 
-  it("calls a Docker failure while inspecting the built image a Docker problem, not a gate failure", async () => {
-    fakeDocker("inspect-fails");
-    const failure = app.saveTrack(track());
-    await expect(failure).rejects.toMatchObject({ name: "CodeLearnError", kind: "docker" });
-    await expect(failure).rejects.not.toThrow(/Gate/);
+  it("says a track's test runner ran out of memory, not just that it was killed", async () => {
+    fakeMicromamba();
+    const failure = app.saveTrack(unitTrackRunning(`exec ${MEMORY_HOG}`));
+    await expect(failure).rejects.toThrow(/Gate "probe pass"[\s\S]*The test runner ran out of memory \(memory_mb 128\)/);
   });
 
-  it("reads a Docker 29 image, which leaves out Config.Volumes when it declares none", async () => {
-    fakeDocker("docker29");
-    await expect(inspectImage("sha256:fake")).resolves.toEqual({ id: "sha256:fake", hasVolumes: false });
-    // Installing goes past the image check, to the checks this fake can't run.
-    await expect(app.saveTrack(track())).rejects.not.toThrow(/couldn't inspect|image record/);
-    fakeDocker("builds");
-    await expect(inspectImage("sha256:fake")).resolves.toEqual({ id: "sha256:fake", hasVolumes: false });
-  });
-
-  it("reports a setup's build steps, then its checks, as phases and counts only", async () => {
-    fakeDocker("builds");
+  it("reports a setup's install steps, then its checks, as phases and counts only", async () => {
+    fakeMicromamba();
     await app.proposeTrack(track());
     const { digest } = app.listProposals()[0]!;
     const seen: unknown[] = [];
-    // The fake's containers fail after the build, so the install stops at the probes.
-    await expect(app.installProposal("shell-io@1", digest, (p) => seen.push(p))).rejects.toThrow();
-    expect(seen).toEqual([
-      { phase: "building", done: 1, total: 3 },
-      { phase: "building", done: 2, total: 3 },
-      { phase: "building", done: 3, total: 3 },
-      { phase: "checking" },
-    ]);
-  });
-
-  it("refuses a proposal whose base image doesn't exist, before it reaches the learner", async () => {
-    fakeDocker("builds");
-    const from = (image: string) => ({ ...track(), Dockerfile: track().Dockerfile!.replace(/^FROM .*$/m, `FROM ${image}`) });
-    await expect(app.proposeTrack(from("alpine:nope"))).rejects.toThrow(/alpine:nope/);
-    await expect(app.proposeTrack(from("nope:21-slim"))).rejects.toThrow(/nope:21-slim/);
-    expect(app.listProposals()).toEqual([]);
-    // A namespaced repository the registry won't show may be private: the build decides.
-    await expect(app.proposeTrack(from("someone/private:1"))).resolves.toMatchObject({ proposed: "shell-io@1" });
-    // A registry with a port is never an official image, even when it says the repository doesn't exist.
-    await expect(app.proposeTrack(from("gitlab.example.com:5050/group/private:1"))).resolves.toMatchObject({ proposed: "shell-io@1" });
-    await expect(app.proposeTrack(track())).resolves.toMatchObject({ proposed: "shell-io@1" });
-  });
-
-  it("proposes anyway when the registry can't be asked, so the build reports it", async () => {
-    fakeDocker("offline");
-    const files = { ...track(), Dockerfile: track().Dockerfile!.replace(/^FROM .*$/m, "FROM alpine:nope") };
-    await expect(app.proposeTrack(files)).resolves.toMatchObject({ proposed: "shell-io@1" });
+    await app.installProposal("shell-io@1", digest, (p) => seen.push(p));
+    expect(seen).toEqual([{ phase: "building", done: 1, total: 1 }, { phase: "checking" }]);
   });
 
   it("keeps a proposal when its install fails offline, so Try again needs no new consent", async () => {
-    fakeDocker("offline");
+    fakeMicromamba(OFFLINE);
     await app.proposeTrack(track());
     const { digest } = app.listProposals()[0]!;
-    await expect(app.installProposal("shell-io@1", digest)).rejects.toThrow(/couldn't reach the network/);
+    await expect(app.installProposal("shell-io@1", digest)).rejects.toThrow(/couldn't reach the package server/);
     expect(app.listTracks()).toEqual([]);
     expect(app.listProposals().map((p) => p.digest)).toEqual([digest]);
   });
 });
 
-describe.runIf(posix)("a check that loses Docker mid-run", () => {
-  it("grades and records a program whose memory kill takes down the driver, instead of blaming the runtime", async () => {
-    const ws = await installedExercise();
-    fakeDocker("oom");
+describe.runIf(sandboxReady())("a check that loses its sandbox mid-run", () => {
+  it("grades and records a program that the memory limit kills, instead of blaming the sandbox", async () => {
+    const ws = await installedExercise(MEMORY_HOG);
     const r = await app.checkExercise(ws);
     expect(r).toMatchObject({ passed: 0, total: 4, recorded: true });
     expect(r.tests.every((t) => t.status === "error")).toBe(true);
-    expect(r.tests[0]!.message).toMatch(/memory limit/i);
+    expect(r.tests[0]!.message).toMatch(/^It ran out of memory \(memory_mb 128\)/);
     expect(store.readEvents("shell")).toEqual([expect.objectContaining({ kind: "check", passed: 0, total: 4 })]);
   });
 
-  it("grades a memory-limit kill whose event the runtime publishes late", async () => {
-    const ws = await installedExercise();
-    fakeDocker("oom-late");
-    const r = await app.checkExercise(ws);
-    expect(r).toMatchObject({ passed: 0, total: 4, recorded: true });
-    expect(r.tests.every((t) => t.status === "error")).toBe(true);
-    expect(r.tests[0]!.message).toMatch(/memory limit/i);
-    expect(store.readEvents("shell")).toEqual([expect.objectContaining({ kind: "check", passed: 0, total: 4 })]);
-  });
-
-  it.each([
-    ["stops", /stopped during the run, so it wasn't counted.*Start Docker/s],
-    ["drops", /failed during the run, so it wasn't counted/],
-    ["killed", /failed during the run, so it wasn't counted/],
-  ] as const)("records nothing and says it wasn't counted when Docker %s", async (scenario, message) => {
-    const ws = await installedExercise();
-    fakeDocker(scenario);
-    await expect(app.checkExercise(ws)).rejects.toThrow(message);
+  it("records nothing and says it wasn't counted when the sandbox is stopped from outside", async () => {
+    const ws = await installedExercise("sleep 30\n");
+    const checking = app.checkExercise(ws);
+    const ownScopes = () => ownedScopes().filter((scope) => scope.pid === process.pid);
+    await vi.waitFor(() => expect(ownScopes()).not.toEqual([]), { timeout: 20_000, interval: 100 });
+    // What a logout or the system would do to the learner's sandboxes.
+    for (const scope of ownScopes()) spawnSync("systemctl", ["--user", "stop", scope.unit]);
+    await expect(checking).rejects.toThrow(/wasn't counted/);
     expect(store.readEvents("shell")).toEqual([]);
   });
 });
 
-describe.runIf(posix)("a track image without /bin/sh", () => {
-  it("is the track's to fix, not Docker's, and records nothing", async () => {
-    const ws = await installedExercise();
-    fakeDocker("nosh");
-    const failure = await app.checkExercise(ws).catch((e: Error) => e);
-    expect(failure).toMatchObject({ name: "CodeLearnError", kind: undefined, code: undefined, message: expect.stringMatching(/^The track image can't run \/bin\/sh \(exit 127\)/) });
-    expect(store.readEvents("shell")).toEqual([]);
-  });
-});
-
-describe.runIf(posix)("a check whose program is killed", () => {
-  it.each([
-    ["caseoom", /^It ran out of memory \(memory_mb 128\)/],
-    ["casekill", /^It took longer than 2000 ms/],
-  ] as const)("tells a time-out from a memory kill the runtime recorded (%s)", async (scenario, message) => {
-    const ws = await installedExercise();
-    fakeDocker(scenario);
+describe.runIf(sandboxReady())("a check whose program is killed", () => {
+  it("says a program that never ends took longer than the time limit", async () => {
+    const ws = await installedExercise("sleep 30\n");
     const r = await app.checkExercise(ws);
-    expect(r.tests[0]).toMatchObject({ status: "error", message: expect.stringMatching(message) });
+    expect(r.tests[0]).toMatchObject({ status: "error", message: expect.stringMatching(/^It took longer than 2000 ms/) });
     expect(r.recorded).toBe(true);
   });
-
-  it("says a track's test runner ran out of memory, not just that it was killed", async () => {
-    fakeDocker("unitoom");
-    const unit = readFileMap(join(fixtures, "tracks", "shell-unit"));
-    await expect(app.saveTrack(unit)).rejects.toThrow(/Gate "probe pass"[\s\S]*The test runner ran out of memory \(memory_mb 128\)/);
-  });
 });
 
-/** A workspace whose exercise is installed (with a fake image) and edited, ready to check. */
-async function installedExercise(): Promise<string> {
+/** A workspace whose exercise is installed on the shell-io fixture track and holds `program`, ready to check. */
+async function installedExercise(program = "echo 3\n"): Promise<string> {
   const ws = tempDir("code-learn-ws-");
-  const spec = parseTrackYaml(track()["track.yaml"]!);
-  store.commitFolder(store.trackDir("shell-io@1"), track(), {
-    "track.json": { format_version: 1, ...spec, image: "code-learn-track-shell-io:1", imageId: "sha256:fake", installedAt: new Date().toISOString() },
-  });
+  installFixtureTrack("shell-io");
   await app.saveRoadmap(ws, "shell", readFileSync(join(fixtures, "roadmaps", "shell-io.yaml"), "utf8"));
   const exercise = readFileMap(join(fixtures, "exercises", "io-max"));
   store.commitFolder(store.exerciseDir("shell", "max-of-line"), exercise, {
@@ -246,6 +167,6 @@ async function installedExercise(): Promise<string> {
     },
   });
   const { path } = await app.getExercise(ws, "max-of-line");
-  writeFileSync(join(path, "main.sh"), "echo 3\n");
+  writeFileSync(join(path, "main.sh"), program);
   return ws;
 }
