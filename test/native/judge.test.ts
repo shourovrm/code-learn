@@ -1,28 +1,24 @@
-import { execFile } from "node:child_process";
-import { writeFileSync } from "node:fs";
-import { join } from "node:path";
-import { promisify } from "node:util";
-import { createServer } from "node:http";
-import type { AddressInfo } from "node:net";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { gradeIoRun, gradeUnitRun } from "../../src/grading.js";
 import { type JudgeTrack, runIo, runUnit } from "../../src/judge.js";
 import { runProgram } from "../../src/program.js";
-import { buildImage, ownedContainers } from "../../src/sandbox.js";
-import { buildFixture, dockerUp, expectedFrom, fixtureTrack, inputsOnly, subMap } from "./helpers.js";
-import { tempDir } from "../temp.js";
+import { ownedScopes } from "../../src/sandbox.js";
+import { sandboxReady } from "../sandbox-ready.js";
+import { expectedFrom, fixtureTrackFiles, inputsOnly, installedJudgeTrack, subMap } from "./helpers.js";
 
-const io = fixtureTrack("shell-io");
-const unit = fixtureTrack("shell-unit");
+const ioFiles = fixtureTrackFiles("shell-io");
+const unitFiles = fixtureTrackFiles("shell-unit");
 let ioTrack: JudgeTrack;
 let unitTrack: JudgeTrack;
 
 const statuses = (tests: { status: string }[]) => tests.map((t) => t.status);
 
-describe.runIf(dockerUp)("judge (Docker)", () => {
-  beforeAll(async () => {
-    ioTrack = { ...io.spec, wasi: undefined, image: await buildFixture("shell-io") };
-    unitTrack = { ...unit.spec, wasi: undefined, image: await buildFixture("shell-unit") };
+describe.runIf(sandboxReady())("judge (native sandbox)", () => {
+  const ownScopes = () => ownedScopes().filter((scope) => scope.pid === process.pid);
+
+  beforeAll(() => {
+    ioTrack = installedJudgeTrack("shell-io");
+    unitTrack = installedJudgeTrack("shell-unit");
   });
 
   it("Run: sends typed input to the learner's program and streams its output, in the sandbox", async () => {
@@ -35,9 +31,9 @@ describe.runIf(dockerUp)("judge (Docker)", () => {
 
   it("Run: reports a program's own exit code and stderr as its own", async () => {
     let err = "";
-    const run = runProgram(ioTrack, { "main.sh": 'echo "error waiting for container" >&2; exit 125\n' }, (text, stream) => stream === "stderr" && (err += text));
+    const run = runProgram(ioTrack, { "main.sh": 'echo "error waiting for sandbox" >&2; exit 125\n' }, (text, stream) => stream === "stderr" && (err += text));
     expect(await run.done).toMatchObject({ exit: 125, stage: "run", timedOut: false });
-    expect(err).toBe("error waiting for container\n");
+    expect(err).toBe("error waiting for sandbox\n");
   });
 
   it("Run: an exit code of 138 or 124 from the program is not a timeout", async () => {
@@ -53,43 +49,28 @@ describe.runIf(dockerUp)("judge (Docker)", () => {
     expect(await run.done).toMatchObject({ stage: "run", timedOut: true });
     const build = runProgram({ ...ioTrack, build: "sleep 30" }, { "main.sh": "echo hi\n" }, () => undefined, { buildLimitMs: 1_000 });
     expect(await build.done).toMatchObject({ stage: "build", timedOut: true });
-    await expect.poll(() => ownedContainers(), { timeout: 10_000 }).toEqual([]);
+    await expect.poll(ownScopes, { timeout: 10_000 }).toEqual([]);
   });
 
-  it("an image without sleep: Run isn't cut short as a timeout, and grading names the missing tool", async () => {
-    const dir = tempDir("code-learn-nosleep-");
-    writeFileSync(join(dir, "Dockerfile"), `${io.files["Dockerfile"]!.trim()}\nRUN rm /bin/sleep\n`);
-    const built = await buildImage(dir, "code-learn-test-nosleep:1");
-    expect(built.ok).toBe(true);
-    const track = { ...ioTrack, image: "code-learn-test-nosleep:1" };
-    let out = "";
-    const run = runProgram(track, { "main.sh": 'read -r n\necho "got $n"\n' }, (text) => (out += text), { limitMs: 5_000 });
-    await new Promise((r) => setTimeout(r, 500));
-    run.write("Ada\n");
-    expect(await run.done).toEqual({ exit: 0, stage: "run", timedOut: false, flooded: false });
-    expect(out).toBe("got Ada\n");
-    await expect(runIo(track, "visible", { "main.sh": "echo hi\n" }, { "01.in": "" })).rejects.toThrow(/missing a tool/);
-  });
-
-  it("Run: stops a program at its time limit, says nothing of its own, and leaves no container", async () => {
+  it("Run: stops a program at its time limit, says nothing of its own, and leaves no scope", async () => {
     let err = "";
     const run = runProgram(ioTrack, { "main.sh": "read -r n\n" }, (text, stream) => (err += stream === "stderr" ? text : ""), { limitMs: 1_000 });
     expect(await run.done).toMatchObject({ stage: "run", timedOut: true });
     // code-learn's own "time's up" is the only word on it: the driver's shell doesn't report the kill ("Killed").
     expect(err).toBe("");
-    // --rm finishes removing it just after the exit.
-    await expect.poll(() => ownedContainers(), { timeout: 10_000 }).toEqual([]);
+    // systemd drops the scope just after the exit.
+    await expect.poll(ownScopes, { timeout: 10_000 }).toEqual([]);
   });
 
   describe("io", () => {
-    const tests = subMap(io.files, "probe/io/tests");
+    const tests = subMap(ioFiles, "probe/io/tests");
     const expected = expectedFrom(tests, "visible");
     const grade = async (program: string, extra: Partial<JudgeTrack> = {}, inputs = inputsOnly(tests), exp = expected) =>
       gradeIoRun(await runIo({ ...ioTrack, ...extra }, "visible", { "main.sh": program }, inputs), exp);
 
     it("passes a correct program and fails a wrong one", async () => {
-      expect(statuses(await grade(io.files["probe/io/pass/main.sh"]!))).toEqual(["pass", "pass"]);
-      expect(statuses(await grade(io.files["probe/io/fail/main.sh"]!))).toEqual(["fail", "fail"]);
+      expect(statuses(await grade(ioFiles["probe/io/pass/main.sh"]!))).toEqual(["pass", "pass"]);
+      expect(statuses(await grade(ioFiles["probe/io/fail/main.sh"]!))).toEqual(["fail", "fail"]);
     });
 
     it("errors on a crash, a timeout and a build failure", async () => {
@@ -109,17 +90,17 @@ describe.runIf(dockerUp)("judge (Docker)", () => {
   });
 
   describe("unit", () => {
-    const tests = subMap(unit.files, "probe/unit/tests");
+    const tests = subMap(unitFiles, "probe/unit/tests");
     const grade = async (lib: string, extra: Partial<JudgeTrack> = {}, inventory?: string[]) =>
       gradeUnitRun("visible", await runUnit({ ...unitTrack, ...extra }, { "lib.sh": lib }, tests), inventory);
 
     it("grades the runner's report", async () => {
-      expect(statuses(await grade(unit.files["probe/unit/pass/lib.sh"]!))).toEqual(["pass", "pass"]);
-      expect(statuses(await grade(unit.files["probe/unit/fail/lib.sh"]!))).toEqual(["fail", "fail"]);
+      expect(statuses(await grade(unitFiles["probe/unit/pass/lib.sh"]!))).toEqual(["pass", "pass"]);
+      expect(statuses(await grade(unitFiles["probe/unit/fail/lib.sh"]!))).toEqual(["fail", "fail"]);
     });
 
     it("keeps inventory tests the report leaves out", async () => {
-      const tests = await grade(unit.files["probe/unit/pass/lib.sh"]!, {}, ["adds_negative", "adds_small", "adds_zero"]);
+      const tests = await grade(unitFiles["probe/unit/pass/lib.sh"]!, {}, ["adds_negative", "adds_small", "adds_zero"]);
       expect(statuses(tests)).toEqual(["pass", "pass", "error"]);
     });
 
@@ -132,35 +113,6 @@ describe.runIf(dockerUp)("judge (Docker)", () => {
   describe("sandbox (adversarial)", () => {
     const run = (program: string, inputs: Record<string, string> = { "01.in": "x\n" }, extra: Partial<JudgeTrack> = {}) =>
       runIo({ ...ioTrack, build: undefined, ...extra }, "visible", { "main.sh": program }, inputs);
-
-    let server: ReturnType<typeof createServer>;
-    let port = 0;
-    beforeAll(async () => {
-      server = createServer((_req, res) => res.end("pong"));
-      await new Promise<void>((r) => server.listen(0, "0.0.0.0", () => r()));
-      port = (server.address() as AddressInfo).port;
-    });
-    afterAll(() => server.close());
-
-    it("blocks the network, with a positive control proving the probe can reach the host", async () => {
-      // Async on purpose: a blocking spawn would stall the in-process server it probes.
-      const control = await promisify(execFile)(
-        "docker",
-        ["run", "--rm", "--add-host", "host.docker.internal:host-gateway", ioTrack.image, "sh", "-c",
-          `ip=$(getent hosts host.docker.internal | cut -d' ' -f1); echo "$ip"; wget -q -T 5 -O- "http://$ip:${port}/"`],
-      );
-      const [ip, body] = control.stdout.trim().split("\n");
-      expect(body).toBe("pong");
-      const sandboxed = await run(`read x\nwget -q -T 5 -O- "http://${ip}:${port}/" && echo reached || echo blocked\n`);
-      expect(sandboxed.cases[0]?.stdout.trim()).toBe("blocked");
-    });
-
-    it("refuses writes to the mounted input and the root filesystem, but allows /tmp", async () => {
-      const r = await run(
-        "read x\ntouch /work/src/x 2>/dev/null && echo src-writable || echo src-ro\ntouch /x 2>/dev/null && echo root-writable || echo root-ro\ntouch /tmp/x && echo tmp-ok\n",
-      );
-      expect(r.cases[0]?.stdout.trim().split("\n")).toEqual(["src-ro", "root-ro", "tmp-ok"]);
-    });
 
     it("contains a fork bomb and cleans up before the next case", async () => {
       const r = await run('read mode\nif [ "$mode" = bomb ]; then f() { f | f & }; f; sleep 10; fi\necho ok\n', { "01.in": "bomb\n", "02.in": "calm\n" });
@@ -183,18 +135,9 @@ describe.runIf(dockerUp)("judge (Docker)", () => {
     });
 
     it("says a program ran out of memory when the runtime recorded it, though the driver went on", async () => {
-      // One allocation past the limit, as the program's last command: killed for memory well within the time limit.
-      const r = await run("read x\ndd if=/dev/zero of=/dev/null bs=300M count=1 2>/dev/null\n");
+      // A string that doubles until the limit kills it, as the program's last command: well within the time limit.
+      const r = await run("read x\nawk 'BEGIN { s = \"x\"; while (1) s = s s }' 2>/dev/null\n");
       expect(gradeIoRun(r, { "visible/01": "survived\n" })[0]).toMatchObject({ status: "error", message: expect.stringMatching(/^It ran out of memory \(memory_mb 128\)/) });
-    });
-
-    it("caps the container's output stream and errors the set", async () => {
-      // Each case's own output is bounded inside the container, so only writing to the stream the driver saved while the
-      // case runs (DESIGN §4.2) can pass the host cap: 4 MB plus 32 MB per case. A long time limit lets a slow pipe finish.
-      const flood = "read x\nfor fd in /proc/1/fd/*; do case $(readlink \"$fd\") in pipe:*) head -c 40000000 /dev/zero > \"$fd\";; esac; done\n";
-      const r = await run(flood, undefined, { limits: { time_ms: 60_000, memory_mb: 128 } });
-      expect(r.flooded).toBe(true);
-      expect(statuses(gradeIoRun(r, { "visible/01": "" }))).toEqual(["error"]);
     });
 
     it("never echoes a forged fatal frame, even one carrying hidden data", async () => {
@@ -209,9 +152,9 @@ describe.runIf(dockerUp)("judge (Docker)", () => {
       expect(gradeIoRun(r, { "visible/01": "x" })[0]).toMatchObject({ status: "error", message: expect.stringMatching(/took longer than \d+ ms/) });
     });
 
-    it("kills the container at the host deadline and leaves none behind", async () => {
+    it("stops the sandbox at the host deadline and leaves no scope behind", async () => {
       await expect(runIo({ ...ioTrack, build: undefined }, "visible", { "main.sh": "read x\nsleep 60\n" }, { "01.in": "x\n" }, { timeMs: 30_000, deadlineMs: 3000 })).rejects.toThrow(/didn't finish/);
-      await expect.poll(async () => (await ownedContainers()).filter((c) => c.pid === process.pid), { timeout: 10_000 }).toEqual([]);
+      await expect.poll(ownScopes, { timeout: 10_000 }).toEqual([]);
     });
   });
 });

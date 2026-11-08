@@ -1,12 +1,13 @@
 import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import * as app from "../../src/app.js";
 import { readFileMap } from "../../src/files.js";
-import { cli } from "../../src/sandbox.js";
-import { readEvents, trackImageTag } from "../../src/store.js";
-import { dockerUp, FIXTURES, fixtureTrack } from "./helpers.js";
+import { envDir, readEvents } from "../../src/store.js";
+import { fakeMicromamba } from "../fake-micromamba.js";
+import { sandboxReady } from "../sandbox-ready.js";
 import { tempDir } from "../temp.js";
+import { FIXTURES, fixtureTrackFiles } from "./helpers.js";
 
 const roadmap = (name: string) => readFileSync(join(FIXTURES, "roadmaps", `${name}.yaml`), "utf8");
 const exercise = (name: string) => readFileMap(join(FIXTURES, "exercises", name));
@@ -14,41 +15,25 @@ const exercise = (name: string) => readFileMap(join(FIXTURES, "exercises", name)
 const asNewTask = (files: Record<string, string>, label: string) =>
   Object.fromEntries(Object.entries(files).map(([p, t]) => [p, /^(solution|mutants)\//.test(p) ? t.replace(/echo "\$(max|1)"/, `echo "${label} $$$1"`) : t]));
 
-describe.runIf(dockerUp)("app (Docker, end to end)", () => {
+describe.runIf(sandboxReady())("app (native sandbox, end to end)", () => {
   let ws: string;
 
-  // A label gives this file's track image its own ID, so deleting it can't affect other test files.
-  const appTrack = (): Record<string, string> => {
-    const t = fixtureTrack("shell-io").files;
-    return { ...t, Dockerfile: `${t.Dockerfile}LABEL code-learn.test=app\n` };
-  };
+  const appTrack = (): Record<string, string> => fixtureTrackFiles("shell-io");
 
   beforeAll(() => {
-    process.env.CODE_LEARN_HOME = tempDir("code-learn-home-");
+    vi.stubEnv("CODE_LEARN_HOME", tempDir("code-learn-home-"));
+    // Installs go through the real install sandbox, with a micromamba that makes an offline environment.
+    fakeMicromamba();
     ws = tempDir("code-learn-ws-");
   });
+  afterAll(() => vi.unstubAllEnvs());
 
   it("installs a track once and refuses a different track under the same version", async () => {
     expect(await app.saveTrack(appTrack())).toEqual({ installed: "shell-io@1" });
     expect(await app.saveTrack(appTrack())).toEqual({ installed: "shell-io@1", unchanged: true });
     const changed = { ...appTrack(), "track.yaml": appTrack()["track.yaml"]!.replace("2000", "3000") };
     await expect(app.saveTrack(changed)).rejects.toThrow(/already installed/);
-    expect(app.listTracks()).toEqual([{ track: "shell-io@1", styles: ["io"], files: ["main.sh"], engine: "docker" }]);
-  });
-
-  it("installs a track whose base image isn't pinned by digest, with a warning", async () => {
-    const t = appTrack();
-    const base = trackImageTag("shell-io", 1);
-    const unpinned = {
-      ...t,
-      "track.yaml": t["track.yaml"]!.replace("id: shell-io", "id: shell-unpinned"),
-      Dockerfile: t.Dockerfile!.replace(/^FROM \S+/, `FROM ${base}`),
-    };
-    const r = await app.saveTrack(unpinned);
-    expect(r).toMatchObject({ installed: "shell-unpinned@1" });
-    expect(r.warning).toContain(`digest: ${base}.`);
-    // A child image would keep a later test from removing shell-io@1's image.
-    await cli(["image", "rm", "-f", trackImageTag("shell-unpinned", 1)]);
+    expect(app.listTracks()).toEqual([{ track: "shell-io@1", styles: ["io"], files: ["main.sh"] }]);
   });
 
   it("enforces roadmap rules", async () => {
@@ -149,11 +134,13 @@ describe.runIf(dockerUp)("app (Docker, end to end)", () => {
     await expect(app.saveRoadmap(ws, "shell", without)).rejects.toThrow(/sh\.basics/);
   });
 
-  it("keeps the installed image when a rebuild is rejected", async () => {
+  it("keeps the installed toolchain when a rebuild is rejected", async () => {
     const exJson = join(process.env.CODE_LEARN_HOME!, "courses", "shell", "exercises", "max-of-line", "exercise.json");
     const original = readFileSync(exJson, "utf8");
     writeFileSync(exJson, original.replace('"visible/01": "3\\n"', '"visible/01": "4\\n"'));
     await expect(app.rebuildTrack("shell-io@1")).rejects.toThrow(/behaves differently/);
+    expect(JSON.parse(readFileSync(join(process.env.CODE_LEARN_HOME!, "tracks", "shell-io@1", "track.json"), "utf8")).toolchain.resolved).toEqual(["coreutils-1.0-0"]);
+    expect(readdirSync(join(process.env.CODE_LEARN_HOME!, "envs")).filter((name) => name.startsWith("."))).toEqual([]);
     writeFileSync(exJson, original);
     expect((await app.checkExercise(ws)).recorded).toBe(true);
   });
@@ -185,11 +172,10 @@ describe.runIf(dockerUp)("app (Docker, end to end)", () => {
     expect(JSON.parse(readFileSync(join(ws, "code-learn.json"), "utf8")).current).toBe("many-cases");
   });
 
-  it("records nothing when the track image is gone, and rebuild re-validates every exercise", async () => {
+  it("records nothing when the track's toolchain is gone, and rebuild re-validates every exercise", async () => {
     const before = readEvents("shell").length;
-    const id = JSON.parse(readFileSync(join(process.env.CODE_LEARN_HOME!, "tracks", "shell-io@1", "track.json"), "utf8")).imageId;
-    await cli(["image", "rm", "-f", id]);
-    await expect(app.checkExercise(ws, "max-of-line")).rejects.toThrow(/track rebuild/);
+    rmSync(envDir("shell-io@1"), { recursive: true });
+    await expect(app.checkExercise(ws, "max-of-line")).rejects.toThrow(expect.objectContaining({ kind: "toolchain-missing", message: expect.stringMatching(/track rebuild/) }));
     expect(readEvents("shell")).toHaveLength(before);
 
     expect(await app.rebuildTrack("shell-io@1")).toEqual({ rebuilt: "shell-io@1", exercises: 2 });
@@ -198,14 +184,21 @@ describe.runIf(dockerUp)("app (Docker, end to end)", () => {
 
   it("installs a consented proposal, exactly once, and drops it", async () => {
     const t = appTrack();
-    const files = { ...t, "track.yaml": t["track.yaml"]!.replace("id: shell-io", "id: shell-consent"), Dockerfile: `${t.Dockerfile}LABEL code-learn.test=consent\n` };
+    const files = { ...t, "track.yaml": t["track.yaml"]!.replace("id: shell-io", "id: shell-consent") };
     expect(await app.proposeTrack(files)).toMatchObject({ proposed: "shell-consent@1" });
     expect(app.listTracks().map((x) => x.track)).not.toContain("shell-consent@1");
     const { digest } = app.listProposals().find((p) => p.track === "shell-consent@1")!;
     expect(await app.installProposal("shell-consent@1", digest)).toEqual({ installed: "shell-consent@1" });
     expect(app.listTracks().map((x) => x.track)).toContain("shell-consent@1");
     expect(app.listProposals()).toEqual([]);
-    await cli(["image", "rm", "-f", trackImageTag("shell-consent", 1)]);
+  });
+
+  it("removes an unused track's toolchain and record, and refuses to remove one a course uses", async () => {
+    await expect(app.removeTrack("shell-io@1")).rejects.toThrow(/used by courses? "shell"/);
+    expect(existsSync(envDir("shell-io@1"))).toBe(true);
+    expect(await app.removeTrack("shell-consent@1")).toEqual({ removed: "shell-consent@1" });
+    expect(existsSync(envDir("shell-consent@1"))).toBe(false);
+    expect(app.listTracks().map((x) => x.track)).not.toContain("shell-consent@1");
   });
 
   it("saves a bound author job's exercise to its own course, even if the learner switches mid-save", async () => {
