@@ -164,7 +164,7 @@ export function electronUpdater(current: string, signed: boolean, feed?: string)
   if (process.platform === 'win32' && signed) {
     (autoUpdater as import('electron-updater').NsisUpdater).verifyUpdateCodeSignature = (names, file) => verifyWindowsSignature(names, file, powershell);
   }
-  // No release channel yet: without a test feed there is nothing to ask, and Codemm's releases are never asked.
+  // No release channel yet: without a test feed there is nothing to ask.
   if (!feed) return { check: async () => null, download: async () => undefined, install: () => undefined };
   autoUpdater.forceDevUpdateConfig = true;
   autoUpdater.setFeedURL({ provider: 'generic', url: feed });

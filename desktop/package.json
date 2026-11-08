@@ -6,7 +6,7 @@
   "description": "code-learn desktop app",
   "license": "MIT",
   "author": "code-learn contributors",
-  "homepage": "https://github.com/iignaite/Codemm",
+  "homepage": "https://github.com/shourovrm/code-learn",
   "main": "out/main/boot.js",
   "engines": {
     "node": ">=22"

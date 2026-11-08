@@ -8,12 +8,12 @@ const sidebar = () => screen.getByRole('navigation', { name: 'Main' });
 
 describe('update notice', () => {
   it('an unsigned build says a new version is out, with a link to its release', async () => {
-    const api = createMock({ update: { kind: 'available', version: '1.2.0', url: 'https://github.com/iignaite/Codemm/releases/tag/v1.2.0' } });
+    const api = createMock({ update: { kind: 'available', version: '1.2.0', url: 'https://github.com/shourovrm/code-learn/releases/tag/v1.2.0' } });
     renderApp({ to: 'tracks' }, api);
     expect(await within(sidebar()).findByText('A new version is available.')).toBeInTheDocument();
     // The version is in the link, not in the words.
     const link = within(sidebar()).getByRole('link', { name: 'Get it' });
-    expect(link).toHaveAttribute('href', 'https://github.com/iignaite/Codemm/releases/tag/v1.2.0');
+    expect(link).toHaveAttribute('href', 'https://github.com/shourovrm/code-learn/releases/tag/v1.2.0');
     expect(link).toHaveAttribute('target', '_blank');
     expect(sidebar()).not.toHaveTextContent('1.2.0');
   });
@@ -94,10 +94,10 @@ describe('narrow windows', () => {
   it('keeps a new version in reach in the slim sidebar: Update links to the release', async () => {
     narrowWindow();
     try {
-      renderApp({ to: 'tracks' }, createMock({ update: { kind: 'available', version: '1.2.0', url: 'https://github.com/iignaite/Codemm/releases/tag/v1.2.0' } }));
+      renderApp({ to: 'tracks' }, createMock({ update: { kind: 'available', version: '1.2.0', url: 'https://github.com/shourovrm/code-learn/releases/tag/v1.2.0' } }));
       const region = await within(sidebar()).findByRole('status', { name: 'code-learn updates' });
       await vi.waitFor(() => expect(region).toHaveTextContent('A new version is available.'));
-      expect(within(region).getByRole('link', { name: 'Update' })).toHaveAttribute('href', 'https://github.com/iignaite/Codemm/releases/tag/v1.2.0');
+      expect(within(region).getByRole('link', { name: 'Update' })).toHaveAttribute('href', 'https://github.com/shourovrm/code-learn/releases/tag/v1.2.0');
     } finally {
       vi.unstubAllGlobals();
     }

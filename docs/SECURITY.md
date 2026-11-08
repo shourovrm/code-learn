@@ -57,4 +57,4 @@ WASI has no processes, so there's nothing to fork. `code-learn doctor` runs a sm
 
 ## Reporting a problem
 
-Please report security issues privately to the maintainers of `iignaite/Codemm` rather than in a public issue.
+Please report security issues privately to the maintainers of `shourovrm/code-learn` rather than in a public issue.

@@ -186,7 +186,7 @@ describe('topic page and setup consent', () => {
     expect(dialog).toHaveTextContent('Setup runs code your agent wrote, with internet access. Graded runs are offline.');
     await user.click(within(dialog).getByText('Show the files'));
     expect(within(dialog).getByRole('region', { name: 'track.yaml' })).toHaveTextContent('nodejs=22');
-    expect(dialog).toHaveTextContent('The build stops after 10 minutes, and has no memory or CPU limit.');
+    expect(dialog).toHaveTextContent('Installing stops after 10 minutes and can use up to 4 GB of memory.');
 
     await user.click(within(dialog).getByRole('button', { name: 'Not now' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();

@@ -113,8 +113,8 @@ describe("TrackRecord", () => {
     expect(TrackRecord.parse({ ...base, toolchain })).toMatchObject({ toolchain });
   });
 
-  it("refuses a record without a toolchain, such as a Codemm Docker or WASI record, so it reads as damaged", () => {
-    expect(() => TrackRecord.parse({ ...base, image: "codemm-track-py:1", imageId: "sha256:x" })).toThrow();
+  it("refuses a record without a toolchain, such as an older Docker or WASI record, so it reads as damaged", () => {
+    expect(() => TrackRecord.parse({ ...base, image: "old-track-py:1", imageId: "sha256:x" })).toThrow();
     expect(() => TrackRecord.parse({ ...base, wasi: { sha256: "a".repeat(64), module: "python.wasm", dirs: {}, env: {} } })).toThrow();
   });
 });

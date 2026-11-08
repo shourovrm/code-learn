@@ -23,7 +23,7 @@ export function SetupConsent({ track, proposal, error, busy = false, onClose, on
         {error && <p className="alert" role="alert">{error}</p>}
         <details className="details">
           <summary>Show the files</summary>
-          <p className="quiet-text">The build stops after 10 minutes, and has no memory or CPU limit.</p>
+          <p className="quiet-text">Installing stops after 10 minutes and can use up to 4 GB of memory.</p>
           {proposal.files.map((f) => (
             <section key={f.path} aria-label={f.path}>
               <b>{f.path}</b>

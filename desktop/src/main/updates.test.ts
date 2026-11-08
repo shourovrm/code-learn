@@ -152,15 +152,15 @@ describe('updates', () => {
     it('refuses a signer name it cannot read plainly, so nothing inside it passes for the publisher', async () => {
       const refused = [
         'CN=Someone Else, OU="Other, CN=code-learn, O=code-learn, C=PH, X=tail", C=PH', // quoted text
-        'CN=Code\\mm', // a literal backslash, as Windows keeps it
+        'CN=code\\-learn', // a literal backslash, as Windows keeps it
         'CN=code-learn\\',
         'CN=code-learn, OU=Other + CN=Someone Else', // a multi-valued part
         'CN=code-learn, CN=Other', // a key named twice
         'CN=code-learn, O="code-learn, Inc."', // a quoted comma: refused too, the update is then installed by hand
         'CN=code-learn\uFEFF', // characters JavaScript would trim but Windows keeps
-        'CN=\uFEFFCodemm',
+        'CN=\uFEFFcode-learn',
         'CN=code-learn\u00A0',
-        'CN=Сodemm', // a Cyrillic С
+        'CN=сode-learn', // a Cyrillic с
       ];
       for (const subject of refused) {
         expect(await verifyWindowsSignature(['code-learn'], file, signed(subject))).toMatch(/signed by someone else/);

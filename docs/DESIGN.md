@@ -39,14 +39,11 @@ Each item is verified by an automated test unless marked *journey*. Journeys run
 | A15 | *Journey:* a learner gets an exercise, runs `test`, fails then passes `check`, and mastery, difficulty and `next_step` change as §7 says. |
 | A16 | *Journey:* Claude Code and Codex each complete an author round trip: tutor, then author subagent, then `save_exercise`, then the subagent replies to the tutor with the id only. Cursor is attempted; if it can't be run here, it's marked experimental. |
 
-### Supported matrix for 1.0
+### Supported matrix
 
-- **Desktop app:** macOS (Apple Silicon and Intel) and Windows 11 x64, with Docker Desktop. Its journeys with real agents on packaged builds (desktop D17 and D18) come before the private beta.
-- **Terminal, verified:** macOS with Docker Desktop (A14 to A16), and Linux in CI with Docker. Core unit tests also run on Windows in CI.
-- **No Docker (the WASI engine, §4.5):** the desktop app on macOS and Windows 11, for computers where Docker can't be installed (a school computer without admin rights). io exercises in interpreted languages only.
-- **Experimental:** Podman and other engines with a Docker-compatible CLI (Colima, Rancher Desktop, OrbStack), and terminal use on Windows through WSL 2. The code supports them, but they are not verified with a real agent. What they share with the verified engine is that the self-test (§4.3) proves the engine can mount code-learn's run folders.
-
-The desktop app, the private beta and the minimum model per agent are in scope for 1.0 ([desktop/DESIGN.md](desktop/DESIGN.md), [beta-plan.md](desktop/beta-plan.md)). The minimum models come from a small bench of the terminal flow ([bench/results.md](bench/results.md)); the desktop's per-job flow isn't benchmarked yet.
+- **Desktop app:** Linux x86_64 with a systemd user session and bubblewrap 0.9 or later, as an AppImage or a pacman package (§4.6).
+- **Terminal:** the same Linux computers, with Node.js 22 or later and micromamba 2.
+- **Agents:** Claude Code and Codex; Cursor is experimental.
 
 ### Deferred (not needed for 1.0)
 
@@ -56,7 +53,6 @@ The desktop app, the private beta and the minimum model per agent are in scope f
 - Practice hooks for Codex and Cursor in the terminal; protection is advisory there.
 - Multi-container tracks, course sharing, watch mode.
 - For heavy tests: per-exercise time limits (the track's `time_ms` applies to every exercise), running a check's test sets in parallel, a runner that stays warm across io cases (each case starts `run` afresh), and a unit `build` step timed apart from `test`.
-- For the WASI engine (§4.5): unit style, a build step (compiled languages), input generators, `.tar.xz` toolchains, a cap on unpacked size, and a wasmtime the terminal CLI downloads itself.
 - Publishing to npm. GitHub releases are built as drafts, and only the owner publishes them.
 
 ## 3. Files and ids
@@ -64,7 +60,7 @@ The desktop app, the private beta and the minimum model per agent are in scope f
 ```
 $CODE_LEARN_HOME (default ~/.code-learn)
   tracks/<id>@<version>/            installed track files + track.json (image id, styles)
-  proposals/<id>@<version>/<digest>/  a track proposed in the desktop app, awaiting consent (§4.4) + proposal.json
+  proposals/<id>@<version>/<digest>/  a track proposed in the desktop app, awaiting consent (§4.6) + proposal.json
   courses/<course>/
     course.json                     { format_version, title?, goal, track, style, concepts }
     exercises/<slug>/               full exercise + exercise.json (inventory, expected io outputs)
@@ -142,6 +138,8 @@ limits: { time_ms: 2000, memory_mb: 256 }   # optional; clamped to the host ceil
 - **Disclosure.** Visible results include messages and program output. Hidden results include only an index and a status (`{ name: "hidden #2", index: 2, status }`, built in one place, `grading.redact`): no messages, output or names leave code-learn, in tool output, CLI output or gate diagnostics. The reference is hidden code too, so its gate diagnostics carry no build output, errors or test messages (§6). That costs authors detail by design: in the desktop an author job has only code-learn's tools and can't build the reference itself, so each reference failure says which phase and which visible tests failed, and what to check.
 
 ### 4.3 Host-owned sandbox settings
+
+> The container flags below are replaced by bubblewrap and a systemd user scope (§4.6), flag for flag; the run folders, time and output ceilings and the limits table still hold.
 
 Every judge container gets:
 
@@ -222,140 +220,9 @@ Other ceilings:
 
 `Check` is `{ name, ok, detail, kind? }`: `kind` (`offline`, `disk`, `docker`) is the cause on this computer, as an error's kind is (§10), so a caller acts on it without reading the words.
 
-### 4.4 Installing a track (a separate trust boundary)
-
-**Building runs code the agent wrote, with network access**, much like running `npm install` from someone else's project.
-
-- **The trust point** is the learner approving the `save_track` call in their agent, or running `code-learn track add` themselves. code-learn's tool description says this plainly, and `init` never pre-approves it.
-- **In the desktop app** (`code-learn mcp --desktop`), `save_track` only proposes. It runs track gate 1 and asks the registry whether each base image in the Dockerfile exists, with one top-level manifest request each (`buildx imagetools inspect --raw`, side by side, so it costs one pull of Docker Hub's rate limit, not one per platform). A tag the registry says it doesn't have, or an official image (no namespace) that isn't there, is refused at once, naming it, so a guessed tag never costs the learner a consent or the agent a proposal. An answer it can't get (offline, no runtime or buildx, a namespaced or private repository it won't show) refuses nothing, and the build reports it. Then it stores the files as an immutable proposal named by their digest (SHA-256 over the file map sorted by path), replacing older proposals for the same `id@version`, and builds nothing. The learner consents in the app, and `installProposal(ref, digest)` re-reads the files under the track lock, refuses unless their digest is the one the learner was shown, checks that 5 GB is free under `$CODE_LEARN_HOME`, and installs exactly like `save_track`. A failed install keeps the proposal, so retrying needs no new consent. Approving a roadmap never builds anything.
-- **The build context** is a fresh folder holding only the track's files. No secrets, SSH agent or Docker socket are forwarded.
-- **The build** times out after 10 minutes and the process is killed. Build resource limits are not enforced in 1.0 (a known limitation).
-- **Install progress.** `installProposal(ref, digest, onProgress?)` reports each build step as counts only (`{ phase: "building", done, total }`, read from BuildKit's `#5 [2/7]`, the legacy builder's `Step 2/7 :` and Podman's `STEP 2/7:`), then `{ phase: "checking" }` before the probes. The build's output never leaves. A listener that throws is dropped, and the install goes on.
-- **Infrastructure failures.** A build that fails because the runtime is down or not answering, Docker's credential helper can't run, the network fails or the disk is full is reported as that, not as a gate failure, and installs nothing. The agent retries the same files instead of rewriting a correct track. Network failures are read from the build output, each with what may be behind it: a name or route that fails, or a proxy that refuses (offline, or a VPN, proxy or firewall), Docker Hub's pull rate limit (`toomanyrequests`), an intercepted certificate (one no trusted authority signed: a VPN, proxy or security software; an expired certificate, or one for another name, stays the track's), or a connection that timed out or dropped (`i/o timeout`, `TLS handshake timeout`, `net/http: request canceled`, a download's `unexpected EOF`; a compiler's `unexpected EOF` stays the track's). A build stopped at its 10-minute limit while its last line was a download's progress (`137MB / 174MB`, as a base image layer pulls) is a slow connection too; one stopped in the track's own commands is the track's. A gate failure never carries an infrastructure kind or code, whatever its details or output say.
-- **The image** is tagged `code-learn-track-<home>-<id>:<version>`, where `<home>` is the first 8 hex characters of the SHA-256 of the code-learn home's real path, so two homes on one Docker never share a tag. Its ID is stored in `track.json`, and checks use that ID. A track installed before this naming keeps its old tag, which only `track rebuild` uses. The ID is the one the build itself reports (`--iidfile`), never the tag looked up afterwards, so a concurrent build of the same tag can't swap the image being verified. Every check verifies that the ID still matches. If the image is missing or has changed, the check fails with "Run `code-learn track rebuild <id>@<version>`".
-- **Base images.** Each `FROM` should pin its image by digest (`image@sha256:…`). An unpinned `FROM` (other than `scratch` or an earlier stage) installs with a warning rather than failing a gate: checks run by the recorded image ID, and a rebuild that pulls a different base must pass every gate below, so an unpinned base can make a rebuild fail but can't change results silently.
-- **Rebuild** re-runs the track gates (the probe's speed as at install: a third), then re-runs exercise gates 2 to 6 for every stored exercise on the new image. io outputs must also equal the stored expected outputs, and unit inventories must match. Only then is the new image ID recorded. Otherwise rebuild fails and lists the exercises that changed. Nothing rebuilds silently.
-- **Locks.** Installs, rebuilds and exercise saves (from validation through commit) hold that track's lock, so an exercise can't be validated on an image that a rebuild is replacing.
-
-### 4.5 The WASI engine (no Docker)
-
-Some learners can't install Docker: a school computer without admin rights, for one. For them a track can run its code in a WebAssembly sandbox instead: [wasmtime](https://wasmtime.dev), run as the learner's own user, with no VM, no admin rights and no network. The track names a WASI build of its language's interpreter, as a Docker track names a base image. wasmtime is the sandbox, not a toolchain, so code-learn still ships no languages.
-
-- **Scope:** io style and interpreted languages. A WASI track has no `build` and no `test`, and its exercises have no input generators (`NN.gen` needs `sh`). The rest is deferred (§2).
-- **Where wasmtime comes from:** the path in `CODE_LEARN_WASMTIME`, else `wasmtime` on `PATH`. The desktop app bundles wasmtime 50 (pinned by SHA-256) and passes `CODE_LEARN_WASMTIME` to every core it runs, in its own process and in each MCP server it starts. code-learn asks `wasmtime --version` with a 10 s bound and needs major version 50. With no wasmtime, or another version, a WASI track's check fails with the infrastructure error `no-wasmtime` and records nothing.
-- **Engine choice is per track.** A track with a `wasi` block runs on wasmtime; any other runs on Docker. code-learn never converts one into the other.
-  - `listTracks()` and `listProposals()` say each track's engine (`engine: "docker" | "wasi"`), so the desktop never works it out from the files.
-  - This computer has Docker when a container CLI is installed (`containerCli()` finds `docker` or `podman`), running or not. Then the agent writes Docker tracks, and a stopped Docker is fixed by starting it.
-  - Without one, code-learn says so in its MCP server instructions, and the agent writes a WASI track. `save_track` refuses a Docker track on a computer with no container CLI but a working wasmtime, saying to write a WASI track.
-  - `next_step`'s author contract includes the track's `engine`, so authors know `NN.gen` isn't available.
-
-**Track contract.** `track.yaml` with a `wasi` block, and no Dockerfile:
-
-```yaml
-id: python-wasi
-version: 1
-styles: [io]
-files: [main.py]
-run: "/work/src/main.py"     # the module's arguments, split on spaces (no shell)
-limits: { time_ms: 3000, memory_mb: 256 }
-wasi:
-  url: https://github.com/brettcannon/cpython-wasi-build/releases/download/v3.15.1/python-3.15.1-wasi_sdk-33.zip
-  sha256: 252e2e17fab9f51a51fbfc73d51e18805cb633e9f9200c9753b4b801c70ad32c   # optional: of the downloaded file
-  module: python.wasm        # the module's path in the archive (or the file's name when url is a .wasm)
-  dirs: { /lib: lib }        # archive folders the module sees, read-only, by their path inside the sandbox
-  env: { PYTHONHOME: /, PYTHONDONTWRITEBYTECODE: "1" }
-```
-
-- `wasi` and a Dockerfile can't both be there. `styles` must be `[io]`; `build` and `test` are refused.
-- **`url`:** https, with no credentials. Its path ends in `.wasm`, `.zip` or `.tar.gz`.
-- **`sha256`:** optional, 64 lowercase hex digits. When it's given, the download must match it. When it isn't, code-learn records the digest it downloaded and installs with a warning, as for a base image not pinned by digest (§4.4). From then on, rebuilds must match the recorded digest. An agent in the desktop can't hash a file, so it may leave `sha256` out.
-- **`module` and each `dirs` value:** relative paths in the archive, following §3's file-map rules, and never `.`.
-- **Each `dirs` key:** matches `^(/[A-Za-z0-9._-]+)+$`, with no `.` or `..` part. A key can't be `/work` or under it, and no key can be under another.
-- **`env`:** at most 32 names matching `^[A-Z_][A-Z0-9_]*$`, each value at most 1 KB. Each one is always passed as `--env NAME=VALUE`.
-- **WASI has no working directory:** the program starts in `/`. So `run` names the learner's files by their full path under `/work/src`, and learner-facing messages shorten them as for Docker (§4.2).
-
-**Installing the toolchain.** This replaces the image build (§4.4); the probes and gates are the same.
-- **Download:**
-  - The fetch function is injectable. The desktop passes a fetch built on Electron's network stack (`net.request`), which uses the system's proxy settings and certificate store (school networks often need both); the CLI uses Node's `fetch`. Electron's own `net.fetch` can't be used: with `redirect: "manual"` it rejects ("Redirect was cancelled") in Electron 44.
-  - Redirects are followed by hand, at most 5, and every hop must be https.
-  - At most 256 MB. The file is hashed as it arrives.
-  - Failures:
-
-    | What happened | Result |
-    |---|---|
-    | 404 or 410 | Gate "toolchain" fails, naming the url |
-    | A `text/html` body, as from a school filter or captive portal | `offline`, saying a network filter may have answered |
-    | 429 | `rate-limit` |
-    | 5xx, or the name doesn't resolve | `offline` |
-    | A certificate problem | `tls` |
-    | A stalled download | `network-timeout` |
-    | A digest that doesn't match | Gate "toolchain" fails, naming both digests |
-
-- **Unpacking:**
-  - A `.wasm` is stored as it is. An archive is unpacked with the system's own `tar`, by absolute path (`/usr/bin/tar`, or `%SystemRoot%\System32\tar.exe`), through an argument array. On macOS and Windows that's bsdtar, which reads zip too.
-  - Linux's tar is usually GNU tar, which can't read zip, so a `.zip` there is unpacked with `/usr/bin/bsdtar`, else `/usr/bin/unzip -qq -o`. With neither, gate "toolchain" fails before downloading, saying to install unzip or link a `.tar.gz` of the same toolchain.
-  - The tool runs with no terminal (its own session on macOS and Linux), so an encrypted archive fails the gate at once instead of waiting for a password.
-  - Then a link, a special file, or a file with more than one hard link anywhere fails the install, and `module` and every `dirs` folder must exist.
-  - Unpacked size isn't capped, a known limitation as for Docker builds (§4.4): the learner's consent is the trust point. WASI installs check that 1.5 GB is free first.
-- **Precompiling:** wasmtime compiles the module once, at install: `wasmtime compile -W epoch-interruption=y <module> -o $CODE_LEARN_HOME/toolchains/compiled/<sha256>-<wasmtime version>.cwasm`.
-  - That file is outside the toolchain folder and never mapped into the sandbox.
-  - Checks run it with `--allow-precompiled -C cache=n`, so no case pays for compiling (3 to 7 s cold for CPython), and a cached module isn't hashed on every run.
-  - When the file for this wasmtime version is missing (a new wasmtime), it is compiled again under the track lock, before the check and outside its limits.
-- **Storing:**
-  - The temp folder's root stays writable and is never mapped, since a `dirs` value is never `.`. Everything under it is sealed read-only (below).
-  - The temp folder is then renamed to `$CODE_LEARN_HOME/toolchains/<sha256>/`, which every track naming that file shares. A rename that finds the folder already there (another track installed it) counts as done.
-  - Rebuild downloads again into a temp folder and replaces the digest's folder under a lock for that digest, so a damaged folder can be repaired.
-  - **Leftovers.** The temp folder (`.staging-<pid>-…`), the download beside it, and an old folder set aside to be removed (`.discard-<pid>-…`) carry their owner's PID, as run folders do (§4.3). Each install starts by unsealing and removing those whose owner process is gone, so a crash mid-install doesn't leave sealed files behind for good. A live process's entries, links and anything else in `toolchains/` are never touched.
-- **Progress:** `{ phase: "downloading" }`, then `{ phase: "checking" }` before the probes.
-- **In the desktop app,** `save_track` runs gate 1 and asks whether the url answers. It reads the headers only, as the base-image check does for Docker. A url the server says isn't there is refused at once; an answer it can't get refuses nothing. Nothing is downloaded until the learner consents.
-- **track.json:** a WASI track has no `image` or `imageId`. It stores `wasi: { sha256, module, dirs, env }`, where `sha256` is the digest actually downloaded. A code-learn older than this reports such a track.json as damaged (§11).
-
-**Running a check.** There is one wasmtime process per io case. Visible and hidden sets each get their own run folder (§4.3), as with Docker.
-- **Before each set,** code-learn checks that wasmtime is version 50, and that the toolchain folder, every `dirs` folder and the compiled module exist. A missing toolchain is kind `image-missing` ("Run `code-learn track rebuild <id>@<version>`"). Once these pass, every exit is the program's.
-- **The program sees two kinds of folder,** with each `--dir` at its sandbox path: each toolchain folder in `dirs`, and the run folder's `src` at `/work/src`.
-- **Tests are never mapped.** The host reads each case's input and writes it to the program's stdin.
-- **Nothing is writable:**
-  - wasmtime's CLI maps every folder read-write (wasmtime 50 has no read-only option), so the operating system enforces it.
-  - One helper in `src/wasi.ts` seals a folder's contents: files 0444, and folders 0555 on macOS and Linux.
-  - On Windows a folder's mode doesn't stop new files, and its read-only attribute stops wasmtime opening it, so folders keep their mode. Instead, each mapped folder gets one inherited deny entry: `%SystemRoot%\System32\icacls.exe <dir> /deny *S-1-1-0:(OI)(CI)(WD,AD,WEA,WA,DC)`. This blocks creating files and folders, writing, changing attributes, and deleting children. The folder's owner needs no admin rights for it.
-  - **The rights are named one by one, and `DELETE` is never denied.** Each of these would stop the folder or its files opening at all:
-    - the shorthand `W`, which also denies `SYNCHRONIZE` and `READ_CONTROL`, asked for by every open;
-    - `DELETE`, which wasmtime asks for when it opens a folder, and wasmtime and Node both ask for when they open a file, even to read it.
-  - **Files still can't be deleted or renamed** without `DELETE` denied. A read-only file can't be deleted while its attributes can't be changed (`WA`), and deleting through its parent needs `DC`. A rename needs `WD` or `AD` on the destination folder.
-  - **CI proves each case on Windows without admin privileges:** create, truncate, mkdir, unlink, rename, and deleting a folder that holds files.
-  - **What's left:** a folder that was already empty may still be deleted.
-  - **Running as root on macOS or Linux is refused.** Root ignores mode bits, so a seal can't hold. After sealing, code-learn checks that the folder really isn't writable (`access(W_OK)`). If it still is, that's `wasi-seal`, with a message to run code-learn as yourself.
-  - The toolchain is sealed at install. A run folder's `src` is sealed before the start, and unsealed only to be removed, including by the leftover sweep.
-  - A seal that fails is the infrastructure error `wasi-seal` ("code-learn couldn't make its files read-only on this disk"), so a folder on a disk without permissions (FAT, exFAT) fails closed. `doctor` runs a canary module that must fail to create a file in a sealed, mapped folder.
-- **Limits:**
-  - `-W max-memory-size=<memory_mb × 2^20>`;
-  - `-W timeout=<time_ms>ms`, backed by a host kill one second later.
-  - A case timed out when the host killed it, or when it exited non-zero after at least `time_ms` of wall time. It's framed as Docker's time-outs are (§4.3), with exit 137 and a `timeout` frame.
-- **Isolation:**
-  - no network (`-S inherit-network=n,tcp=n,udp=n,allow-ip-name-lookup=n`);
-  - only `wasi.env` inside the sandbox;
-  - wasmtime itself starts with an empty environment (on Windows, only `SystemRoot`), so no `WASMTIME_*` or `RUST_*` setting reaches it.
-- **Output:**
-  - stdout and stderr together are capped at the per-case limit (§4.2), as `sandbox.ts` counts them. Over it, the process is killed and the case is `big`.
-  - stderr keeps its first 4 KB and the rest is drained, so a program that prints a lot of errors isn't stopped by a full pipe.
-  - stdout is held until the case ends, at most the per-case limit, since a frame's header needs its size.
-- **Frames:** the host writes the same frames the Docker driver writes (§4.2) into the same frame reader. So grading, progress, digests and disclosure are unchanged, and since the host writes every frame, the program can't forge one.
-- **Exit codes:**
-  - the program's own exit code is graded as for Docker;
-  - a wasm trap (wasmtime exits non-zero) is `error`, and wasmtime's backtrace is left out of what the learner sees, which uses §4.2's words;
-  - a program that hits the memory limit fails its own allocation (a `MemoryError`, or a trap), which is `error`, with its message shown for visible tests only.
-
-**Run** (the learner's program, interactively) uses the same flags and checks: stdin is piped, the time limit is 120 s, and no tests are involved.
-
-**Security.**
-- **What wasmtime gives:** it is the sandbox, with memory-safe isolation and access only to the folders it is given. Compared with the Docker sandbox (§4.3), the program has no network, no processes and no writable path.
-- **Not limited:** CPU count, since a WASI module runs on one thread. Also file timestamps: on macOS and Linux the owner can set a read-only file's times, a tiny channel between runs that is accepted.
-- **On a signed macOS build,** the bundled wasmtime needs the hardened runtime's `com.apple.security.cs.allow-unsigned-executable-memory` entitlement to map compiled code; `allow-jit` alone fails ("unable to make memory executable").
-- **What `doctor` shows:** both engines. With no container runtime but wasmtime present, the missing runtime isn't a failure.
-
 ### 4.6 The native engine (code-learn, Linux)
 
-code-learn is a Linux-only fork of [Codemm](https://github.com/iignaite/Codemm) 1.0.0-beta.10 that replaces the Docker engine (§4.3, §4.4) and the WASI engine (§4.5) with one native engine. A track's language is installed on the learner's computer into its own folder, `$CODE_LEARN_HOME/envs/<id>@<version>/`, by micromamba from conda-forge, and every check runs in a bubblewrap sandbox. Removing a track deletes that folder and nothing else on the computer changes. Until the removal phase lands, the Docker and WASI sections above still describe the code; they are deleted with it.
+code-learn runs on Linux only, with one native engine in place of a container engine. A track's language is installed on the learner's computer into its own folder, `$CODE_LEARN_HOME/envs/<id>@<version>/`, by micromamba from conda-forge, and every check runs in a bubblewrap sandbox. Removing a track deletes that folder and nothing else on the computer changes.
 
 **Why these tools.**
 - micromamba is one static binary that installs conda packages into any folder without root. conda-forge has prebuilt interpreters, compilers and test tools for most languages (Python, Node, Java, GCC, Rust, Go, Ruby and their test runners), so one package manager serves every track, and code-learn still ships no languages: the track names its packages.
@@ -367,7 +234,7 @@ code-learn is a Linux-only fork of [Codemm](https://github.com/iignaite/Codemm) 
 - `bwrap` 0.9 or later (for `--size`), with unprivileged user namespaces enabled;
 - a systemd user session that delegates the `memory`, `pids` and `cpu` controllers (the default on current desktop distributions);
 - `/usr/bin/sh` with `timeout`, `sleep`, `head`, `wc`, `cat` and `basename` (the driver's tools, §4.2);
-- micromamba 2: the path in `CODE_LEARN_MICROMAMBA`, else `micromamba` on `PATH`. The desktop app bundles a pinned micromamba and passes `CODE_LEARN_MICROMAMBA`, as Codemm passed its wasmtime path.
+- micromamba 2: the path in `CODE_LEARN_MICROMAMBA`, else `micromamba` on `PATH`. The desktop app bundles a pinned micromamba and passes `CODE_LEARN_MICROMAMBA`.
 
 **Track contract.** A `toolchain` block replaces the Dockerfile:
 
@@ -396,12 +263,12 @@ toolchain:
 - `env`: optional, at most 32 names matching `^[A-Z_][A-Z0-9_]*$`, each value at most 1 KB. Names the sandbox sets itself (`PATH`, `HOME`, `TRACK`, `TESTS`, `OUT` and every `CODE_LEARN_*`) are refused.
 - A track with a `Dockerfile` or a `wasi` block is refused, saying to write a `toolchain` block.
 
-**Installing a track.** This replaces the image build (§4.4). The probes and gates that follow are unchanged.
+**Installing a track.** The probes and gates of §6 follow.
 1. Check that 5 GB is free under `$CODE_LEARN_HOME`.
 2. Make a staging folder `$CODE_LEARN_HOME/envs/.staging-<pid>-<random>/` with `env/` and `track/`, and copy the track's files (all but `track.yaml`) into `track/`. The probes are included, so `setup` can run the track's own build once on the pass probe to cache its dependencies; every author receives the probes anyway.
 3. Run micromamba in an install sandbox: the sandbox below, but with the network shared, `/etc/resolv.conf`, `/etc/hosts`, `/etc/nsswitch.conf` and the system certificate folders mounted read-only, staging `env/` writable at `/opt/env`, staging `track/` writable at `/opt/track`, the package cache `$CODE_LEARN_HOME/pkgs` writable at `/opt/pkgs`, and micromamba read-only at `/opt/micromamba`. Command: `/opt/micromamba create -y -p /opt/env --override-channels -c conda-forge <packages...>` with `MAMBA_ROOT_PREFIX=/opt/pkgs`.
 4. Run `setup`, if any, in the same install sandbox.
-5. Steps 3 and 4 share one 10 minute limit (§4.3's track build), 4 GB of memory and 1024 processes. Their log is streamed as build progress and capped as a Docker build's was.
+5. Steps 3 and 4 share one 10 minute limit (the track install limit in §4.3), 4 GB of memory and 1024 processes. Their log is streamed as build progress and capped as a Docker build's was.
 6. Rename the staging folder to `envs/<id>@<version>/`. A rebuild renames the old folder aside first (`.discard-<pid>-<random>`), then removes it.
 7. `track.json` records `toolchain: { packages, setup, env, resolved }`, where `resolved` is the sorted list of installed package file names from `env/conda-meta/` (for example `python-3.13.9-h9e4cba3_100_cp313`). It takes the place of the image ID.
 
@@ -449,19 +316,19 @@ The learner's home folder, `$CODE_LEARN_HOME` and the rest of the computer are n
 - It can read the host's `/usr`, where a container saw only its image. `/usr` holds system programs and libraries, not personal data.
 - It can't see home folders, other users' files, the network, hidden tests of another set, or code-learn's store.
 - §4.2's known limitation stays: a program can forge frames through `/proc/<driver>/fd`. Grading remains honor-system.
-- The install sandbox has network access and runs the track's `setup` and the packages' own install scripts. It can write only the staging folder and the package cache. The learner's consent before an install (§4.4) is still the trust point.
+- The install sandbox has network access and runs the track's `setup` and the packages' own install scripts. It can write only the staging folder and the package cache. The learner's consent before an install (§4.6) is still the trust point.
 
 **The desktop app on Linux.** The app is Linux x86_64 only, shipped as an AppImage and a pacman package. Its Docker Desktop, WSL, macOS and Windows code is removed. The changes to its API (`desktop/src/shared/api.ts`):
 - "Check this computer" has two checks in order: `sandbox` (bubblewrap 0.9 or later and a reachable systemd user session, core `sandboxDown`) and `isolation` (core doctor's self-test). A failed `sandbox` check carries core's message and, when bubblewrap is missing, the install command for this distribution, read from `ID` and `ID_LIKE` in `/etc/os-release`: `sudo pacman -S bubblewrap` (Arch and derivatives), `sudo apt install bubblewrap` (Debian, Ubuntu), `sudo dnf install bubblewrap` (Fedora), `sudo zypper install bubblewrap` (openSUSE). The app runs no command as root. `Computer` is `{ checks, ready }`; `installDocker`, `openDocker`, `openWindowsUpdate` and `restartWindows` are removed, and so is the WASI fallback.
 - The bundled micromamba (pinned by SHA-256, from the micromamba-releases project on GitHub) replaces the bundled wasmtime. The app passes `CODE_LEARN_MICROMAMBA` to its core and to every MCP server it starts.
 - "Not counted" reasons and setup problems use core's kinds: `sandbox`, `sandbox-busy` (`check-timeout`), `disk` and `offline`. The Docker and WASI reasons are removed.
 - Tracks gains a **Remove** action (core `removeTrack`), refused with core's message while a course uses the track.
-- Automatic updates are off until code-learn publishes its own releases; the update check never contacts Codemm's releases.
+- Automatic updates are off until code-learn publishes its own releases; without a configured feed the update check contacts nothing.
 
 **Phases.** Each phase keeps the build, type check and tests green:
 1. The native engine in the core, with tests that run real bubblewrap.
 2. Remove the Docker and WASI engines and their tests from the core, in the same change as phase 1: Docker can't be tested on a computer without it, so the two engines never coexist.
-3. Rename Codemm to code-learn: the `code-learn` command, `CODE_LEARN_*` variables, `~/.code-learn`, the `code-learn` MCP server, and code-learn as the desktop app's name. (Done before phase 1.)
+3. Name everything code-learn: the `code-learn` command, `CODE_LEARN_*` variables, `~/.code-learn`, the `code-learn` MCP server, and code-learn as the desktop app's name. (Done before phase 1.)
 4. Desktop: Linux only (AppImage and pacman package); drop Docker Desktop, WSL and the macOS and Windows code; bundle micromamba; a computer check for the requirements above; a Remove action for tracks.
 5. Journey: a real agent installs a Python and a Java track and passes an exercise in each, from the packaged app.
 
@@ -630,7 +497,7 @@ The MCP tools and CLI commands are thin calls into one application module.
 | Tool | Input | Output |
 |---|---|---|
 | `list_tracks` | — | installed tracks: id, version, styles |
-| `save_track` | `files` | `{ installed: "id@v", warning? }` or diagnostics; with `--desktop`, `{ proposed: "id@v", note }` (§4.4) |
+| `save_track` | `files` | `{ installed: "id@v" }` or diagnostics; with `--desktop`, `{ proposed: "id@v", note }` (§4.6) |
 | `save_roadmap` | `course`, `roadmap` (YAML text) | ok or errors |
 | `get_roadmap` | — | `{ course, title?, goal, track?, style, concepts, sources? }`; concepts have `id`, `title`, `requires` and optional `practice`, `pitfalls`, `refs` |
 | `next_step` | — | `setup` / `review` / `practice` / `author` / `learn` / `stuck` / `done`; `learn` carries `concept` and `lesson` (null or the earliest unread id); `author` carries the concept's `title`, optional `practice` and `pitfalls`, `style`, and for code `track` and the track's `contract` (learner `files`, the `build`/`run` or `test` command, `limits`, and `examples`: the track's passing probe solution and its tests), and, when there are any, `lessonText` (the concept's lessons, newest first, at most 32 KB) and `last` (the learner's last check on the concept as its `exercise`, `passed`, `total`, `assisted` and optional `missed`: visible names and hidden indexes, as in §7) |
@@ -681,7 +548,7 @@ The MCP tools and CLI commands are thin calls into one application module.
 - **A container the runtime refused** (`docker run` exit 125) is named in code-learn's own words from the CLI's error: fewer CPUs than the check's 2, a logging driver that refuses the log options, a folder Docker Desktop doesn't share, Docker's disk, the network. The error text itself never leaves, since code that had started can write to the same stream. Exit 126 or 127 before the driver printed anything is the track image's: it can't run `/bin/sh`.
 - **A flood** is graded even when removing its container was slow.
 - **Locks** (per course and per track): the file is created exclusively and records the owner's PID. A lock whose PID is no longer running is stale and removed. A second writer waits up to 10 minutes, then gets "Course is busy; retry."
-- **Leftover containers:** found by the `code-learn=1` label. Each container also carries its owner's PID (`code-learn.pid`). `doctor --fix` removes only containers whose owner is gone, verifies they're gone, and reports listing or removal failures. Run folders (§4.3) are owner-aware the same way: the next run removes those of a process that is gone. So are a WASI install's temp folders (§4.5): the next install removes them.
+- **Leftover sandboxes:** each scope is named `code-learn-<owner pid>-<random>`. `doctor --fix` stops the scopes whose owner process is gone, and every install removes staging folders (`envs/.staging-<pid>-…`) whose owner is gone (§4.6).
 - **Reading Docker's answers.** code-learn reads Docker's records (`image inspect`, `inspect`) as JSON (`--format '{{json .}}'`) and picks fields in code, never with a template that names a key: Docker versions leave out empty keys (Docker 29 drops `Config.Volumes` when an image declares none), and a template that names a missing key fails. One reader (`inspectRecord`) takes Docker's and newer Podman's one-line record and Podman 4.3's indented array. CI runs the Docker tests on the runner's Docker and on the newest Docker Engine.
 - **`doctor`'s network check** passes only when an ordinary container reaches the test server and the sandbox doesn't. The test server runs in an ordinary container, not on the host, so a host firewall (on by default on many Macs, and asking on Windows) never decides the result. Before that, the test image must download (offline is `kind: "offline"`) and a staged run folder must mount and read back (§4.3). Anything else is reported as a failure ("inconclusive"), never as success.
 - **Unexpected errors** reach tools and the CLI only as a generic message; details appear with `CODE_LEARN_DEBUG=1`. Damaged records are reported by file name, never by content.
@@ -694,7 +561,6 @@ The MCP tools and CLI commands are thin calls into one application module.
 - **No migration.** v1 progress is not imported: v1 concepts were free-text tags, and 1.0 concepts are roadmap ids.
 - **Coexistence.** 1.0 writes `code-learn.json` and `exercises/` in a workspace and `~/.code-learn/{tracks,courses}`. None of these collide with v1's files.
 - **Rollback.** `docs/MIGRATION.md` gives tested steps to run v1 from commit `5e3f3a7` in a separate checkout (`git worktree add`, `npm ci`, `npm run dev`). The repo-level rollback is reverting the 1.0 merge commit.
-- **WASI tracks (§4.5)** add optional fields to `track.json` and keep `format_version: 1`: every Docker track.json loads unchanged. Going back to an older code-learn, a WASI track's track.json reads as damaged and its course stops until the newer code-learn returns; Docker tracks are unaffected.
 - **Future format changes** must migrate forward and keep a backup of the original files.
 
 ## 12. Tests
@@ -718,12 +584,12 @@ The MCP tools and CLI commands are thin calls into one application module.
 
 | Finding | Resolution |
 |---|---|
-| F01 build security | §4.4 trust boundary, staged context, no secrets, timeout; build resource limits listed as a known limitation |
+| F01 build security | §4.6 trust boundary, staged context, no secrets, timeout; build resource limits listed as a known limitation |
 | F02 symlinks and paths | §3 no symlinks in input, fresh temp folders, guarded materialization; §4.2 no output mount |
 | F03 resource exhaustion | §4.2 and §4.3 host ceilings, capped streaming output, log cap, input size limits |
 | F04 image behavior | §4.2 entrypoint override, utility check, `kill -9 -1` between cases; §4.3 no healthcheck, volumes rejected, host deadline |
 | F05 unit grading | §4.2 report contract, exit-code rule, fixed inventory |
-| F06 reproducibility | §4.4 pinned image ID and explicit rebuild; §5 courses pin `track@version` |
+| F06 reproducibility | §4.6 pinned image ID and explicit rebuild; §5 courses pin `track@version` |
 | F07 atomicity and concurrency | §6 commit point and re-materialization; §10 locks |
 | F08 roadmap contract | §5 schema and replacement rules |
 | F09 event semantics | §7 `check`/`skip` events and ordered rules; stuck before practice |
@@ -744,8 +610,8 @@ The MCP tools and CLI commands are thin calls into one application module.
 |---|---|
 | F03 build allowance, output cap | §4.2 60 s build limit; §4.3 kill and error at 4 MB |
 | F04 unit set transition | §4.2 one container per test set |
-| F06 rebuild | §4.4 rebuild re-validates every stored exercise before recording the new image |
-| F07 track locks, lock expiry | §4.4 per-track lock; §10 PID-based staleness instead of age |
+| F06 rebuild | §4.6 rebuild re-validates every stored exercise before recording the new image |
+| F07 track locks, lock expiry | §4.6 per-track lock; §10 PID-based staleness instead of age |
 | F10 identical partial retries | §7 mastery moves only on a first check or an improved best score |
 | F11 assistance across workspaces | §7 `assist` events in the course log |
 | F12 torn final line | §7 back up and repair before the next append |
@@ -783,7 +649,7 @@ A14's person-check became a release step (above).
 | Item | Resolution |
 |---|---|
 | F03 stderr outside the limit | §4.3 stdout and stderr counted together; container output is framed and bounded |
-| F06 rebuild could keep a weakened exercise | §4.4 rebuild re-runs exercise gates 2 to 6 |
-| F07 rebuild racing an exercise save | §4.4 exercise saves hold the track lock |
+| F06 rebuild could keep a weakened exercise | §4.6 rebuild re-runs exercise gates 2 to 6 |
+| F07 rebuild racing an exercise save | §4.6 exercise saves hold the track lock |
 | F11 assist across exercise switches | §7 an `assist` event for every exercise made current or checked while assist mode is on |
 | F12 contradictory classification | §4.3 termination-reason table |
