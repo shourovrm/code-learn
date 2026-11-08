@@ -5,15 +5,18 @@ import * as app from "../src/app.js";
 import { readFileMap } from "../src/files.js";
 import { learnerPathStream, runMarkers, runProgram } from "../src/program.js";
 import { runsDir } from "../src/runs.js";
-import { sandboxArgs } from "../src/sandbox.js";
-import { parseTrackYaml } from "../src/schemas.js";
+import { hostLayout, sandboxArgs } from "../src/sandbox.js";
 import * as store from "../src/store.js";
-import { fakeDocker, posix } from "./fake-docker.js";
+import { installFixtureTrack } from "./installed-track.js";
+import { sandboxReady } from "./sandbox-ready.js";
 import { tempDir } from "./temp.js";
 
 /** Run: the learner's io program, interactively, in the sandbox. Never recorded. */
 
 const fixtures = join(import.meta.dirname, "fixtures");
+
+/** A program that runs out of memory: its string doubles until the sandbox's memory limit kills it. */
+const MEMORY_HOG = `awk 'BEGIN { s = "x"; while (1) s = s s }'\n`;
 
 beforeEach(() => {
   vi.stubEnv("CODE_LEARN_HOME", tempDir("code-learn-home-"));
@@ -24,19 +27,20 @@ afterEach(() => {
 });
 
 describe("interactive run: the sandbox", () => {
-  it("keeps every isolation flag, and adds only an open stdin", () => {
-    const base = { image: "img", script: "true", env: {}, mounts: [], memoryMb: 128, deadlineMs: 1000 };
-    const plain = sandboxArgs(base, "n", "1:1");
-    const interactive = sandboxArgs({ ...base, stdin: true }, "n", "1:1");
-    expect(interactive.filter((a) => !plain.includes(a))).toEqual(["-i"]);
-    expect(interactive).toEqual(expect.arrayContaining(["--network", "none", "--read-only", "--cap-drop", "ALL"]));
+  it("keeps every isolation flag, and an open stdin changes none of them", () => {
+    const base = { command: ["true"], env: {}, mounts: [], memoryMb: 128, deadlineMs: 1000 };
+    const plain = sandboxArgs(base, "unit", hostLayout());
+    const interactive = sandboxArgs({ ...base, stdin: true }, "unit", hostLayout());
+    // Typed input is a pipe to the sandbox's process, not a bubblewrap option.
+    expect(interactive).toEqual(plain);
+    expect(interactive).toEqual(expect.arrayContaining(["--unshare-all", "--die-with-parent", "--new-session", "--as-pid-1", "--clearenv"]));
+    expect(interactive).not.toContain("--share-net");
   });
 });
 
-describe.runIf(posix)("interactive run", () => {
+describe.runIf(sandboxReady())("interactive run", () => {
   it("sends typed lines to the program and streams what it prints, recording nothing", async () => {
-    const ws = await installedExercise();
-    fakeDocker("interactive");
+    const ws = await installedExercise(`printf 'name? '; read -r name; echo "hello $name"; echo "a warning" >&2\n`);
     const out = { stdout: "", stderr: "" };
     const run = await app.runInteractive(ws, undefined, undefined, (text, stream) => (out[stream] += text));
     run.write("Ada\n");
@@ -46,8 +50,7 @@ describe.runIf(posix)("interactive run", () => {
   });
 
   it("ends the program's input when asked, so one that reads until the end finishes", async () => {
-    const ws = await installedExercise();
-    fakeDocker("untileof");
+    const ws = await installedExercise(`n=0; while read -r line; do n=$((n+1)); done; echo "read $n lines"\n`);
     let stdout = "";
     const run = await app.runInteractive(ws, undefined, undefined, (text, stream) => (stream === "stdout" ? (stdout += text) : undefined));
     run.write("3\n");
@@ -60,16 +63,16 @@ describe.runIf(posix)("interactive run", () => {
   });
 
   it("says when each stage starts, with its time limit", async () => {
-    const ws = await installedExercise();
-    fakeDocker("interactive");
+    const ws = await installedExercise("echo done\n");
     const starts: string[] = [];
     const run = await app.runInteractive(ws, undefined, undefined, () => undefined, { limitMs: 5_000, onStart: (stage, limitMs) => starts.push(`${stage} ${limitMs}`) });
-    run.write("Ada\n");
     await run.done;
-    expect(starts).toEqual(["run 5000"]);
-    fakeDocker("buildtimesout");
-    await (await app.runInteractive(ws, undefined, undefined, () => undefined, { buildLimitMs: 2_000, onStart: (stage, limitMs) => starts.push(`${stage} ${limitMs}`) })).done;
-    expect(starts).toEqual(["run 5000", "build 2000"]);
+    // The fixture track builds first, with the default build limit of 60 s.
+    expect(starts).toEqual(["build 60000", "run 5000"]);
+    const slowBuildStarts: string[] = [];
+    useBuild("sleep 5");
+    await (await app.runInteractive(ws, undefined, undefined, () => undefined, { buildLimitMs: 500, onStart: (stage, limitMs) => slowBuildStarts.push(`${stage} ${limitMs}`) })).done;
+    expect(slowBuildStarts).toEqual(["build 500"]);
   });
 
   it("names the run command for an io exercise, so the app can show it", async () => {
@@ -78,67 +81,55 @@ describe.runIf(posix)("interactive run", () => {
   });
 
   it("stops the program when asked", async () => {
-    const ws = await installedExercise();
-    fakeDocker("waits");
+    const ws = await installedExercise("sleep 30\n");
     const run = await app.runInteractive(ws, undefined, undefined, () => undefined);
     run.kill();
     expect(await run.done).toMatchObject({ stopped: true, timedOut: false });
   });
 
   it("stops a program that runs past the time limit", async () => {
-    const ws = await installedExercise();
-    // No build step, so the host deadline is the run limit plus a little (the fake ignores `timeout`).
-    store.writeTrackRecord("shell-io@1", { ...store.readTrack("shell-io@1")!, build: undefined } as never);
-    fakeDocker("waits");
+    const ws = await installedExercise("sleep 30\n");
     const run = await app.runInteractive(ws, undefined, undefined, () => undefined, { limitMs: 300 });
     expect(await run.done).toMatchObject({ timedOut: true });
   });
 
   it("knows a timeout from the driver's deadline marker, not from timing or an exit code: build or run", async () => {
     const ws = await installedExercise();
-    const result = async (scenario: Parameters<typeof fakeDocker>[0]) => {
-      fakeDocker(scenario);
-      return (await app.runInteractive(ws, undefined, undefined, () => undefined)).done;
+    const result = async (program: string, options: { limitMs?: number; buildLimitMs?: number } = {}) => {
+      writeProgram(ws, program);
+      return (await app.runInteractive(ws, undefined, undefined, () => undefined, options)).done;
     };
-    expect(await result("quickkill")).toMatchObject({ exit: 137, stage: "run", timedOut: false });
-    expect(await result("exits138")).toMatchObject({ exit: 138, stage: "run", timedOut: false });
-    expect(await result("timesout")).toMatchObject({ stage: "run", timedOut: true });
-    expect(await result("buildtimesout")).toMatchObject({ stage: "build", timedOut: true });
+    // A program that kills itself, or exits 138, ends like a timeout would, but the driver never said time was up.
+    expect(await result("kill -9 $$\n")).toMatchObject({ exit: 137, stage: "run", timedOut: false });
+    expect(await result("exit 138\n")).toMatchObject({ exit: 138, stage: "run", timedOut: false });
+    expect(await result("sleep 30\n", { limitMs: 300 })).toMatchObject({ stage: "run", timedOut: true });
+    useBuild("sleep 30");
+    expect(await result("echo hi\n", { buildLimitMs: 300 })).toMatchObject({ stage: "build", timedOut: true });
   });
 
   it("says the program ran out of memory when the runtime killed it for memory, though the driver went on", async () => {
-    const ws = await installedExercise();
-    fakeDocker("childoom");
+    const ws = await installedExercise(MEMORY_HOG);
+    useMemoryLimit(64);
     const run = await app.runInteractive(ws, undefined, undefined, () => undefined);
     expect(await run.done).toMatchObject({ exit: 137, outOfMemory: true, timedOut: false });
   });
 
-  it("reports what the program printed and its exit code as its own, even when they look like Docker's", async () => {
-    const ws = await installedExercise();
-    fakeDocker("forges");
+  it("reports what the program printed and its exit code as its own, even when they look like the runtime's", async () => {
+    const ws = await installedExercise(`echo "error waiting for container: unexpected EOF" >&2; exit 125\n`);
     let err = "";
     const run = await app.runInteractive(ws, undefined, undefined, (text, stream) => stream === "stderr" && (err += text));
     expect(await run.done).toMatchObject({ exit: 125, timedOut: false });
     expect(err).toBe("error waiting for container: unexpected EOF\n");
   });
 
-  it("says the program ran out of memory when the runtime killed its container for it", async () => {
-    const ws = await installedExercise();
-    fakeDocker("oom");
-    const run = await app.runInteractive(ws, undefined, undefined, () => undefined);
-    expect(await run.done).toMatchObject({ outOfMemory: true });
-  });
-
   it("reports a program's own exit 124 as its exit, not a timeout", async () => {
-    const ws = await installedExercise();
-    fakeDocker("exits124");
+    const ws = await installedExercise("exit 124\n");
     const run = await app.runInteractive(ws, undefined, undefined, () => undefined);
     expect(await run.done).toMatchObject({ exit: 124, timedOut: false });
   });
 
   it("bounds typed input a program isn't reading, instead of buffering it without limit", async () => {
-    const ws = await installedExercise();
-    fakeDocker("ignores");
+    const ws = await installedExercise("sleep 30\n");
     const run = await app.runInteractive(ws, undefined, undefined, () => undefined);
     const line = "x".repeat(1023) + "\n";
     let accepted = 0;
@@ -151,33 +142,27 @@ describe.runIf(posix)("interactive run", () => {
   });
 
   it("keeps characters split across output chunks whole", async () => {
-    const ws = await installedExercise();
-    fakeDocker("euro");
+    // The euro sign is three bytes; the program prints its first byte, pauses, then the other two.
+    const ws = await installedExercise(`printf '\\342'; sleep 0.2; printf '\\202\\254\\n'\n`);
     let out = "";
     const run = await app.runInteractive(ws, undefined, undefined, (text) => (out += text));
     await run.done;
     expect(out).toBe("€\n");
   });
 
-  it("treats a dropped connection to Docker as an infrastructure failure, not a program result", async () => {
-    const ws = await installedExercise();
-    fakeDocker("drops");
-    const run = await app.runInteractive(ws, undefined, undefined, () => undefined);
-    await expect(run.done).rejects.toThrow(/container runtime/i);
-  });
-
   it("leaves no run folder behind, whatever happens", async () => {
-    const ws = await installedExercise();
+    const ws = await installedExercise(`read -r x; echo "hello $x"\n`);
     // This test's own code-learn home (stubbed above), so other test runs on the machine can't add folders.
     const runs = () => readdirSync(runsDir());
-    fakeDocker("interactive");
     const ok = await app.runInteractive(ws, undefined, undefined, () => undefined);
     ok.write("Ada\n");
     await ok.done;
-    fakeDocker("drops");
-    await (await app.runInteractive(ws, undefined, undefined, () => undefined)).done.catch(() => undefined);
-    fakeDocker("missing");
-    expect(() => runProgram({ image: "img", run: "sh main.sh", limits: { time_ms: 1000, memory_mb: 64 } }, { "main.sh": "" }, () => undefined)).toThrow();
+    const stopped = await app.runInteractive(ws, undefined, undefined, () => undefined);
+    stopped.kill();
+    await stopped.done;
+    // Files the sandbox can't be given: the run folder is staged first, and goes again when staging fails.
+    const track = store.judgeTrack(store.readTrack("shell-io@1")!);
+    expect(() => runProgram(track, { "../escape.sh": "" }, () => undefined)).toThrow();
     expect(runs()).toEqual([]);
   });
 
@@ -185,18 +170,29 @@ describe.runIf(posix)("interactive run", () => {
     const ws = await installedExercise();
     const track = store.readTrack("shell-io@1")!;
     store.writeTrackRecord("shell-io@1", { ...track, run: undefined, styles: ["unit"], test: "true" } as never);
-    fakeDocker("interactive");
     await expect(app.runInteractive(ws, undefined, undefined, () => undefined)).rejects.toThrow(/no run command/);
   });
 });
 
-/** A workspace whose io exercise is installed (with a fake image) and edited. */
-async function installedExercise(): Promise<string> {
+/** Where the learner's program is in a workspace made by installedExercise. */
+const programPath = (workspace: string) => join(workspace, "exercises", "shell", "max-of-line", "main.sh");
+const writeProgram = (workspace: string, program: string) => writeFileSync(programPath(workspace), program);
+
+/** Gives the installed io track a different build command. */
+function useBuild(build: string) {
+  store.writeTrackRecord("shell-io@1", { ...store.readTrack("shell-io@1")!, build });
+}
+
+/** Gives the installed io track a different memory limit. */
+function useMemoryLimit(memoryMb: number) {
+  const track = store.readTrack("shell-io@1")!;
+  store.writeTrackRecord("shell-io@1", { ...track, limits: { ...track.limits, memory_mb: memoryMb } });
+}
+
+/** A workspace whose io exercise is installed (with its toolchain folder) and whose main.sh holds `program`. */
+async function installedExercise(program = "read -r x; echo $x\n"): Promise<string> {
   const ws = tempDir("code-learn-ws-");
-  const track = readFileMap(join(fixtures, "tracks", "shell-io"));
-  store.commitFolder(store.trackDir("shell-io@1"), track, {
-    "track.json": { format_version: 1, ...parseTrackYaml(track["track.yaml"]!), image: "code-learn-track-shell-io:1", imageId: "sha256:fake", installedAt: new Date().toISOString() },
-  });
+  installFixtureTrack("shell-io");
   await app.saveRoadmap(ws, "shell", readFileSync(join(fixtures, "roadmaps", "shell-io.yaml"), "utf8"));
   store.commitFolder(store.exerciseDir("shell", "max-of-line"), readFileMap(join(fixtures, "exercises", "io-max")), {
     "exercise.json": {
@@ -205,33 +201,20 @@ async function installedExercise(): Promise<string> {
     },
   });
   const { path } = await app.getExercise(ws, "max-of-line");
-  writeFileSync(join(path, "main.sh"), "read -r x; echo $x\n");
+  writeFileSync(join(path, "main.sh"), program);
   return ws;
 }
 
-describe.runIf(posix)("a container that can't start for lack of disk", () => {
-  it("is a disk failure for Run and for a check alike, recording nothing", async () => {
-    const ws = await installedExercise();
-    fakeDocker("nospace");
-    const run = await app.runInteractive(ws, undefined, undefined, () => undefined);
-    // Docker's own disk, named in code-learn's words.
-    await expect(run.done).rejects.toMatchObject({ kind: "disk", code: "docker-disk", message: expect.stringMatching(/^The container couldn't start \(Docker ran out of disk space\)/) });
-    await expect(app.checkExercise(ws)).rejects.toMatchObject({ kind: "disk", code: "docker-disk" });
-    expect(store.readEvents("shell")).toEqual([]);
-  });
-});
-
-describe.runIf(posix)("live lesson examples", () => {
+describe.runIf(sandboxReady())("live lesson examples", () => {
   /** Writes a lesson whose examples were already checked, as save_lesson stores it. */
   const lesson = (examples: Record<string, string>[], style: "io" | "unit" = "io") =>
     store.writeLesson("shell", { format_version: 1, id: "echo", concept: "sh.basics", title: "Echo", created: new Date().toISOString(), examples: examples.length, track: "shell-io@1", style }, "```example\n1\n```\n", examples);
 
   it("runs an io example live with the learner's input, and records nothing", async () => {
     const ws = await installedExercise();
-    lesson([{ "main.sh": "read -r x; echo $x\n" }]);
+    lesson([{ "main.sh": `read -r x; echo "hello $x"\n` }]);
     // The reader learns its examples run as programs, so Run can take typed input.
     expect(app.getLesson(ws, "echo")).toMatchObject({ style: "io" });
-    fakeDocker("interactive");
     const out = { stdout: "", stderr: "" };
     const run = await app.runExampleLive(ws, "echo", 1, undefined, (text, stream) => (out[stream] += text));
     run.write("Ada\n");
@@ -242,7 +225,6 @@ describe.runIf(posix)("live lesson examples", () => {
 
   it("refuses a missing example, a unit example (which runs as tests), and files that no longer fit the track", async () => {
     const ws = await installedExercise();
-    fakeDocker("interactive");
     lesson([{ "main.sh": "echo 1\n" }], "unit");
     await expect(app.runExampleLive(ws, "echo", 2, undefined, () => undefined)).rejects.toThrow(/no example 2/);
     await expect(app.runExampleLive(ws, "echo", 1, undefined, () => undefined)).rejects.toThrow(/runs as tests/);
