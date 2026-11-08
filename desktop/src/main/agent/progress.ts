@@ -92,7 +92,7 @@ export function jobTracker(kind: JobKind, { id = randomUUID(), concept, track, n
       }
     },
     /**
-     * code-learn's own work reached a stage: a setup's build (with its steps) or a WASI track's download (`doing`), then
+     * code-learn's own work reached a stage: a setup's install (with its steps) or a track's download (`doing`), then
      * its checks.
      */
     reach(n: number, fraction?: JobProgress['part'], label?: string) {

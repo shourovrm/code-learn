@@ -12,7 +12,7 @@ import { assertRuntime, lostRun, type Mount, type SandboxRun, sandboxDown, start
 import type { ToolchainSpec } from "./schemas.js";
 import * as store from "./store.js";
 
-/** Both install steps together, as a Docker track's build had (DESIGN §4.3). */
+/** Both install steps together share this limit (DESIGN §4.6). */
 export const INSTALL_LIMIT_MS = 600_000;
 const INSTALL_MEMORY_MB = 4096;
 const INSTALL_TASKS = 1024;

@@ -219,7 +219,7 @@ export function startSandboxed(run: SandboxRun, output: SandboxOutput = {}): Sta
       ended = true;
       clearTimeout(timer);
       const removed = cleanup ? await cleanup : true;
-      // A signal with no exit code is a kill from outside the sandbox, framed as Docker's 137 was.
+      // A signal with no exit code is a kill from outside the sandbox, framed as a SIGKILL's 137.
       const exit = code ?? (signal ? 137 : -1);
       const oomKilled = exit !== 0 && !cleanup && (await memory.kills()) > 0;
       memory.stop();
