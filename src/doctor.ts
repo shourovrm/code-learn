@@ -3,7 +3,7 @@
 import { accessSync, constants, mkdirSync, realpathSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { stageRunFolder } from "./runs.js";
+import { type RunFolder, stageRunFolder } from "./runs.js";
 import { bwrapVersion, ownedScopes, removeAbandoned, runSandboxed, sandboxDown } from "./sandbox.js";
 import { codeLearnHome, processAlive } from "./store.js";
 import { micromamba } from "./toolchain.js";
@@ -55,7 +55,13 @@ const ISOLATION_RULES: [word: string, rule: string][] = [
 /** Runs the isolation self-test in the same sandbox a check gets. */
 export async function isolation(): Promise<Check> {
   const name = "sandbox isolation";
-  const folder = stageRunFolder();
+  let folder: RunFolder;
+  try {
+    folder = stageRunFolder();
+  } catch (e) {
+    // A home that can't hold a run folder fails this check, not the whole doctor.
+    return { name, ok: false, kind: "disk", detail: `couldn't make a run folder: ${(e as Error).message}` };
+  }
   try {
     mkdirSync(join(folder.dir, "src"));
     writeFileSync(join(folder.dir, "src", "probe.txt"), "probe\n");
@@ -65,8 +71,9 @@ export async function isolation(): Promise<Check> {
       `[ "$(tail -n +3 /proc/net/dev | cut -d: -f1 | tr -d ' ')" = lo ] && echo no-network`,
       `[ -e ${home} ] || echo no-home`,
       `[ -e ${data} ] || echo no-data`,
-      "{ : > probe.txt; } 2>/dev/null || echo input-ro",
-      "{ : > /usr/.code-learn-probe; } 2>/dev/null || echo usr-ro",
+      // In a subshell: a failed redirection on a special built-in such as ':' ends a POSIX shell.
+      "( : > probe.txt ) 2>/dev/null || echo input-ro",
+      "( : > /usr/.code-learn-probe ) 2>/dev/null || echo usr-ro",
     ].join("\n");
     const r = await runSandboxed({
       command: ["/bin/sh", "-c", script], env: {}, mounts: [{ host: join(folder.dir, "src"), container: "/work/src" }],

@@ -38,126 +38,84 @@ describe("check events", () => {
 
 describe("parseTrackYaml", () => {
   it("accepts an io track and clamps limits to the host ceilings", () => {
-    const t = parseTrackYaml(`id: c\nversion: 1\nstyles: [io]\nfiles: [main.c]\nrun: /tmp/main\nlimits: { time_ms: 999999, memory_mb: 99999 }\n`);
+    const t = parseTrackYaml(`id: c\nversion: 1\nstyles: [io]\nfiles: [main.c]\nrun: /tmp/main\nlimits: { time_ms: 999999, memory_mb: 99999 }\ntoolchain: { packages: [x] }\n`);
     expect(t.limits).toEqual({ time_ms: 120000, memory_mb: 2048 });
   });
 
   it("fills default limits", () => {
-    expect(parseTrackYaml(`id: c\nversion: 1\nstyles: [io]\nfiles: [main.c]\nrun: x\n`).limits).toEqual({ time_ms: 2000, memory_mb: 256 });
+    expect(parseTrackYaml(`id: c\nversion: 1\nstyles: [io]\nfiles: [main.c]\nrun: x\ntoolchain: { packages: [x] }\n`).limits).toEqual({ time_ms: 2000, memory_mb: 256 });
   });
 
   it("reads an empty build, run or test as left out", () => {
     // Codex wrote `test:` with no value on an io track, and `build:` with none on a unit track.
-    expect(parseTrackYaml(`id: c\nversion: 1\nstyles: [io]\nfiles: [main.c]\nrun: x\ntest:\n`).test).toBeUndefined();
-    expect(parseTrackYaml(`id: c\nversion: 1\nstyles: [unit]\nfiles: [a]\nbuild: null\ntest: x\n`).build).toBeUndefined();
-    expect(() => parseTrackYaml(`id: c\nversion: 1\nstyles: [unit]\nfiles: [a]\ntest: null\n`)).toThrow(/test/);
+    expect(parseTrackYaml(`id: c\nversion: 1\nstyles: [io]\nfiles: [main.c]\nrun: x\ntest:\ntoolchain: { packages: [x] }\n`).test).toBeUndefined();
+    expect(parseTrackYaml(`id: c\nversion: 1\nstyles: [unit]\nfiles: [a]\nbuild: null\ntest: x\ntoolchain: { packages: [x] }\n`).build).toBeUndefined();
+    expect(() => parseTrackYaml(`id: c\nversion: 1\nstyles: [unit]\nfiles: [a]\ntest: null\ntoolchain: { packages: [x] }\n`)).toThrow(/test/);
   });
 
   it.each([
-    ["io without run", `id: c\nversion: 1\nstyles: [io]\nfiles: [main.c]\n`, /run/],
-    ["unit without test", `id: c\nversion: 1\nstyles: [unit]\nfiles: [a]\n`, /test/],
-    ["a bad id", `id: C!\nversion: 1\nstyles: [io]\nfiles: [a]\nrun: x\n`, /id/],
-    ["an unsafe file path", `id: c\nversion: 1\nstyles: [io]\nfiles: [../a]\nrun: x\n`, /path/i],
-    ["version 0", `id: c\nversion: 0\nstyles: [io]\nfiles: [a]\nrun: x\n`, /version/],
-    ["a learner file named README.md", `id: c\nversion: 1\nstyles: [io]\nfiles: [README.md]\nrun: x\n`, /reserved/],
-    ["a learner file under tests/", `id: c\nversion: 1\nstyles: [io]\nfiles: [tests/01.in]\nrun: x\n`, /reserved/],
-    ["a learner file under README.md/", `id: c\nversion: 1\nstyles: [io]\nfiles: [README.md/main.sh]\nrun: x\n`, /reserved/],
-    ["a file that is also a folder", `id: c\nversion: 1\nstyles: [io]\nfiles: [lib, lib/a.sh]\nrun: x\n`, /folder/],
-    ["readme.md in another case", `id: c\nversion: 1\nstyles: [io]\nfiles: [readme.md]\nrun: x\n`, /reserved/],
-    ["Tests/ in another case", `id: c\nversion: 1\nstyles: [io]\nfiles: [Tests/a]\nrun: x\n`, /reserved/],
-    ["a version too long to reference", `id: c\nversion: 1000000000\nstyles: [io]\nfiles: [a]\nrun: x\n`, /version/],
+    ["io without run", `id: c\nversion: 1\nstyles: [io]\nfiles: [main.c]\ntoolchain: { packages: [x] }\n`, /run/],
+    ["unit without test", `id: c\nversion: 1\nstyles: [unit]\nfiles: [a]\ntoolchain: { packages: [x] }\n`, /test/],
+    ["a bad id", `id: C!\nversion: 1\nstyles: [io]\nfiles: [a]\nrun: x\ntoolchain: { packages: [x] }\n`, /id/],
+    ["an unsafe file path", `id: c\nversion: 1\nstyles: [io]\nfiles: [../a]\nrun: x\ntoolchain: { packages: [x] }\n`, /path/i],
+    ["version 0", `id: c\nversion: 0\nstyles: [io]\nfiles: [a]\nrun: x\ntoolchain: { packages: [x] }\n`, /version/],
+    ["a learner file named README.md", `id: c\nversion: 1\nstyles: [io]\nfiles: [README.md]\nrun: x\ntoolchain: { packages: [x] }\n`, /reserved/],
+    ["a learner file under tests/", `id: c\nversion: 1\nstyles: [io]\nfiles: [tests/01.in]\nrun: x\ntoolchain: { packages: [x] }\n`, /reserved/],
+    ["a learner file under README.md/", `id: c\nversion: 1\nstyles: [io]\nfiles: [README.md/main.sh]\nrun: x\ntoolchain: { packages: [x] }\n`, /reserved/],
+    ["a file that is also a folder", `id: c\nversion: 1\nstyles: [io]\nfiles: [lib, lib/a.sh]\nrun: x\ntoolchain: { packages: [x] }\n`, /folder/],
+    ["readme.md in another case", `id: c\nversion: 1\nstyles: [io]\nfiles: [readme.md]\nrun: x\ntoolchain: { packages: [x] }\n`, /reserved/],
+    ["Tests/ in another case", `id: c\nversion: 1\nstyles: [io]\nfiles: [Tests/a]\nrun: x\ntoolchain: { packages: [x] }\n`, /reserved/],
+    ["a version too long to reference", `id: c\nversion: 1000000000\nstyles: [io]\nfiles: [a]\nrun: x\ntoolchain: { packages: [x] }\n`, /version/],
   ])("rejects %s", (_label, yaml, error) => {
     expect(() => parseTrackYaml(yaml)).toThrow(error);
   });
 });
 
-describe("a WASI track's wasi block", () => {
-  const SHA = "a".repeat(64);
-  const yaml = (wasi: string, rest = "styles: [io]\nrun: /work/src/main.py\n") =>
-    `id: py\nversion: 1\nfiles: [main.py]\n${rest}wasi:\n${wasi}`;
-  const ok = `  url: https://example.org/python.zip\n  sha256: ${SHA}\n  module: python.wasm\n  dirs: { /lib: lib }\n  env: { PYTHONHOME: /, PYTHONDONTWRITEBYTECODE: "1" }\n`;
+describe("a track's toolchain block", () => {
+  const yaml = (toolchain: string) => `id: py\nversion: 1\nstyles: [io]\nfiles: [main.py]\nrun: python main.py\ntoolchain:\n${toolchain}`;
 
-  it("accepts the block, with dirs and env optional", () => {
-    expect(parseTrackYaml(yaml(ok)).wasi).toEqual({
-      url: "https://example.org/python.zip", sha256: SHA, module: "python.wasm", dirs: { "/lib": "lib" }, env: { PYTHONHOME: "/", PYTHONDONTWRITEBYTECODE: "1" },
+  it("accepts packages, with setup and env optional", () => {
+    expect(parseTrackYaml(yaml('  packages: ["python=3.13", "pytest>=8,<9"]\n  setup: npm ci\n  env: { JAVA_HOME: /opt/env/lib/jvm }\n')).toolchain).toEqual({
+      packages: ["python=3.13", "pytest>=8,<9"], setup: "npm ci", env: { JAVA_HOME: "/opt/env/lib/jvm" },
     });
-    const bare = parseTrackYaml(yaml(`  url: https://example.org/x/run.wasm\n  sha256: ${SHA}\n  module: run.wasm\n`)).wasi;
-    expect(bare).toEqual({ url: "https://example.org/x/run.wasm", sha256: SHA, module: "run.wasm", dirs: {}, env: {} });
-  });
-
-  it("leaves sha256 optional: code-learn records the digest it downloads", () => {
-    expect(parseTrackYaml(yaml(ok.replace(`  sha256: ${SHA}\n`, ""))).wasi?.sha256).toBeUndefined();
-  });
-
-  it.each(["https://example.org/a.tar.gz", "https://example.org/dl/a.zip?token=x"])("accepts an archive at %s", (url) => {
-    expect(parseTrackYaml(yaml(ok.replace("https://example.org/python.zip", url))).wasi?.url).toBe(url);
+    expect(parseTrackYaml(yaml("  packages: [gcc]\n")).toolchain).toEqual({ packages: ["gcc"], env: {} });
   });
 
   it.each([
-    ["an http url", ok.replace("https:", "http:"), /url/],
-    ["a url with credentials", ok.replace("https://", "https://me:pw@"), /url/],
-    ["a url of another kind of file", ok.replace("python.zip", "python.exe"), /url/],
-    ["a .tar.xz url", ok.replace("python.zip", "python.tar.xz"), /url/],
-    ["a url whose path doesn't name the file", ok.replace("python.zip", "dl?f=python.zip"), /url/],
-    ["an uppercase sha256", ok.replace(SHA, "A".repeat(64)), /sha256/],
-    ["a short sha256", ok.replace(SHA, "a".repeat(63)), /sha256/],
-    ["an absolute module", ok.replace("module: python.wasm", "module: /python.wasm"), /path/i],
-    ["a module outside the archive", ok.replace("module: python.wasm", "module: ../python.wasm"), /path/i],
-    ["a dirs value outside the archive", ok.replace("/lib: lib", "/lib: ../lib"), /path/i],
-    ["a relative dirs key", ok.replace("/lib: lib", "lib: lib"), /dirs/],
-    ["the root as a dirs key", ok.replace("/lib: lib", "/: lib"), /dirs/],
-    ["/work as a dirs key", ok.replace("/lib: lib", "/work: lib"), /dirs/],
-    ["a dirs key under /work", ok.replace("/lib: lib", "/work/src: lib"), /dirs/],
-    ["a dirs key with a .. part", ok.replace("/lib: lib", "/lib/../work: lib"), /dirs/],
-    ["a dirs key with a colon", ok.replace("/lib: lib", '"/a:b": lib'), /dirs/],
-    ["a dirs key with a . part", ok.replace("/lib: lib", "/lib/.: lib"), /dirs/],
-    ["a dirs key with a space", ok.replace("/lib: lib", '"/my lib": lib'), /dirs/],
-    ["a dirs key ending in /", ok.replace("/lib: lib", "/lib/: lib"), /dirs/],
-    ["a dirs key under another", ok.replace("/lib: lib", "/lib: lib, /lib/extra: lib/x"), /under another/],
-    ["the archive's root as a dirs value", ok.replace("/lib: lib", "/lib: ."), /path/i],
-    ["the archive's root as the module", ok.replace("module: python.wasm", "module: ."), /path/i],
-    ["a lowercase env name", ok.replace("PYTHONHOME", "pythonhome"), /env/],
-    ["an env value over 1 KB", ok.replace('"1"', `"${"x".repeat(1025)}"`), /env/],
-    ["more than 32 env names", ok.replace(/env: .*\n/, `env: { ${Array.from({ length: 33 }, (_, i) => `V${i}: x`).join(", ")} }\n`), /env/],
-    ["a .wasm url whose module isn't its file name", `  url: https://example.org/run.wasm\n  sha256: ${SHA}\n  module: other.wasm\n`, /module/],
-    ["an unknown key", `${ok}  args: x\n`, /args/],
-    ["a .wasm url whose name doesn't decode", `  url: https://example.org/%E0%A4%A.wasm\n  module: x.wasm\n`, /module/],
-    ["a .wasm url whose name holds a /", `  url: https://example.org/x%2Fy.wasm\n  module: x/y.wasm\n`, /module/],
-  ])("rejects %s", (_label, wasi, error) => {
-    expect(() => parseTrackYaml(yaml(wasi))).toThrow(error);
+    ["no packages", "  packages: []\n", /at least one package/],
+    ["a package that starts like an option", '  packages: ["--channel=evil"]\n', /match spec/],
+    ["a package with a space", '  packages: ["python 3.13"]\n', /match spec/],
+    ["a package from another channel", '  packages: ["evil::python"]\n', /match spec/],
+    ["more than 64 packages", `  packages: [${Array.from({ length: 65 }, (_, i) => `p${i}`).join(", ")}]\n`, /at most 64/],
+    ["a setup over 4 KB", `  packages: [x]\n  setup: ${"a".repeat(4097)}\n`, /4 KB/],
+    ["an env name in lowercase", "  packages: [x]\n  env: { java_home: x }\n", /uppercase/],
+    ["PATH in env", "  packages: [x]\n  env: { PATH: /x }\n", /sandbox sets those/],
+    ["a CODE_LEARN_ name in env", "  packages: [x]\n  env: { CODE_LEARN_RUN: x }\n", /sandbox sets those/],
+    ["an unknown key", "  packages: [x]\n  channels: [defaults]\n", /channels/],
+  ])("refuses %s", (_, toolchain, error) => {
+    expect(() => parseTrackYaml(yaml(toolchain))).toThrow(error);
   });
 
-  it.each([
-    ["the unit style", "styles: [io, unit]\nrun: x\ntest: y\n", /styles must be \[io\]/],
-    ["a build command", "styles: [io]\nbuild: make\nrun: x\n", /build/],
-    ["a test command", "styles: [io]\nrun: x\ntest: y\n", /test/],
-  ])("refuses %s", (_label, rest, error) => {
-    expect(() => parseTrackYaml(yaml(ok, rest))).toThrow(error);
+  it("is required", () => {
+    expect(() => parseTrackYaml("id: py\nversion: 1\nstyles: [io]\nfiles: [main.py]\nrun: python main.py\n")).toThrow(/toolchain/);
+  });
+
+  it("refuses a wasi block: code-learn has no WASI engine", () => {
+    expect(() => parseTrackYaml(yaml("  packages: [x]\n") + "wasi: { url: https://example.org/a.wasm, module: a.wasm }\n")).toThrow(/wasi/);
   });
 });
 
 describe("TrackRecord", () => {
   const base = { format_version: 1, id: "py", version: 1, styles: ["io"], files: ["main.py"], run: "x", limits: { time_ms: 2000, memory_mb: 256 }, installedAt: "now" };
-  const wasi = { sha256: "a".repeat(64), module: "python.wasm", dirs: { "/lib": "lib" }, env: {} };
+  const toolchain = { packages: ["python=3.13"], env: {}, resolved: ["python-3.13.9-h1_0"] };
 
-  it("reads a Docker track's record as before", () => {
-    expect(TrackRecord.parse({ ...base, image: "code-learn-track-py:1", imageId: "sha256:x" })).toMatchObject({ imageId: "sha256:x" });
+  it("reads a track's record with its toolchain and the packages it installed", () => {
+    expect(TrackRecord.parse({ ...base, toolchain })).toMatchObject({ toolchain });
   });
 
-  it("reads a WASI track's record, which has no image", () => {
-    expect(TrackRecord.parse({ ...base, wasi })).toMatchObject({ wasi });
-  });
-
-  it("refuses a WASI record whose paths a track.yaml couldn't hold", () => {
-    expect(() => TrackRecord.parse({ ...base, wasi: { ...wasi, dirs: { "/x": "../.." } } })).toThrow();
-    expect(() => TrackRecord.parse({ ...base, wasi: { ...wasi, dirs: { "/work": "lib" } } })).toThrow();
-    expect(() => TrackRecord.parse({ ...base, wasi: { ...wasi, module: "/etc/passwd" } })).toThrow();
-  });
-
-  it("refuses a record with both engines, or neither", () => {
-    expect(() => TrackRecord.parse({ ...base, image: "i", imageId: "sha256:x", wasi })).toThrow();
-    expect(() => TrackRecord.parse(base)).toThrow();
-    expect(() => TrackRecord.parse({ ...base, image: "i" })).toThrow();
+  it("refuses a record without a toolchain, such as a Codemm Docker or WASI record, so it reads as damaged", () => {
+    expect(() => TrackRecord.parse({ ...base, image: "codemm-track-py:1", imageId: "sha256:x" })).toThrow();
+    expect(() => TrackRecord.parse({ ...base, wasi: { sha256: "a".repeat(64), module: "python.wasm", dirs: {}, env: {} } })).toThrow();
   });
 });
 

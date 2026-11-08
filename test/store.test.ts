@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
-import { appendEvent, assertFreeSpace, digestText, materialize, readEvents, replaceLearnerFile, trackImageTag, withLock, withWorkspaceLock, writeTextAtomic } from "../src/store.js";
+import { appendEvent, assertFreeSpace, digestText, materialize, readEvents, replaceLearnerFile, withLock, withWorkspaceLock, writeTextAtomic } from "../src/store.js";
 import * as store from "../src/store.js";
 import { tempDir } from "./temp.js";
 
@@ -165,37 +165,22 @@ describe("assertFreeSpace", () => {
   });
 });
 
-describe("trackImageTag", () => {
-  it("names a track's image after its code-learn home, so two homes on one Docker never share a tag", () => {
-    const a = trackImageTag("python", 1);
-    expect(a).toMatch(/^code-learn-track-[0-9a-f]{8}-python:1$/);
-    expect(trackImageTag("python", 1)).toBe(a);
-    const other = tempDir("code-learn-home-");
-    process.env.CODE_LEARN_HOME = other;
-    expect(trackImageTag("python", 1)).not.toBe(a);
-    // The same home spelled through a symlink is the same home.
-    const link = join(tempDir("code-learn-link-"), "home");
-    symlinkSync(other, link);
-    const direct = trackImageTag("python", 1);
-    process.env.CODE_LEARN_HOME = link;
-    expect(trackImageTag("python", 1)).toBe(direct);
-  });
-});
-
 describe("toolchain folders", () => {
-  const base = { format_version: 1 as const, id: "py", version: 1, styles: ["io" as const], files: ["main.py"], run: "/work/src/main.py", limits: { time_ms: 2000, memory_mb: 256 }, installedAt: "now" };
+  const record = {
+    format_version: 1 as const, id: "py", version: 1, styles: ["io" as const], files: ["main.py"], run: "python main.py",
+    limits: { time_ms: 2000, memory_mb: 256 }, toolchain: { packages: ["python=3.13"], env: { A: "1" }, resolved: [] }, installedAt: "now",
+  };
 
-  it("names a toolchain's folder by its digest, and refuses anything else", () => {
-    expect(store.toolchainDir("a".repeat(64))).toBe(join(store.codeLearnHome(), "toolchains", "a".repeat(64)));
-    expect(() => store.toolchainDir("../x")).toThrow(/Invalid toolchain digest/);
+  it("keeps each track's toolchain in envs/<id>@<version>, and refuses anything else", () => {
+    expect(store.envDir("py@1")).toBe(join(store.codeLearnHome(), "envs", "py@1"));
+    expect(() => store.envDir("../x")).toThrow(/Invalid track/);
   });
 
-  it("runs a Docker track by its image ID, and a WASI track from its toolchain folder", () => {
-    expect(store.judgeTrack({ ...base, image: "tag", imageId: "sha256:x" })).toMatchObject({ image: "sha256:x" });
-    expect(store.judgeTrack({ ...base, image: "tag", imageId: "sha256:x" }).wasi).toBeUndefined();
-    const wasi = { sha256: "b".repeat(64), module: "python.wasm", dirs: { "/lib": "lib" }, env: { A: "1" } };
-    expect(store.judgeTrack({ ...base, wasi })).toMatchObject({
-      image: "", run: "/work/src/main.py", wasi: { root: store.toolchainDir("b".repeat(64)), sha256: "b".repeat(64), module: "python.wasm", dirs: { "/lib": "lib" }, env: { A: "1" } },
+  it("runs a track from its toolchain's env and track folders, with its variables", () => {
+    expect(store.judgeTrack(record)).toMatchObject({
+      run: "python main.py", vars: { A: "1" },
+      folders: { env: join(store.envDir("py@1"), "env"), track: join(store.envDir("py@1"), "track") },
     });
+    expect(store.judgeTrack(record)).not.toHaveProperty("toolchain");
   });
 });

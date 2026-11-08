@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { parse as parseToml } from "smol-toml";
 import { beforeEach, describe, expect, it } from "vitest";
 import { CODEX_TOOL_TIMEOUT_SEC, init } from "../src/init.js";
-import { BUILD_TIMEOUT_MS } from "../src/sandbox.js";
+import { INSTALL_LIMIT_MS } from "../src/toolchain.js";
 import { tempDir } from "./temp.js";
 
 const launcher = { command: "/opt/node/bin/node", args: ["/opt/code-learn/dist/cli.js"] };
@@ -34,8 +34,8 @@ describe("init", () => {
     await init(ws, ["codex"], launcher);
     const codeLearn = (parseToml(read(".codex/config.toml")) as { mcp_servers: { "code-learn": { tool_timeout_sec: number } } }).mcp_servers["code-learn"];
     expect(codeLearn.tool_timeout_sec).toBe(CODEX_TOOL_TIMEOUT_SEC);
-    // Installing a track can take the whole build limit, then the probe gates; Codex's default is 60 s.
-    expect(CODEX_TOOL_TIMEOUT_SEC * 1000).toBeGreaterThan(BUILD_TIMEOUT_MS);
+    // Installing a track can take the whole install limit, then the probe gates; Codex's default is 60 s.
+    expect(CODEX_TOOL_TIMEOUT_SEC * 1000).toBeGreaterThan(INSTALL_LIMIT_MS);
   });
 
   it("only touches the hosts you name", async () => {

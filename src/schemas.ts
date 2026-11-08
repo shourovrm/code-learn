@@ -38,15 +38,21 @@ const MAX_ENV_VALUE = 1024;
 const RESERVED_ENV = new Set(["PATH", "HOME", "TRACK", "TESTS", "OUT", "LANG"]);
 const isReservedEnv = (name: string) => RESERVED_ENV.has(name) || name.startsWith("CODE_LEARN_");
 
-/** Environment variables for a track's commands: at most 32, uppercase names, values at most 1 KB. */
-const TrackEnv = z
-  .record(
-    z.string()
-      .regex(/^[A-Z_][A-Z0-9_]*$/, "env names are uppercase letters, digits and _")
-      .refine((name) => !isReservedEnv(name), "env can't set PATH, HOME, TRACK, TESTS, OUT, LANG or a CODE_LEARN_ name: the sandbox sets those"),
-    z.string().refine((v) => Buffer.byteLength(v) <= MAX_ENV_VALUE && !v.includes("\0"), "env values are at most 1 KB"),
-  )
-  .refine((e) => Object.keys(e).length <= 32, "env holds at most 32 names");
+/**
+ * Environment variables for a track's commands: at most 32, uppercase names, values at most 1 KB. Checked as a whole,
+ * because zod reports a refused record key only as "Invalid key in record", which wouldn't tell an author what to fix.
+ */
+const TrackEnv = z.record(z.string(), z.string()).superRefine((env, ctx) => {
+  if (Object.keys(env).length > 32) ctx.addIssue({ code: "custom", message: "env holds at most 32 names" });
+  for (const [name, value] of Object.entries(env)) {
+    if (!/^[A-Z_][A-Z0-9_]*$/.test(name)) {
+      ctx.addIssue({ code: "custom", path: [name], message: "env names are uppercase letters, digits and _" });
+    } else if (isReservedEnv(name)) {
+      ctx.addIssue({ code: "custom", path: [name], message: "env can't set PATH, HOME, TRACK, TESTS, OUT, LANG or a CODE_LEARN_ name: the sandbox sets those" });
+    }
+    if (Buffer.byteLength(value) > MAX_ENV_VALUE || value.includes("\0")) ctx.addIssue({ code: "custom", path: [name], message: "env values are at most 1 KB" });
+  }
+});
 
 /**
  * A conda match spec such as `python=3.13` or `openjdk>=21,<22` (DESIGN §4.6). It starts with a letter or digit, so

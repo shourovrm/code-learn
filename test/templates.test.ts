@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { DRIVER_TOOLS } from "../src/judge.js";
 import { AGENTS_SECTION, AUTHOR_AGENT, JOB_BRIEFS, type JobKind } from "../src/templates.js";
 
 // Each rule below closes a failure the cross-model bench observed (docs/bench/results.md).
@@ -30,11 +29,10 @@ describe("tutor instructions (AGENTS.md section)", () => {
     for (const text of [AUTHOR_AGENT, JOB_BRIEFS.setup]) expect(text).toMatch(/pass probe must also pass within a sixth of `time_ms`/);
   });
 
-  it("tells a track author how heavy toolchains run offline, as another user, within the time limit", () => {
+  it("tells a track author how heavy toolchains run offline, within the time limit", () => {
     for (const text of [AUTHOR_AGENT, JOB_BRIEFS.setup]) {
       expect(text).toMatch(/`time_ms` is per io case, or for a unit track's whole `test` command, compiling included, and at most 120000/);
-      expect(text).toMatch(/in a folder any user can read \(not `\/root` or `\$HOME`/);
-      expect(text).toMatch(/run the track's own build and test commands once in the Dockerfile, on the pass probe/);
+      expect(text).toMatch(/for `setup` to run the track's own build and test commands once, on a copy of the pass probe/);
       // Codex cached with Maven's dependency:go-offline, then built offline, and the build missed dependencies twice.
       expect(text).toMatch(/with the network on/);
       expect(text).toMatch(/misses plugins and transitive dependencies/);
@@ -59,10 +57,10 @@ describe("tutor instructions (AGENTS.md section)", () => {
     }
   });
 
-  it("tells a track author to COPY its scripts from the track's files, not write them in the Dockerfile", () => {
+  it("tells a track author to ship its scripts as track files, not write them in setup", () => {
     for (const text of [AUTHOR_AGENT, JOB_BRIEFS.setup]) {
-      expect(text).toMatch(/put any script or config the track needs in the track's own files and \`COPY\` it/i);
-      expect(text).toMatch(/never create files inside the Dockerfile with heredocs or long \`echo\` chains/i);
+      expect(text).toMatch(/code-learn copies them, and `probe\/`, to `\/opt\/track`/);
+      expect(text).toMatch(/never create files inside `setup` with heredocs or long `echo` chains/i);
     }
   });
 
@@ -91,14 +89,13 @@ describe("author instructions (code-learn-author subagent)", () => {
     }
   });
 
-  it("names every tool the judge's driver needs in a track image, and no other", () => {
-    const line = AUTHOR_AGENT.split("\n").find((l) => l.startsWith("- The image must have"))!;
-    const named = [...line.replace(/, and must not.*/, "").matchAll(/`([a-z]+)`/g)].map((m) => m[1]);
-    expect(named).toEqual(["sh", ...DRIVER_TOOLS]);
+  it("says the sandbox's own /usr gives only sh and basic tools, so every compiler and interpreter comes from the toolchain", () => {
+    expect(AUTHOR_AGENT).toMatch(/every compiler, interpreter and test tool the commands use must come from `toolchain.packages` or `setup`, never from `\/usr`/);
   });
 
-  it("never asks for an invented image digest", () => {
-    expect(AUTHOR_AGENT).toMatch(/never make one up/i);
+  it("asks for conda-forge packages it knows exist, from conda-forge only", () => {
+    expect(AUTHOR_AGENT).toMatch(/Only conda-forge is used, so never name another channel/);
+    expect(AUTHOR_AGENT).toMatch(/Use only package names you know conda-forge has/);
   });
 
   it("keeps a retry limit: without one, haiku made about 65 track attempts in one run", () => {
@@ -222,7 +219,7 @@ describe("desktop job briefs (docs/desktop/DESIGN.md §3.2, §8)", () => {
   });
 
   it("gives setup and author the same bench-checked rules as the terminal subagent", () => {
-    expect(JOB_BRIEFS.setup).toMatch(/never make one up/i);
+    expect(JOB_BRIEFS.setup).toMatch(/Use only package names you know conda-forge has/);
     expect(JOB_BRIEFS.setup).toMatch(/only proposes/);
     expect(JOB_BRIEFS.author).toMatch(/edge cases .* hidden tests/);
     expect(JOB_BRIEFS.author).toMatch(/reply with only the exercise id/);
@@ -304,48 +301,19 @@ describe("lesson examples and learner-facing text (learner walkthrough W-2)", ()
 });
 
 
-describe("WASI tracks (DESIGN §4.5)", () => {
-  it("tells a track author when to write a WASI track instead of a Docker one", () => {
-    for (const text of [AUTHOR_AGENT, JOB_BRIEFS.setup]) {
-      expect(text).toMatch(/Write a Docker track unless code-learn's instructions say this computer has no container runtime installed; then write a WASI track/);
-    }
+describe("toolchain tracks (DESIGN §4.6)", () => {
+  it("gives the toolchain block's contract: packages, setup with network, and env without the sandbox's names", () => {
+    expect(AUTHOR_AGENT).toMatch(/`packages`: 1 to 64 conda-forge match specs/);
+    expect(AUTHOR_AGENT).toMatch(/runs once at install, after the packages, in `\/opt\/track`, \*\*with network\*\*/);
+    expect(AUTHOR_AGENT).toMatch(/never `PATH`, `HOME`, `TRACK`, `TESTS`, `OUT`, `LANG` or a `CODE_LEARN_` name/);
   });
 
-  it("gives the wasi block's contract: url, sha256, module, dirs and env, io only, run with full /work/src paths", () => {
-    for (const text of [AUTHOR_AGENT, JOB_BRIEFS.setup]) {
-      for (const key of ["url", "sha256", "module", "dirs", "env"]) expect(text).toMatch(new RegExp(`\`${key}\``));
-      expect(text).toMatch(/no `Dockerfile`/);
-      expect(text).toMatch(/ending in `\.wasm`, `\.zip` or `\.tar\.gz`/);
-      expect(text).not.toMatch(/tar\.xz/);
-      expect(text).toMatch(/never `\.`/);
-      expect(text).toMatch(/`styles: \[io\]`, with no `build` or `test`, and its exercises have no `NN.gen`/);
-      expect(text).toMatch(/starts in `\/`.*full path under `\/work\/src`/s);
-      expect(text).toMatch(/Nothing is writable, and there is no network and no subprocess/);
-    }
+  it("says where the toolchain and the track's files are at check time, read-only", () => {
+    expect(AUTHOR_AGENT).toMatch(/The toolchain is read-only at `\/opt\/env`, with its `bin` first on `PATH`, and the track's files are read-only at `\/opt\/track`/);
   });
 
-  it("asks for a higher time limit, since the interpreter starts on every case", () => {
-    for (const text of [AUTHOR_AGENT, JOB_BRIEFS.setup]) expect(text).toMatch(/set `time_ms` to at least 3000/);
-  });
-
-  it("says what build to look for, and makes sha256 optional but never made up", () => {
-    for (const text of [AUTHOR_AGENT, JOB_BRIEFS.setup]) {
-      expect(text).toMatch(/a WASI build of the interpreter, published by the language's project, as a `\.wasm` file or an archive with the module and its library folder/);
-      // The desktop's setup job has no web or shell, so it can't hash anything itself.
-      expect(text).toMatch(/`sha256` is optional: give it only when you computed it from the downloaded file or read it from a checksum the release publishes; never make one up/);
-      expect(text).toMatch(/a wrong one fails the gate named toolchain/);
-    }
-  });
-
-  it("ships no pointer to a particular build: no build url and no digest", () => {
-    for (const text of [AUTHOR_AGENT, JOB_BRIEFS.setup]) {
-      expect(text).not.toMatch(/[0-9a-f]{64}/);
-      expect(text).not.toMatch(/cpython-wasi-build/);
-    }
-  });
-
-  it("tells an exercise author that NN.gen isn't available when the contract's engine is wasi", () => {
-    for (const text of [AUTHOR_AGENT, JOB_BRIEFS.author]) expect(text).toMatch(/`NN.gen` isn't available when the contract's `engine` is `wasi`/);
+  it("no longer mentions Docker, images or WASI to authors", () => {
+    for (const text of [AUTHOR_AGENT, JOB_BRIEFS.setup, JOB_BRIEFS.author]) expect(text).not.toMatch(/Docker|Dockerfile|\bimage\b|WASI|wasmtime/);
   });
 });
 

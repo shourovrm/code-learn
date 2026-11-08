@@ -8,3 +8,6 @@ dist/
 
 # code-learn v1 workspace data, in case a clone was used as a v1 workspace
 **/.code-learn/
+
+# Agent worktrees made during development
+.claude/worktrees/
