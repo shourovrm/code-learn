@@ -353,6 +353,111 @@ wasi:
 - **On a signed macOS build,** the bundled wasmtime needs the hardened runtime's `com.apple.security.cs.allow-unsigned-executable-memory` entitlement to map compiled code; `allow-jit` alone fails ("unable to make memory executable").
 - **What `doctor` shows:** both engines. With no container runtime but wasmtime present, the missing runtime isn't a failure.
 
+### 4.6 The native engine (code-learn, Linux)
+
+code-learn is a Linux-only fork of Codemm 1.0.0-beta.10 that replaces the Docker engine (§4.3, §4.4) and the WASI engine (§4.5) with one native engine. A track's language is installed on the learner's computer into its own folder, `$CODE_LEARN_HOME/envs/<id>@<version>/`, by micromamba from conda-forge, and every check runs in a bubblewrap sandbox. Removing a track deletes that folder and nothing else on the computer changes. Until the removal phase lands, the Docker and WASI sections above still describe the code; they are deleted with it.
+
+**Why these tools.**
+- micromamba is one static binary that installs conda packages into any folder without root. conda-forge has prebuilt interpreters, compilers and test tools for most languages (Python, Node, Java, GCC, Rust, Go, Ruby and their test runners), so one package manager serves every track, and Codemm still ships no languages: the track names its packages.
+- bubblewrap (`bwrap`) is the sandbox Flatpak uses. It runs as the learner with Linux user namespaces, so it needs no daemon and no root. It gives a check what a judge container had: a private process namespace, no network, read-only mounts and a size-capped `/tmp`.
+- `systemd-run --user --scope` puts each sandbox in its own cgroup, which caps memory, processes and CPU as Docker's `--memory`, `--pids-limit` and `--cpus` did.
+
+**Computer requirements.** `doctor` checks each one, and a check fails with an infrastructure error naming the missing one:
+- Linux x86_64, not running as root (a sandbox run as root would own every mounted file);
+- `bwrap` 0.9 or later (for `--size`), with unprivileged user namespaces enabled;
+- a systemd user session that delegates the `memory`, `pids` and `cpu` controllers (the default on current desktop distributions);
+- `/usr/bin/sh` with `timeout`, `sleep`, `head`, `wc`, `cat` and `basename` (the driver's tools, §4.2);
+- micromamba 2: the path in `CODE_LEARN_MICROMAMBA`, else `micromamba` on `PATH`. The desktop app bundles a pinned micromamba and passes `CODE_LEARN_MICROMAMBA`, as it did `CODEMM_WASMTIME`.
+
+**Track contract.** A `toolchain` block replaces the Dockerfile:
+
+```
+track.yaml
+...other files: copied to /opt/track (test scripts, report converters, package.json)
+probe/<style>/pass/ · probe/<style>/fail/ · probe/<style>/tests/   (as §4.1)
+```
+
+```yaml
+id: python
+version: 1
+styles: [io, unit]
+files: [main.py]
+run: "python main.py"
+test: "python /opt/track/run_tests.py"
+limits: { time_ms: 2000, memory_mb: 256 }
+toolchain:
+  packages: ["python=3.13", "pytest=9"]   # conda-forge match specs
+  setup: "pip install --no-deps pytest-json-report==1.5.0"   # optional
+  env: { PYTHONDONTWRITEBYTECODE: "1" }   # optional
+```
+
+- `packages`: 1 to 64 conda match specs, each 1 to 100 characters from `A-Z a-z 0-9 _ . - = < > ! , *`, starting with a letter or digit. Codemm passes them to micromamba as separate arguments, with `--override-channels -c conda-forge`, so a track can't name another channel.
+- `setup`: optional, at most 4 KB. It runs once at install, after the packages, as `/bin/sh -c`, with network, in `/opt/track`. It is for what conda-forge doesn't package, such as `npm ci` or a `pip install`.
+- `env`: optional, at most 32 names matching `^[A-Z_][A-Z0-9_]*$`, each value at most 1 KB. Names the sandbox sets itself (`PATH`, `HOME`, `TRACK`, `TESTS`, `OUT` and every `CODE_LEARN_*`) are refused.
+- A track with a `Dockerfile` or a `wasi` block is refused, saying to write a `toolchain` block.
+
+**Installing a track.** This replaces the image build (§4.4). The probes and gates that follow are unchanged.
+1. Check that 5 GB is free under `$CODE_LEARN_HOME`.
+2. Make a staging folder `$CODE_LEARN_HOME/envs/.staging-<pid>-<random>/` with `env/` and `track/`, and copy the track's files (all but `track.yaml` and `probe/`) into `track/`.
+3. Run micromamba in an install sandbox: the sandbox below, but with the network shared, `/etc/resolv.conf`, `/etc/hosts`, `/etc/nsswitch.conf` and the system certificate folders mounted read-only, staging `env/` writable at `/opt/env`, staging `track/` writable at `/opt/track`, the package cache `$CODE_LEARN_HOME/pkgs` writable at `/opt/pkgs`, and micromamba read-only at `/opt/micromamba`. Command: `/opt/micromamba create -y -p /opt/env --override-channels -c conda-forge <packages...>` with `MAMBA_ROOT_PREFIX=/opt/pkgs`.
+4. Run `setup`, if any, in the same install sandbox.
+5. Steps 3 and 4 share one 10 minute limit (§4.3's track build), 4 GB of memory and 1024 processes. Their log is streamed as build progress and capped as a Docker build's was.
+6. Rename the staging folder to `envs/<id>@<version>/`. A rebuild renames the old folder aside first (`.discard-<pid>-<random>`), then removes it.
+7. `track.json` records `toolchain: { packages, setup, env, resolved }`, where `resolved` is the sorted list of installed package file names from `env/conda-meta/` (for example `python-3.13.9-h9e4cba3_100_cp313`). It takes the place of the image ID.
+
+The environment is always mounted at `/opt/env`, both at install and when checks run, because conda packages store their install path inside some files. That is why the staging folder can be renamed: the path inside the sandbox never changes.
+
+**Running a check.** The command is an argument array:
+
+```
+systemd-run --user --scope --quiet --collect --unit=code-learn-<pid>-<random>
+  -p MemoryMax=<memory_mb>M -p MemorySwapMax=0 -p TasksMax=256 -p CPUQuota=200% -p OOMPolicy=continue
+  -- bwrap <flags> /bin/sh -c <driver>
+```
+
+| Docker flag (§4.3) | bubblewrap equivalent |
+|---|---|
+| `--network none` | `--unshare-all` (network, PID, IPC, UTS, cgroup and user namespaces); only loopback exists |
+| `--read-only`, tmpfs `/tmp` 256 MB | `--ro-bind` for every mount, `--size 268435456 --tmpfs /tmp` |
+| `--memory`, `--memory-swap` | `MemoryMax`, `MemorySwapMax=0` |
+| `--cpus 2`, `--pids-limit 256` | `CPUQuota=200%`, `TasksMax=256` |
+| `--cap-drop ALL`, `no-new-privileges` | bubblewrap drops capabilities and always sets `no_new_privs` |
+| `--user <uid>:<gid>` | the learner's own uid; `/etc/passwd` and `/etc/group` are generated with one entry each |
+| `--rm`, label `codemm=1` | `--die-with-parent`; scopes are named `code-learn-<pid>-…` |
+| PID 1 driver | bubblewrap's init is PID 1 and the driver is PID 2; `kill -9 -1` spares both |
+
+The sandbox sees only these paths:
+- `/usr` read-only, with `/bin`, `/sbin`, `/lib` and `/lib64` made as the host has them (links into `/usr` on merged-usr systems, read-only binds otherwise);
+- from `/etc`, only `ld.so.cache`, `localtime` and the generated `passwd`, `group` and `hosts` (`127.0.0.1 localhost`);
+- `/proc`, `/dev` (bubblewrap's minimal set) and `/tmp`;
+- the environment at `/opt/env` and the track's files at `/opt/track`, read-only;
+- the run folder's `src` at `/work/src` (the working directory) and the set's `tests` at `/work/tests`, read-only.
+
+The learner's home folder, `$CODE_LEARN_HOME` and the rest of the computer are not visible. The environment is `--clearenv`, then `HOME=/tmp`, `PATH=/opt/env/bin:/usr/bin:/bin`, `TRACK=/opt/track`, `LANG=C.UTF-8`, the track's `env`, and the driver's own variables.
+
+- **Driver.** The io and unit drivers of §4.2 run unchanged, so frames, grading, digests and disclosure are unchanged.
+- **Time.** The host deadline of §4.3 kills bubblewrap with `SIGKILL`, which ends its PID namespace and every process in it. Then `systemctl --user stop <scope>` runs as a backstop.
+- **Memory.** A program over `MemoryMax` is killed with exit 137 while the driver goes on (`OOMPolicy=continue`). The kernel counts the kill in the scope's `memory.events`. The host reads the scope's `ControlGroup` once the scope exists, and reads `oom_kill` from `memory.events` when a 137 frame arrives that has no time-out mark. The driver waits a second before it exits in that case (§4.2), so the scope is still there. If the driver itself was killed and an `oom_kill` count was seen, the run is `outOfMemory`; otherwise it is the infrastructure error `runtime-failed`.
+- **Leftovers.** Run folders are swept as in §4.3. `doctor --fix` stops scopes named `code-learn-<pid>-…` whose owner process is gone.
+
+**Run** (the learner's program, interactively) uses the same sandbox with Run's driver and limits.
+
+**Removing a track.** `code-learn track remove <id>@<version>`, and the matching desktop action, delete the track's record and its `envs/` folder under the track lock. It is refused while a course uses the track, and the message names those courses. The package cache `pkgs/` holds only downloads. Deleting it frees space and never breaks an installed track. Deleting `$CODE_LEARN_HOME` removes everything code-learn installed.
+
+**Security compared with Docker.**
+- The program shares the host kernel, as a container does.
+- It can read the host's `/usr`, where a container saw only its image. `/usr` holds system programs and libraries, not personal data.
+- It can't see home folders, other users' files, the network, hidden tests of another set, or code-learn's store.
+- §4.2's known limitation stays: a program can forge frames through `/proc/<driver>/fd`. Grading remains honor-system.
+- The install sandbox has network access and runs the track's `setup` and the packages' own install scripts. It can write only the staging folder and the package cache. The learner's consent before an install (§4.4) is still the trust point.
+
+**Phases.** Each phase keeps the build, type check and tests green:
+1. The native engine in the core, beside Docker, with tests that run real bubblewrap.
+2. Remove the Docker and WASI engines and their tests from the core.
+3. Rename Codemm to code-learn: the `code-learn` command, `CODE_LEARN_*` variables, `~/.code-learn`, the `code-learn` MCP server, and "Code Learn" in the desktop's window and installers.
+4. Desktop: Linux only (AppImage and pacman package); drop Docker Desktop, WSL and the macOS and Windows code; bundle micromamba; a computer check for the requirements above; a Remove action for tracks.
+5. Journey: a real agent installs a Python and a Java track and passes an exercise in each, from the packaged app.
+
 ## 5. Roadmaps (courses)
 
 ```yaml
