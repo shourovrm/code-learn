@@ -17,7 +17,7 @@ const VERSION = (JSON.parse(readFileSync(join(here, "..", "package.json"), "utf8
 const USAGE = `code-learn ${VERSION}: your coding agent writes the exercises, code-learn verifies, grades and tracks mastery.
 
 Usage:
-  code-learn init [--host claude|codex|cursor]...   set up this project for your agent(s)
+  code-learn init [--host claude|codex|cursor|pi]... set up this project for your agent(s)
   code-learn doctor [--fix]                          check the sandbox, micromamba and isolation
   code-learn status                                  your progress and the next step
   code-learn test [exercise]                         run the visible tests (not recorded)

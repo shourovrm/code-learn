@@ -2,21 +2,53 @@
   "claude": {
     "recommended": "sonnet",
     "models": [
-      { "id": "sonnet", "label": "Sonnet" },
-      { "id": "opus", "label": "Opus" },
-      { "id": "haiku", "label": "Haiku" }
+      {
+        "id": "sonnet",
+        "label": "Sonnet"
+      },
+      {
+        "id": "opus",
+        "label": "Opus"
+      },
+      {
+        "id": "haiku",
+        "label": "Haiku"
+      }
     ]
   },
   "codex": {
     "recommended": "gpt-6-luna",
     "models": [
-      { "id": "gpt-6-luna", "label": "gpt-6-luna" },
-      { "id": "gpt-5.6-luna", "label": "gpt-5.6-luna" },
-      { "id": "gpt-6-astra", "label": "gpt-6-astra" }
+      {
+        "id": "gpt-6-luna",
+        "label": "gpt-6-luna"
+      },
+      {
+        "id": "gpt-5.6-luna",
+        "label": "gpt-5.6-luna"
+      },
+      {
+        "id": "gpt-6-astra",
+        "label": "gpt-6-astra"
+      }
     ]
   },
   "cursor": {
     "recommended": "auto",
-    "models": [{ "id": "auto", "label": "Auto" }]
+    "models": [
+      {
+        "id": "auto",
+        "label": "Auto"
+      }
+    ]
+  },
+  "pi": {
+    "recommended": "openrouter/anthropic/claude-haiku-5.5",
+    "models": [
+      {
+        "id": "openrouter/anthropic/claude-haiku-5.5",
+        "label": "Claude Haiku 5.5 (OpenRouter)"
+      }
+    ]
   }
 }

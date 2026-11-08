@@ -5,7 +5,7 @@ import { CodeLearnError } from "./errors.js";
 import { refuseSymlinks, withWorkspaceLock, writeTextAtomic } from "./store.js";
 import { AGENTS_END, AGENTS_SECTION, AGENTS_START, AUTHOR_AGENT } from "./templates.js";
 
-export const HOSTS = ["claude", "codex", "cursor"] as const;
+export const HOSTS = ["claude", "codex", "cursor", "pi"] as const;
 export type Host = (typeof HOSTS)[number];
 /** How a host should start code-learn: an absolute command plus leading args (e.g. node + cli.js). */
 export type Launcher = { command: string; args: string[] };
@@ -110,7 +110,7 @@ function withServer(config: Record<string, any>, rel: string, server: Record<str
 }
 
 /**
- * Sets up the chosen hosts (all three when `hosts` is empty) in workspace `ws`.
+ * Sets up the chosen hosts (all four when `hosts` is empty) in workspace `ws`.
  * Every file is prepared and validated first; nothing is written unless all of it is valid.
  * Each write replaces the file atomically. Returns the files written.
  */
@@ -135,6 +135,8 @@ function prepareAndWrite(ws: string, hosts: Host[], launcher: Launcher, platform
   }
   if (chosen.has("codex")) files.push([".codex/config.toml", withCodexServer(readText(ws, ".codex/config.toml"), launcher, ws)]);
   if (chosen.has("cursor")) files.push([".cursor/mcp.json", json(withServer(readJson(ws, ".cursor/mcp.json"), ".cursor/mcp.json", { command: launcher.command, args: mcpArgs }))]);
+  // pi loads a project's .pi/mcp.json once the learner trusts the folder; `direct` declares the tools to the model.
+  if (chosen.has("pi")) files.push([".pi/mcp.json", json(withServer(readJson(ws, ".pi/mcp.json"), ".pi/mcp.json", { command: launcher.command, args: mcpArgs, exposure: "direct" }))]);
 
   for (const [rel] of files) refuseSymlinks(ws, rel);
   for (const [rel, content] of files) {

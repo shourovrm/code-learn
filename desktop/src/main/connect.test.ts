@@ -8,9 +8,9 @@ import { tempDir } from './testing/temp';
 
 function lookup(over: Partial<Lookup> = {}): Lookup {
   return {
-    find: (bin) => (bin === 'cursor-agent' ? null : { path: `/bin/${bin}`, js: false }),
+    find: (bin) => (bin === 'cursor-agent' || bin === 'pi' ? null : { path: `/bin/${bin}`, js: false }),
     signedIn: async () => true,
-    version: async (id) => ({ claude: '2.1.283', codex: '1.0.0', cursor: null })[id],
+    version: async (id) => ({ claude: '2.1.283', codex: '1.0.0', cursor: null, pi: null })[id],
     ...over,
   };
 }
@@ -31,7 +31,7 @@ describe('connect (§3.1, §3.3)', () => {
     ok = true;
     later();
     const agents = await c.agents();
-    expect(agents.map((a) => [a.id, a.state])).toEqual([['claude', 'not-connected'], ['codex', 'connected'], ['cursor', 'missing']]);
+    expect(agents.map((a) => [a.id, a.state])).toEqual([['claude', 'not-connected'], ['codex', 'connected'], ['cursor', 'missing'], ['pi', 'missing']]);
     expect((await c.chosen()).id).toBe('codex');
   });
 
@@ -57,6 +57,7 @@ describe('connect (§3.1, §3.3)', () => {
       ['claude', 'not-connected', false, false],
       ['codex', 'not-connected', true, false],
       ['cursor', 'missing', false, true],
+      ['pi', 'missing', false, true],
     ]);
     expect(agents.find((a) => a.id === 'codex')?.model).toBe('gpt-6-luna');
   });
@@ -113,7 +114,7 @@ describe('connect (§3.1, §3.3)', () => {
     expect((await c.agents()).find((a) => a.id === 'claude')!.state).toBe('connected');
     codex = true;
     later();
-    expect((await c.agents()).map((a) => [a.id, a.state])).toEqual([['claude', 'not-connected'], ['codex', 'connected'], ['cursor', 'missing']]);
+    expect((await c.agents()).map((a) => [a.id, a.state])).toEqual([['claude', 'not-connected'], ['codex', 'connected'], ['cursor', 'missing'], ['pi', 'missing']]);
     expect((await c.chosen()).id).toBe('codex');
   });
 
@@ -362,7 +363,7 @@ describe('connect (§3.1, §3.3)', () => {
       await c.connect('claude');
       codex = true;
       later();
-      expect((await c.agents()).map((a) => [a.id, a.state])).toEqual([['claude', 'connected'], ['codex', 'not-connected'], ['cursor', 'missing']]);
+      expect((await c.agents()).map((a) => [a.id, a.state])).toEqual([['claude', 'connected'], ['codex', 'not-connected'], ['cursor', 'missing'], ['pi', 'missing']]);
       expect(st.read().agent).toBe('claude');
     });
 

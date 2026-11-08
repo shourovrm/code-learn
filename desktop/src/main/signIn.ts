@@ -22,7 +22,8 @@ export interface SignInDeps {
   start(file: string, args: string[], env?: Record<string, string>): Promise<void>;
 }
 
-const LOGIN: Record<AgentId, string[]> = { claude: ['auth', 'login'], codex: ['login'], cursor: ['login'] };
+/** pi has no login command: it signs in from its own interface (/login), so sign-in opens pi itself. */
+const LOGIN: Record<AgentId, string[]> = { claude: ['auth', 'login'], codex: ['login'], cursor: ['login'], pi: [] };
 /** A POSIX shell word: the path, single-quoted. */
 const quote = (s: string) => `'${s.replace(/'/g, `'\\''`)}'`;
 /** A Windows command-line word: a path with a space, double-quoted (Windows paths never hold a quote). */

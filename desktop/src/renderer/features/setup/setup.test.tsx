@@ -50,7 +50,7 @@ describe('install what is missing', () => {
       await waitFor(() => expect(screen.queryByRole('button', { name: "Install what's missing" })).not.toBeInTheDocument());
       expect(screen.getByRole('button', { name: 'Connect an agent' })).toBeInTheDocument();
       view.unmount();
-      options.agents = { claude: 'missing', codex: 'missing', cursor: 'missing' };
+      options.agents = { claude: 'missing', codex: 'missing', cursor: 'missing', pi: 'missing' };
       renderApp({ to: 'setup' }, api);
       expect(await screen.findByRole('listitem', { name: 'Agent' })).toBeInTheDocument();
       options.agents = {};

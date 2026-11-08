@@ -45,7 +45,7 @@ export const CHANGED = 'code-learn:changed';
 
 // ---------- connect (§3.1, §3.3) ----------
 
-export type AgentId = 'claude' | 'codex' | 'cursor';
+export type AgentId = 'claude' | 'codex' | 'cursor' | 'pi';
 
 /** `missing`: not installed. `signed-out`: installed, but its sign-in check failed. */
 export type AgentState = 'connected' | 'not-connected' | 'missing' | 'signed-out';

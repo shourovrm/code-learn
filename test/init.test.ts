@@ -18,10 +18,11 @@ describe("init", () => {
   it("sets up all three hosts by default, pointing every launch at this workspace", async () => {
     const written = await init(ws, [], launcher, "linux");
     expect(written.sort()).toEqual(
-      [".claude/agents/code-learn-author.md", ".claude/settings.json", ".codex/config.toml", ".cursor/mcp.json", ".mcp.json", "AGENTS.md", "CLAUDE.md"].sort(),
+      [".claude/agents/code-learn-author.md", ".claude/settings.json", ".codex/config.toml", ".cursor/mcp.json", ".mcp.json", ".pi/mcp.json", "AGENTS.md", "CLAUDE.md"].sort(),
     );
     expect(json(".mcp.json").mcpServers["code-learn"]).toEqual({ type: "stdio", command: launcher.command, args: [...launcher.args, "mcp", "--workspace", ws] });
     expect(json(".cursor/mcp.json").mcpServers["code-learn"].args).toEqual([...launcher.args, "mcp", "--workspace", ws]);
+    expect(json(".pi/mcp.json").mcpServers["code-learn"]).toEqual({ command: launcher.command, args: [...launcher.args, "mcp", "--workspace", ws], exposure: "direct" });
     expect(read(".codex/config.toml")).toContain(`[mcp_servers.code-learn]\ncommand = "/opt/node/bin/node"\nargs = ["/opt/code-learn/dist/cli.js", "mcp", "--workspace", ${JSON.stringify(ws)}]`);
     const hook = json(".claude/settings.json").hooks.PreToolUse[0];
     expect(hook.matcher).toBe("Edit|Write|MultiEdit|NotebookEdit");

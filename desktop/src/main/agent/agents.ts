@@ -6,6 +6,7 @@ import type { AgentId } from '../../shared/api';
 import { claude } from './claude';
 import { codex } from './codex';
 import { cursor } from './cursor';
+import { pi } from './pi';
 
 export { PLAN_LIMIT, readOf, STEP_LABELS } from './stream';
 
@@ -81,7 +82,7 @@ export interface AgentCli {
 }
 
 /** The CLI versions the recorded fixtures come from (§3.3). */
-export const TESTED: Record<AgentId, string[]> = { claude: ['2.1.283'], codex: ['0.156.1'], cursor: ['2026.10.16-e3cb207'] };
+export const TESTED: Record<AgentId, string[]> = { claude: ['2.1.283'], codex: ['0.156.1'], cursor: ['2026.10.16-e3cb207'], pi: ['1.4.0'] };
 /** A version's leading numbers: 2.1.283 is [2, 1, 283], 2026.10.16-e3cb207 is [2026, 10, 16]. */
 const numbers = (version: string) => version.match(/^\d+(?:\.\d+)*/)?.[0].split('.').map(Number);
 const PRERELEASE = /-(alpha|beta|rc|pre|preview|next|nightly|canary|dev)\b/i;
@@ -103,4 +104,4 @@ export function isTested(agent: AgentId, version: string): boolean {
   return tested.some((t) => t[0] === v[0]) && tested.some((t) => compare(v, t) >= 0);
 }
 
-export const AGENT_CLIS: Record<AgentId, AgentCli> = { claude, codex, cursor };
+export const AGENT_CLIS: Record<AgentId, AgentCli> = { claude, codex, cursor, pi };

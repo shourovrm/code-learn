@@ -19,8 +19,9 @@ export const AGENT_INFO: Record<AgentId, { name: string; installUrl: string; exp
   claude: { name: 'Claude Code', installUrl: 'https://code.claude.com/docs/en/setup', experimental: false },
   codex: { name: 'Codex', installUrl: 'https://developers.openai.com/codex/cli', experimental: false },
   cursor: { name: 'Cursor', installUrl: 'https://cursor.com/docs/cli/installation', experimental: true },
+  pi: { name: 'pi', installUrl: 'https://pi.dev', experimental: true },
 };
-const IDS: AgentId[] = ['claude', 'codex', 'cursor'];
+const IDS: AgentId[] = ['claude', 'codex', 'cursor', 'pi'];
 
 /** Installing an agent for the learner (agentInstall.ts), and starting its own sign-in. */
 export interface AgentSetup {

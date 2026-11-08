@@ -45,8 +45,8 @@ async function practise(api: CodeLearnApi): Promise<Activity> {
 
 export function codeLearnApiContract(name: string, make: () => Subject) {
   describe(`the CodeLearnApi contract: ${name}`, () => {
-    it('lists Claude Code, Codex and Cursor, in that order', async () => {
-      expect((await make().api.agents()).map((a) => a.id)).toEqual(['claude', 'codex', 'cursor']);
+    it('lists Claude Code, Codex, Cursor and pi, in that order', async () => {
+      expect((await make().api.agents()).map((a) => a.id)).toEqual(['claude', 'codex', 'cursor', 'pi']);
     });
 
     it('has no course and no draft before research', async () => {

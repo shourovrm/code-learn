@@ -7,7 +7,7 @@ code-learn is a Linux app for learning to code by practice: your own coding agen
 
 ## Overview
 
-Your agent (Claude Code, Codex or Cursor, signed in with your own account) writes everything a course needs: a roadmap of topics, a lesson per topic, and exercises with hidden tests. code-learn launches the agent with only code-learn's tools, checks each exercise before you see it, runs your code in a sandbox and keeps a per-topic mastery score. code-learn never calls a model API, and it never reads, stores or asks for credentials.
+Your agent (Claude Code, Codex, Cursor or [pi](https://pi.dev), signed in with your own account) writes everything a course needs: a roadmap of topics, a lesson per topic, and exercises with hidden tests. code-learn launches the agent with only code-learn's tools, checks each exercise before you see it, runs your code in a sandbox and keeps a per-topic mastery score. code-learn never calls a model API, and it never reads, stores or asks for credentials.
 
 code-learn ships no languages. The first time a course needs a language or framework, your agent writes a *track*: a list of [conda-forge](https://conda-forge.org) packages (for example `python=3.13` and `pytest`), an optional setup command, and two small probe programs. code-learn installs the packages with [micromamba](https://mamba.readthedocs.io) into `~/.code-learn/envs/<track>@<version>/`, then installs the track only if a correct probe passes and a wrong probe fails, with the network off.
 
@@ -26,7 +26,7 @@ Try it is never recorded. Check records an attempt, except for a check of the un
 
 - Linux on x86_64, logged in to a desktop session with systemd (most distributions).
 - bubblewrap 0.9 or later. Install it with your package manager, for example `sudo pacman -S bubblewrap` (Arch, CachyOS), `sudo apt install bubblewrap` (Debian, Ubuntu), `sudo dnf install bubblewrap` (Fedora) or `sudo zypper install bubblewrap` (openSUSE).
-- Claude Code or Codex, installed and signed in. Cursor is experimental.
+- Claude Code or Codex, installed and signed in. Cursor and pi are experimental; for pi, code-learn suggests Claude Haiku 5.5 through OpenRouter (`openrouter/anthropic/claude-haiku-5.5`).
 - About 5 GB of free disk space for each track you install. A Python track with pytest takes about 450 MB.
 
 The desktop app bundles micromamba. From a terminal you also need Node.js 22 or later and micromamba 2 on your `PATH` (or `CODE_LEARN_MICROMAMBA` set to its path).
@@ -65,11 +65,11 @@ code-learn doctor
 code-learn init
 ```
 
-This sets up Claude Code, Codex and Cursor; use `--host claude` (repeatable) to pick specific ones. It adds an MCP server entry for each agent, a code-learn section in `AGENTS.md`, an author subagent and the Claude Code practice hook. Existing config is merged, never replaced. Open the folder in your agent and say what you want to learn.
+This sets up Claude Code, Codex, Cursor and pi; use `--host claude` (repeatable) to pick specific ones. pi loads the project's `.pi/mcp.json` once you trust the folder the first time you start pi in it. It adds an MCP server entry for each agent, a code-learn section in `AGENTS.md`, an author subagent and the Claude Code practice hook. Existing config is merged, never replaced. Open the folder in your agent and say what you want to learn.
 
 | Command | What it does |
 |---|---|
-| `code-learn init [--host claude\|codex\|cursor]` | Set up this project for your agent(s) |
+| `code-learn init [--host claude\|codex\|cursor\|pi]` | Set up this project for your agent(s) |
 | `code-learn doctor [--fix]` | Check the sandbox, micromamba and isolation; `--fix` stops sandboxes a crashed run left |
 | `code-learn status` | Your progress and the next step |
 | `code-learn test [exercise]` | Run the visible tests (not recorded) |
@@ -81,7 +81,7 @@ This sets up Claude Code, Codex and Cursor; use `--host claude` (repeatable) to 
 | `code-learn track rebuild <id@version>` | Reinstall a track's toolchain and re-verify its exercises |
 | `code-learn track remove <id@version>` | Delete a track and its toolchain folder |
 
-The practice hook works in Claude Code only. It blocks the `Edit`, `Write`, `MultiEdit` and `NotebookEdit` tools on files under `exercises/` unless you run `code-learn assist on`. Writes through the shell aren't blocked, and in Codex and Cursor only the instructions in `AGENTS.md` ask the agent not to edit your files.
+The practice hook works in Claude Code only. It blocks the `Edit`, `Write`, `MultiEdit` and `NotebookEdit` tools on files under `exercises/` unless you run `code-learn assist on`. Writes through the shell aren't blocked, and in Codex, Cursor and pi only the instructions in `AGENTS.md` ask the agent not to edit your files.
 
 ## Removing what code-learn installed
 

@@ -24,6 +24,10 @@ export interface AgentInstallDeps extends HostDeps {
   find(bin: string): Executable | null;
 }
 
+/** The agents code-learn can install for the learner; pi isn't one of them, so the learner installs it from pi.dev. */
+type Installable = Exclude<AgentId, 'pi'>;
+const installable = (id: AgentId): id is Installable => id !== 'pi';
+
 const KiB = 1024;
 const MiB = 1024 * KiB;
 const GiB = 1024 ** 3;
@@ -45,13 +49,13 @@ const OFFLINE_OUTPUT = /could not resolve host|could not be resolved|network is 
  * Cursor signs nothing itself: its package runs its code on a Node.js the Node.js Foundation (macOS) or the OpenJS
  * Foundation (Windows) signed, read from Cursor's 2026.10.22 package.
  */
-const SIGNERS: Record<AgentId, { team: string; orgs: string[] }> = {
+const SIGNERS: Record<Installable, { team: string; orgs: string[] }> = {
   claude: { team: 'Q6L2SF6YDW', orgs: ['Anthropic, PBC'] },
   codex: { team: '2DC432GLL2', orgs: ['OpenAI OpCo, LLC'] },
   cursor: { team: 'HX7739G8FX', orgs: ['OpenJS Foundation'] },
 };
 
-const HOSTS: Record<AgentId, string[]> = {
+const HOSTS: Record<Installable, string[]> = {
   claude: ['downloads.claude.ai'],
   codex: ['releases.openai.com', 'chatgpt.com'],
   // Only the script: Cursor's script downloads its package itself, from downloads.cursor.com.
@@ -59,7 +63,7 @@ const HOSTS: Record<AgentId, string[]> = {
 };
 
 /** The vendor's own download hosts, over https: checked at every hop, redirects included. */
-export const isAgentHost = (id: AgentId) => (url: string) => {
+export const isAgentHost = (id: Installable) => (url: string) => {
   try {
     const u = new URL(url);
     return u.protocol === 'https:' && HOSTS[id].includes(u.hostname);
@@ -99,7 +103,7 @@ export function agentInstaller(d: AgentInstallDeps) {
   const ok = (r: { code: number | null }) => r.code === 0;
 
   /** A download from the vendor's host, at most `maxBytes`: small files stay small. */
-  async function get(id: AgentId, url: string, file: string, maxBytes: number, progress = false) {
+  async function get(id: Installable, url: string, file: string, maxBytes: number, progress = false) {
     try {
       await d.download(url, file, (p) => progress && status.set(id, { phase: 'downloading', progress: p }), isAgentHost(id), maxBytes);
     } catch (e) {
@@ -111,7 +115,7 @@ export function agentInstaller(d: AgentInstallDeps) {
    * The vendor signed this file. On macOS, codesign itself checks that the signature is valid and that its
    * certificate is Apple-issued for the vendor's team; on Windows, Authenticode and the signer's organization.
    */
-  async function assertSigned(id: AgentId, file: string) {
+  async function assertSigned(id: Installable, file: string) {
     const { team, orgs } = SIGNERS[id];
     if (d.platform === 'darwin') {
       const requirement = `-R=anchor apple generic and certificate leaf[subject.OU] = "${team}"`;
@@ -195,13 +199,14 @@ export function agentInstaller(d: AgentInstallDeps) {
     await assertSigned('cursor', windows ? exe.path : path.join(folder, 'node'));
   }
 
-  const INSTALLS: Record<AgentId, (dir: string) => Promise<void>> = { claude, codex, cursor };
+  const INSTALLS: Record<Installable, (dir: string) => Promise<void>> = { claude, codex, cursor };
 
   async function installNow(id: AgentId) {
     let dir: string | undefined;
     try {
       dir = d.tempDir();
       if ((await d.freeBytes(dir)) < GiB) throw new Stop('disk');
+      if (!installable(id)) throw new Stop('failed');
       await INSTALLS[id](dir);
       // Done only once code-learn finds it where it looks for agents.
       if (!d.find(AGENT_CLIS[id].bin)) throw new Stop('failed');
@@ -219,8 +224,8 @@ export function agentInstaller(d: AgentInstallDeps) {
     }
   }
 
-  /** Every agent installs the same way on macOS and Windows; nothing installs on Linux. */
-  const canInstall = (_id: AgentId) => desktop;
+  /** Every agent but pi installs the same way on macOS and Windows; nothing installs on Linux. */
+  const canInstall = (id: AgentId) => desktop && installable(id);
 
   return {
     canInstall,

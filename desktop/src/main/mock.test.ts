@@ -285,7 +285,7 @@ describe('mock: agents', () => {
   it('reports agents that are not installed, with an install page', async () => {
     const api = createMock(scenario('no-agent'));
     const agents = await api.agents();
-    expect(agents.map((a) => a.state)).toEqual(['missing', 'missing', 'missing']);
+    expect(agents.map((a) => a.state)).toEqual(['missing', 'missing', 'missing', 'missing']);
     for (const a of agents) expect(isSafeLink(a.installUrl)).toBe(true);
     expect(await api.connect('codex')).toMatchObject({ state: 'missing' });
     await expect(api.research(goal)).rejects.toThrow(NO_AGENT);
@@ -295,14 +295,14 @@ describe('mock: agents', () => {
     const options = scenario('no-agent');
     const api = createMock(options);
     const states = async () => (await api.agents()).map((a) => a.state);
-    expect(await states()).toEqual(['missing', 'missing', 'missing']);
-    options.agents = { cursor: 'missing' };
-    expect(await states()).toEqual(['not-connected', 'not-connected', 'missing']);
+    expect(await states()).toEqual(['missing', 'missing', 'missing', 'missing']);
+    options.agents = { cursor: 'missing', pi: 'missing' };
+    expect(await states()).toEqual(['not-connected', 'not-connected', 'missing', 'missing']);
     await api.connect('claude');
     await api.connect('codex');
-    expect(await states()).toEqual(['not-connected', 'connected', 'missing']);
-    options.agents = { codex: 'missing', cursor: 'missing' };
-    expect(await states()).toEqual(['not-connected', 'missing', 'missing']);
+    expect(await states()).toEqual(['not-connected', 'connected', 'missing', 'missing']);
+    options.agents = { codex: 'missing', cursor: 'missing', pi: 'missing' };
+    expect(await states()).toEqual(['not-connected', 'missing', 'missing', 'missing']);
     await expect(api.research(goal)).rejects.toThrow(NO_AGENT);
   });
 

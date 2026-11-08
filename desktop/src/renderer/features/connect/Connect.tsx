@@ -137,7 +137,7 @@ export function Connect({ then = { to: 'goal' } }: { then?: Route }) {
 
 export const running = (install?: AgentInstall) => install !== undefined && install.phase !== 'done' && install.phase !== 'failed';
 
-const VENDOR: Record<AgentId, string> = { claude: 'Anthropic', codex: 'OpenAI', cursor: 'Cursor' };
+const VENDOR: Record<AgentId, string> = { claude: 'Anthropic', codex: 'OpenAI', cursor: 'Cursor', pi: 'pi.dev' };
 
 const PROBLEM: Record<NonNullable<AgentInstall['problem']>, (a: Agent) => string> = {
   offline: () => "You're offline. Connect to the internet, then try again.",

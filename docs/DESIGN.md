@@ -43,7 +43,7 @@ Each item is verified by an automated test unless marked *journey*. Journeys run
 
 - **Desktop app:** Linux x86_64 with a systemd user session and bubblewrap 0.9 or later, as an AppImage or a pacman package (§4.6).
 - **Terminal:** the same Linux computers, with Node.js 22 or later and micromamba 2.
-- **Agents:** Claude Code and Codex; Cursor is experimental.
+- **Agents:** Claude Code and Codex; Cursor and pi are experimental. The desktop runs pi with only code-learn's tools (`--no-builtin-tools`, `--no-extensions -e builtin:mcp`, `--tools mcp__code_learn__…`), its server in the job folder's `.pi/mcp.json` with `direct` exposure, and suggests `openrouter/anthropic/claude-haiku-5.5`. pi has no web tools, so research and setup with pi run on the model's own knowledge.
 
 ### Deferred (not needed for 1.0)
 
