@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import type { Computer as ComputerView, ComputerCheck, DockerInstall, Platform } from '../../../shared/api';
+import { useEffect, useRef, useState } from 'react';
+import type { ComputerCheck } from '../../../shared/api';
 import { useApi } from '../../app/api';
 import { useRouter, type Route } from '../../app/router';
 import { Failed, Stale } from '../../app/Problems';
@@ -7,20 +7,17 @@ import { timing, useLoad } from '../../app/useLoad';
 import { Button } from '../../ui/Button';
 import { Status } from '../../ui/Icon';
 import { stagger } from '../../ui/motion';
-import { CHECK_NAMES, DETAILS, FIXES, INSTALL, NOT_YET, REASON, WITHOUT_DOCKER, WSL_STEP } from './fixes';
-import { DockerProgress } from './DockerProgress';
-import { ExternalLink } from '../../ui/ExternalLink';
+import { CHECK_ABOUT, CHECK_NAMES, NOT_YET } from './fixes';
 
 const STATE_TEXT = { ok: 'Ready', problem: 'Needs a step', waiting: 'Waiting' } as const;
 
 /** Can this computer run graded checks? Re-checks by itself until it can. */
 export function Computer({ then, fromConnect = false }: { then: Route; fromConnect?: boolean }) {
   const api = useApi();
-  const { go, fail } = useRouter();
+  const { go } = useRouter();
   // One check at a time: a click or focus while one runs waits for its result. The ref is set the moment a
   // check starts, before React re-renders with `loading`, so a focus in between can't start a second one.
   const checking = useRef(false);
-  const last = useRef<ComputerView | undefined>(undefined);
   const { data, error, stale, loading, reload } = useLoad(
     async () => {
       checking.current = true;
@@ -31,9 +28,8 @@ export function Computer({ then, fromConnect = false }: { then: Route; fromConne
       }
     },
     [],
-    { settled: (c) => c.ready, every: installing(last.current) ? timing.pollMs : timing.recheckMs },
+    { settled: (c) => c.ready, every: timing.recheckMs },
   );
-  last.current = data;
   // On the way in from Connect, ready at the first check: nothing to show, so code-learn moves on. An explicit
   // Check this computer, or one where the learner had a step to take, says "This computer is ready." and waits.
   const hadStep = useRef(!fromConnect);
@@ -45,7 +41,6 @@ export function Computer({ then, fromConnect = false }: { then: Route; fromConne
   const recheck = () => {
     if (!checking.current) reload();
   };
-  const list = useRef<HTMLUListElement>(null);
   const action = useRef<HTMLButtonElement>(null);
   const focusInList = useRef(false);
 
@@ -64,52 +59,26 @@ export function Computer({ then, fromConnect = false }: { then: Route; fromConne
     }
   }, [data]);
 
-  async function act(call: () => Promise<void>) {
-    try {
-      await call();
-      recheck();
-    } catch (e) {
-      fail(e);
-    }
-  }
-
   if (error) return <Failed error={error} retry={reload} />;
   if (!data || (data.ready && !hadStep.current)) return null;
   const problem = data.checks.find((c) => c.state === 'problem');
-  // Docker isn't ready, but practice runs without it: the learner can go on, and installing Docker stays an option.
-  const withoutDocker = !data.ready && data.wasi;
   return (
     <main className="center">
       <div className="stack" style={{ width: 620, gap: 22 }}>
         <h1 className="h1 a-up">Check this computer</h1>
-        <p className="sub a-up" style={stagger(1)}>{withoutDocker ? WITHOUT_DOCKER : 'code-learn runs your code in Docker, on this computer.'}</p>
-        <ul className="stack plain" ref={list} onFocus={() => (focusInList.current = true)}>
-          {data.checks.map((c, i) => (
-            <CheckItem
-              key={c.id} check={c} computer={data} index={i} optional={Boolean(withoutDocker)}
-              onInstall={() => act(() => api.installDocker())} onOpen={() => act(() => api.openDocker())} onUpdateWindows={() => act(() => api.openWindowsUpdate())}
-              onRestart={() => act(() => api.restartWindows())}
-            />
-          ))}
+        <p className="sub a-up" style={stagger(1)}>code-learn runs your code in a sandbox, on this computer.</p>
+        <ul className="stack plain" onFocus={() => (focusInList.current = true)}>
+          {data.checks.map((c, i) => <CheckItem key={c.id} check={c} index={i} />)}
         </ul>
         <p className="quiet-text" role="status">
-          {data.ready
-            ? 'This computer is ready.'
-            : installing(data)
-              ? ''
-              : `${problem && !withoutDocker ? `${problem.reason ? REASON.notYet[problem.reason.kind] : problem.detail ? DETAILS[problem.detail].notYet : NOT_YET[problem.id]} ` : ''}Checking again every few seconds.`}
+          {data.ready ? 'This computer is ready.' : `${problem ? `${NOT_YET[problem.id]} ` : ''}Checking again every few seconds.`}
         </p>
         <div className="actions">
           {data.ready ? (
             <Button ref={action} size="lg" onClick={() => go(then)}>Continue</Button>
-          ) : withoutDocker ? (
-            <>
-              <Button ref={action} size="lg" onClick={() => go(then)}>Continue</Button>
-              <Button variant="ghost" size="lg" onClick={recheck}>Check now</Button>
-            </>
           ) : (
             <>
-              <Button ref={action} variant="ghost" size="lg" onClick={recheck}>Check now</Button>
+              <Button ref={action} variant="ghost" size="lg" onClick={recheck}>Check again</Button>
               <Button variant="text" onClick={() => go(then)}>Later</Button>
             </>
           )}
@@ -120,112 +89,48 @@ export function Computer({ then, fromConnect = false }: { then: Route; fromConne
   );
 }
 
-/** The stops of WSL's own setup. */
-const WSL_PROBLEMS = new Set<DockerInstall['problem']>(['declined', 'wsl-failed', 'restart']);
-/** code-learn is downloading or installing Docker; once it's starting, Check this computer speaks for Docker. */
-const installing = (c?: ComputerView) => Boolean(c?.install && c.install.phase !== 'failed' && c.install.phase !== 'starting');
-
-interface ItemProps {
-  check: ComputerCheck;
-  computer: ComputerView;
-  index: number;
-  /** Practice runs without Docker here: its step reads as optional, and Continue stays the one primary action. */
-  optional: boolean;
-  onInstall: () => void;
-  onOpen: () => void;
-  onUpdateWindows: () => void;
-  onRestart: () => void;
-}
-
-function CheckItem({ check, computer, index, optional, onInstall, onOpen, onUpdateWindows, onRestart }: ItemProps) {
+function CheckItem({ check, index }: { check: ComputerCheck; index: number }) {
   const name = CHECK_NAMES[check.id];
-  const platform = computer.platform;
-  // Right after code-learn installed Docker, its first start asks the learner to accept Docker's terms.
-  const justInstalled = check.detail === 'starting' && computer.install?.phase === 'starting';
-  const fix =
-    check.state !== 'problem' ? undefined
-    : justInstalled ? { steps: [INSTALL.phase.starting] }
-    : check.reason ? REASON.fix(check.reason)
-    : check.detail ? DETAILS[check.detail].fix
-    : FIXES[platform][check.id];
-  // On Windows, WSL's setup is Install's first step, offered on the running row when that's what the engine needs.
-  const wslStep = check.state === 'problem' && check.detail ? WSL_STEP[check.detail] : undefined;
-  const offerInstall = check.state === 'problem' && (check.id === 'docker-installed' || wslStep) && computer.canInstall;
-  const offerOpen = check.state === 'problem' && check.id === 'docker-running' && !check.detail && computer.canInstall;
-  const offerRestart = check.state === 'problem' && check.detail === 'restart';
-  // A stop of Docker's own install belongs to the installed row: the WSL row shows only WSL's.
-  const install = wslStep && computer.install?.problem && !WSL_PROBLEMS.has(computer.install.problem) ? undefined : computer.install;
-  const busy = Boolean(offerInstall && installing(computer));
-  const action = optional ? 'ghost' : 'primary';
   return (
     <li className={`card check a-up${check.state === 'ok' ? ' on' : ''}`} style={stagger(index + 2)} aria-label={name}>
       <div className="check-head">
         {check.state === 'ok' && <Status kind="ok" size={24} />}
-        {check.state === 'problem' && (busy ? <Status kind="run" size={24} /> : optional ? <span className="ico wait" aria-hidden="true" /> : <Status kind="fail" size={24} label="Needs a step" />)}
+        {check.state === 'problem' && <Status kind="fail" size={24} label="Needs a step" />}
         {check.state === 'waiting' && <span className="ico wait" aria-hidden="true" />}
         <b>{name}</b>
-        {/* Installing, Emm's fill says what's happening: no state word beside it. */}
-        {!busy && (check.state === 'problem' && optional ? <span className="check-state waiting">Optional</span> : <span className={`check-state ${check.state}`}>{STATE_TEXT[check.state]}</span>)}
+        <span className={`check-state ${check.state}`}>{STATE_TEXT[check.state]}</span>
       </div>
-      {offerInstall && fix ? (
-        <InstallDocker
-          install={install} platform={platform} manual={fix.link} action={action} onInstall={onInstall} onUpdateWindows={onUpdateWindows} onRestart={onRestart}
-          {...(wslStep ? { wsl: { label: wslStep, steps: fix.steps } } : {})}
-        />
-      ) : (
-        fix && (
-          <div className="fix">
-            <ol>{fix.steps.map((s) => <li key={s}>{s}</li>)}</ol>
-            <div className="actions">
-              {offerOpen && <Button variant={action} onClick={onOpen}>Open Docker Desktop</Button>}
-              {offerRestart && <Button variant={action} onClick={onRestart}>Restart now</Button>}
-              {fix.link && <ExternalLink className="btn ghost" href={fix.link.url}>{fix.link.label}</ExternalLink>}
-            </div>
-          </div>
-        )
+      <p className="quiet-text">{CHECK_ABOUT[check.id]}</p>
+      {check.state === 'problem' && (
+        <div className="fix">
+          {/* Core's message already ends with what to do. */}
+          {check.reason && <p>{check.reason}</p>}
+          {check.installCommand && <CopyCommand command={check.installCommand} />}
+        </div>
       )}
     </li>
   );
 }
 
-interface InstallProps {
-  install?: DockerInstall;
-  platform: Platform;
-  manual?: { label: string; url: string };
-  /** WSL's setup alone, with its step and button, where Docker Desktop is already installed. */
-  wsl?: { label: string; steps: string[] };
-  /** The install button's look: secondary when practice runs without Docker. */
-  action: 'primary' | 'ghost';
-  onInstall: () => void;
-  onUpdateWindows: () => void;
-  onRestart: () => void;
-}
-
-/** code-learn installs Docker Desktop from Docker, checked, with Docker's own window for its terms (§6.1). */
-function InstallDocker({ install, platform, manual, wsl, action, onInstall, onUpdateWindows, onRestart }: InstallProps) {
-  if (install && install.phase !== 'failed') {
-    return (
-      <div className="fix install">
-        <DockerProgress install={{ ...install, phase: install.phase }} platform={platform} />
-      </div>
-    );
+/** A command for the learner to run in a terminal. code-learn runs nothing as root, so it only offers the text. */
+function CopyCommand({ command }: { command: string }) {
+  const [copy, setCopy] = useState<'idle' | 'copied' | 'failed'>('idle');
+  async function copyCommand() {
+    try {
+      await navigator.clipboard.writeText(command);
+      setCopy('copied');
+    } catch {
+      // The command stays on screen, selectable, so the learner can still copy it by hand.
+      setCopy('failed');
+    }
   }
-  const problem = install?.problem;
   return (
-    <div className="fix install">
-      {wsl && !problem && <ol>{wsl.steps.map((s) => <li key={s}>{s}</li>)}</ol>}
-      {problem && <p className="alert" role="alert">{INSTALL.problem[problem]}</p>}
-      <div className="actions">
-        {problem === 'windows-version' && <Button variant={action} onClick={onUpdateWindows}>Open Windows Update</Button>}
-        {problem === 'restart' && <Button variant={action} onClick={onRestart}>Restart now</Button>}
-        {(!problem || INSTALL.retry.has(problem)) && <Button variant={action} onClick={onInstall}>{problem ? 'Try again' : wsl ? wsl.label : 'Install Docker'}</Button>}
-        {manual && <ExternalLink className="btn ghost" href={manual.url}>{wsl ? manual.label : 'Install it myself'}</ExternalLink>}
+    <>
+      <div className="command">
+        <code>{command}</code>
+        <Button variant="ghost" onClick={copyCommand}>{copy === 'copied' ? 'Copied' : 'Copy'}</Button>
       </div>
-      {!wsl && (
-        <p className="quiet-text">
-          {INSTALL.terms} <ExternalLink className="inline" href={INSTALL.termsUrl}>Read them</ExternalLink>
-        </p>
-      )}
-    </div>
+      {copy === 'failed' && <p className="quiet-text" role="status">Couldn't copy it. Select the command and copy it yourself.</p>}
+    </>
   );
 }

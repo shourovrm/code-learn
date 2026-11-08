@@ -9,7 +9,7 @@ import { Emm } from '../../ui/Emm';
 import { Status } from '../../ui/Icon';
 import { Logo, Mark } from '../../ui/Mark';
 import { stagger } from '../../ui/motion';
-import { missing } from '../setup/Setup';
+import { agentMissing } from '../setup/Setup';
 
 /** The first seconds of a launch, while code-learn looks for the agents: never a blank window. */
 function Starting() {
@@ -36,8 +36,6 @@ export function Welcome() {
     settled: (d) => d.agents.some((a) => a.state === 'connected'),
     every: timing.agentsMs,
   });
-  // Read beside the agents, so Welcome shows at once: what code-learn could install here.
-  const { data: computer } = useLoad(() => api.computer(), []);
   // A relaunch with a course in progress and the agent connected goes straight back to the course.
   const resume = Boolean(data?.course && data.agents.some((a) => a.state === 'connected'));
   useEffect(() => {
@@ -49,8 +47,7 @@ export function Welcome() {
   const on = data.agents.some((a) => a.state === 'connected');
   // Straight on to learning: the goal, or the course already approved.
   const learn: Route = data.course ? { to: 'learn' } : { to: 'goal' };
-  const need = !on && computer ? missing(computer, data.agents) : undefined;
-  const install = Boolean(need && (need.docker || need.agent));
+  const install = !on && agentMissing(data.agents);
   const fx = on ? 'colorin' : 'bw';
   return (
     <main className="welcome">

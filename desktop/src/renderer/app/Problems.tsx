@@ -9,13 +9,8 @@ import { useBusy } from './useBusy';
 
 /** What a stall says when it isn't the agent's doing: this computer's problems, a rebuild, or a lesson that wasn't written. */
 const STALL = {
-  docker: 'Docker stopped. Start Docker, then try again.',
-  'docker-busy': 'Docker is busy or not answering. Wait a moment, then try again.',
-  'docker-failed': "Docker couldn't run that. Try again, and restart Docker if it happens again.",
-  'docker-disk': 'Docker ran out of disk space. Remove unused images in Docker Desktop, then try again.',
+  sandbox: "code-learn's sandbox stopped working. Check this computer, then try again.",
   disk: 'Not enough disk space. Free some space on this computer, then try again.',
-  wasi: "code-learn couldn't start the part that runs your code. Reinstall code-learn, then try again.",
-  'wasi-seal': "code-learn couldn't make its files read-only on this drive. Keep code-learn's folder on this computer's own drive, then try again.",
   rebuild: REBUILD,
   lesson: "code-learn couldn't write this lesson.",
 };
@@ -59,7 +54,7 @@ export function Stalled({ stalled, work, later, retry }: { stalled: NonNullable<
     <div className="failed" role="alert">
       {stalled === 'failed' ? unfinished(work) : named(stalled) ? STALL[stalled] : SAY[stalled]}
       {stalled === 'failed' && <Button variant="text" onClick={() => go({ to: 'connect', then: route })}>Check your agent</Button>}
-      {(stalled === 'docker' || stalled === 'docker-failed') && <Button variant="text" onClick={() => go({ to: 'computer', then: route })}>Check this computer</Button>}
+      {stalled === 'sandbox' && <Button variant="text" onClick={() => go({ to: 'computer', then: route })}>Check this computer</Button>}
       {stalled === 'rebuild' && <Button variant="text" onClick={() => go({ to: 'tracks' })}>Go to Tracks</Button>}
       {/* An agent code-learn couldn't stop is still running: only quitting stops it (§3.1). */}
       {stalled !== 'unstoppable' && <Button variant="text" disabled={starting.busy} onClick={again}>Try again</Button>}

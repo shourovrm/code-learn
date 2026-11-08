@@ -22,7 +22,7 @@ describe('what a failure says', () => {
   });
 
   it('shows plain sentences only: no command, path or tool name, and nothing cut short', () => {
-    expect(say("The container runtime isn't running. Start Docker Desktop (or `podman machine start`).")).toBe(SAY.other);
+    expect(say("The sandbox isn't running. Start it with `systemctl --user start code-learn`.")).toBe(SAY.other);
     expect(say('exercises/react/state-easy-1/Counter.jsx is missing. Restore it, or run get_exercise.')).toBe(SAY.other);
     expect(say('Bad input')).toBe(SAY.other);
     expect(say('code-learn is busy with another change to this course or track. Retry in a moment.')).toBe('code-learn is busy with another change to this course or track. Retry in a moment.');

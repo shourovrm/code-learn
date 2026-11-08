@@ -112,7 +112,7 @@ describe('not counted', () => {
     expect(screen.getByRole('button', { name: 'Go to Tracks' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Check this computer' })).not.toBeInTheDocument();
     view.unmount();
-    render(<Results shown={{ kind: 'check', result: { kind: 'not-counted', reason: "Docker isn't running." }, keepTrying: false }} name="Emm" topic="State" visibleTests={visibleTests} ways={ways} />);
+    render(<Results shown={{ kind: 'check', result: { kind: 'not-counted', reason: "code-learn's sandbox couldn't run that." }, keepTrying: false }} name="Emm" topic="State" visibleTests={visibleTests} ways={ways} />);
     expect(screen.getByRole('button', { name: 'Check this computer' })).toBeInTheDocument();
   });
 });

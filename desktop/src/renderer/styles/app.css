@@ -386,6 +386,8 @@ button.stop-name.link:hover { background: var(--soft); }
 .check-state.problem { color: var(--orange-ink); }
 .ico.wait { width: 24px; height: 24px; border: 2px solid var(--ctl); }
 .fix { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding-left: 36px; }
+.command { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; max-width: 100%; }
+.command code { padding: 8px 12px; border-radius: 8px; background: var(--soft); font: 14px/1.4 var(--mono); font-variant-ligatures: none; overflow-wrap: anywhere; user-select: all; }
 .fix ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 15px; line-height: 1.5; }
 .details { width: 100%; text-align: left; }
 .details summary { cursor: pointer; font-weight: 600; min-height: 32px; display: flex; align-items: center; }
@@ -491,7 +493,7 @@ a.inline:hover { color: var(--ink); }
 .job.compact { gap: 8px; width: 100%; font-size: 12.5px; }
 .job.compact .job-time { font-size: 12px; }
 .job.compact .job-step { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* An install's words say what to do (accept Docker's terms in its window), so they wrap rather than cut. */
+/* An install's words say what to do (sign in in the browser that opened), so they wrap rather than cut. */
 .job.compact.install-fill { align-items: center; font-size: 14px; }
 .job.compact.install-fill .job-step { white-space: normal; overflow: visible; }
 /* A lesson or activity being written: its icon and label on one line, its progress beneath, at the label's start. */

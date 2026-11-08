@@ -3,58 +3,59 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { createMock, scenario } from '../../../main/mock';
 import { renderApp } from '../../test-utils';
-import type { DockerInstall } from '../../../shared/api';
 
-const mac = (name: string) => createMock({ ...scenario(name), platform: 'mac' });
+// The mock offers agent installs only where its `platform` option says the installer exists; the option's value
+// doesn't matter to these screens, which no longer branch on the computer.
+const installable = (name: string) => createMock({ ...scenario(name), platform: 'windows' });
 
 describe('install what is missing', () => {
-  it('offers one action on Welcome when Docker and an agent are missing', async () => {
-    renderApp({ to: 'welcome' }, mac('nothing-installed'));
+  it('offers one action on Welcome when no agent is installed', async () => {
+    renderApp({ to: 'welcome' }, installable('nothing-installed'));
     expect(await screen.findByRole('button', { name: "Install what's missing" })).toBeInTheDocument();
   });
 
-  it('installs Docker and the chosen agent, shows each, then Docker\'s terms window and the agent\'s sign-in in that order', async () => {
+  it("installs the chosen agent, shows it, then goes on once it is signed in", async () => {
     const user = userEvent.setup();
-    renderApp({ to: 'welcome' }, mac('nothing-installed'));
+    renderApp({ to: 'welcome' }, installable('nothing-installed'));
     await user.click(await screen.findByRole('button', { name: "Install what's missing" }));
-    const docker = await screen.findByRole('listitem', { name: 'Docker Desktop' });
-    const agent = screen.getByRole('listitem', { name: 'Agent' });
+    const agent = await screen.findByRole('listitem', { name: 'Agent' });
     expect(within(agent).getByRole('radio', { name: 'Claude Code' })).toBeChecked();
-    expect(within(docker).getByRole('link', { name: 'Read them' })).toBeInTheDocument();
     expect(within(agent).getByRole('link', { name: 'Read them' })).toHaveAttribute('href', 'https://www.anthropic.com/legal/consumer-terms');
     // Nothing downloads until the learner says so.
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
+    expect(screen.queryByRole('listitem', { name: 'Docker Desktop' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: "Install what's missing" }));
-    // Docker's shows at once, at the start of its download; the agent's once its install reports.
-    expect(await within(docker).findByRole('progressbar', { name: 'Downloading Docker Desktop' })).toBeInTheDocument();
-    expect(within(docker).queryByText(/Opening Docker/)).not.toBeInTheDocument();
-    await waitFor(() => expect(screen.getAllByRole('progressbar')).toHaveLength(2));
-    expect(await within(docker).findByText(/accept Docker's terms in its window/, {}, { timeout: 4000 })).toBeInTheDocument();
+    expect(await within(agent).findByRole('progressbar')).toBeInTheDocument();
     await user.click(await within(agent).findByRole('button', { name: 'Sign in' }, { timeout: 4000 }));
     window.dispatchEvent(new Event('focus'));
     expect(await screen.findByRole('heading', { name: 'What do you want to learn?' }, { timeout: 4000 })).toBeInTheDocument();
   });
 
+  it('does not ask about the sandbox: a computer without bubblewrap installs an agent all the same', async () => {
+    renderApp({ to: 'setup' }, installable('nothing-installed'));
+    expect(await screen.findByRole('listitem', { name: 'Agent' })).toBeInTheDocument();
+    expect(screen.getAllByRole('listitem')).toHaveLength(1);
+  });
+
   it('Welcome and Setup see an agent installed elsewhere within seconds, with no focus event', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     try {
-      const options = { ...scenario('nothing-installed'), platform: 'mac' as const };
+      const options = { ...scenario('nothing-installed'), platform: 'windows' as const };
       const api = createMock(options);
       const view = renderApp({ to: 'welcome' }, api);
       expect(await screen.findByRole('button', { name: "Install what's missing" })).toBeInTheDocument();
-      // Installed in a terminal: only Docker is missing now.
+      // Installed in a terminal.
       options.agents = {};
       await act(() => vi.advanceTimersByTimeAsync(3000));
-      // Still one action for Docker, and the agent is there to connect.
-      await waitFor(() => expect(screen.getByRole('button', { name: 'Connect an agent' })).toBeInTheDocument());
+      await waitFor(() => expect(screen.queryByRole('button', { name: "Install what's missing" })).not.toBeInTheDocument());
+      expect(screen.getByRole('button', { name: 'Connect an agent' })).toBeInTheDocument();
       view.unmount();
       options.agents = { claude: 'missing', codex: 'missing', cursor: 'missing' };
       renderApp({ to: 'setup' }, api);
       expect(await screen.findByRole('listitem', { name: 'Agent' })).toBeInTheDocument();
       options.agents = {};
       await act(() => vi.advanceTimersByTimeAsync(3000));
-      await waitFor(() => expect(screen.queryByRole('listitem', { name: 'Agent' })).not.toBeInTheDocument());
-      expect(screen.getByRole('listitem', { name: 'Docker Desktop' })).toBeInTheDocument();
+      expect(await screen.findByRole('heading', { name: 'Connect an agent' })).toBeInTheDocument();
     } finally {
       vi.useRealTimers();
     }
@@ -63,7 +64,7 @@ describe('install what is missing', () => {
   it('goes on to Connect once nothing is left to install, so an agent installed elsewhere gets connected', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     try {
-      const options = { ...scenario('no-agent'), platform: 'mac' as const };
+      const options = { ...scenario('no-agent'), platform: 'windows' as const };
       renderApp({ to: 'setup' }, createMock(options));
       expect(await screen.findByRole('listitem', { name: 'Agent' })).toBeInTheDocument();
       options.agents = {};
@@ -76,7 +77,7 @@ describe('install what is missing', () => {
 
   it('installs the agent the learner picks', async () => {
     const user = userEvent.setup();
-    const api = mac('nothing-installed');
+    const api = installable('nothing-installed');
     renderApp({ to: 'setup' }, api);
     // The choice is named by the label it shows (WCAG 2.5.3).
     const choice = await screen.findByRole('radiogroup', { name: 'Your agent' });
@@ -90,115 +91,40 @@ describe('install what is missing', () => {
   });
 
   it('offers only supported agents: Cursor is experimental, so it installs from Connect, not here', async () => {
-    renderApp({ to: 'setup' }, mac('nothing-installed'));
+    renderApp({ to: 'setup' }, installable('nothing-installed'));
     const choice = await screen.findByRole('radiogroup', { name: 'Your agent' });
     expect(within(choice).getAllByRole('radio').map((r) => r.getAttribute('value'))).toEqual(['claude', 'codex']);
   });
 
-  it('installs only what is missing: with an agent there, just Docker', async () => {
-    renderApp({ to: 'setup' }, mac('no-docker'));
-    expect(await screen.findByRole('listitem', { name: 'Docker Desktop' })).toBeInTheDocument();
-    expect(screen.queryByRole('listitem', { name: 'Agent' })).not.toBeInTheDocument();
-  });
-
-  it("doesn't count Docker as missing when practice can run without it (core §4.5)", async () => {
-    renderApp({ to: 'welcome' }, createMock({ docker: 'missing', wasi: true, platform: 'mac' }));
-    expect(await screen.findByRole('button', { name: 'Connect an agent' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: "Install what's missing" })).not.toBeInTheDocument();
-  });
-
-  it('installs only the agent when practice can run without Docker', async () => {
-    renderApp({ to: 'setup' }, createMock({ ...scenario('nothing-installed'), wasi: true, platform: 'mac' }));
-    expect(await screen.findByRole('listitem', { name: 'Agent' })).toBeInTheDocument();
-    expect(screen.queryByRole('listitem', { name: 'Docker Desktop' })).not.toBeInTheDocument();
-  });
-
   it('keeps the usual way in when nothing is missing', async () => {
-    renderApp({ to: 'welcome' }, mac(''));
+    renderApp({ to: 'welcome' }, createMock({ platform: 'windows' }));
     expect(await screen.findByRole('button', { name: 'Connect an agent' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: "Install what's missing" })).not.toBeInTheDocument();
   });
 
-  it('says why the agent install stopped, with Try again, beside Docker\'s own progress', async () => {
+  it('says why the agent install stopped, with Try again', async () => {
     const user = userEvent.setup();
-    renderApp({ to: 'setup' }, mac('nothing-installed-offline'));
+    renderApp({ to: 'setup' }, installable('nothing-installed-offline'));
     await user.click(await screen.findByRole('button', { name: "Install what's missing" }));
     const agent = screen.getByRole('listitem', { name: 'Agent' });
     expect(await within(agent).findByRole('alert', {}, { timeout: 4000 })).toHaveTextContent("You're offline. Connect to the internet, then try again.");
     expect(within(agent).getByRole('button', { name: 'Try again' })).toBeInTheDocument();
-  });
-
-  it('on an older Windows, says why Docker stopped and opens Windows Update', async () => {
-    const user = userEvent.setup();
-    const api = createMock({ ...scenario('no-docker'), platform: 'windows' });
-    const computer = api.computer;
-    api.computer = async () => ({ ...(await computer()), install: { phase: 'failed', problem: 'windows-version' } });
-    let opened = 0;
-    api.openWindowsUpdate = async () => void opened++;
-    renderApp({ to: 'setup' }, api);
-    await user.click(await screen.findByRole('button', { name: "Install what's missing" }));
-    const docker = screen.getByRole('listitem', { name: 'Docker Desktop' });
-    expect(await within(docker).findByRole('alert')).toHaveTextContent('Docker no longer supports older versions, so update Windows first.');
-    await user.click(within(docker).getByRole('button', { name: 'Open Windows Update' }));
-    expect(opened).toBe(1);
-  });
-
-  it("on Windows, shows WSL's setup in Docker's card, and Try again when the learner said no to Windows' prompt", async () => {
-    const user = userEvent.setup();
-    const api = createMock({ ...scenario('no-docker'), platform: 'windows' });
-    const computer = api.computer;
-    let install: DockerInstall = { phase: 'wsl' };
-    api.computer = async () => ({ ...(await computer()), install });
-    renderApp({ to: 'setup' }, api);
-    await user.click(await screen.findByRole('button', { name: "Install what's missing" }));
-    const docker = screen.getByRole('listitem', { name: 'Docker Desktop' });
-    expect(await within(docker).findByRole('progressbar', { name: 'Allow WSL, which Docker needs, when Windows asks (look in the taskbar).' })).toBeInTheDocument();
-    install = { phase: 'failed', problem: 'declined' };
-    expect(await within(docker).findByRole('alert')).toHaveTextContent('Windows asks for permission first. Try again, and choose Yes.');
-    expect(within(docker).getByRole('button', { name: 'Try again' })).toBeInTheDocument();
-    install = { phase: 'failed', problem: 'restart' };
-    expect(await within(docker).findByText('Restart Windows, then open code-learn again.')).toBeInTheDocument();
-  });
-});
-
-describe("Docker after code-learn's install", () => {
-  it('says Docker Desktop is not installed before anything starts, with its terms and no pricing', async () => {
-    renderApp({ to: 'setup' }, mac('no-docker'));
-    const docker = await screen.findByRole('listitem', { name: 'Docker Desktop' });
-    expect(within(docker).getByText('Not installed')).toBeInTheDocument();
-    expect(docker).toHaveTextContent("Docker's terms apply. Read them");
-    expect(docker).not.toHaveTextContent(/free/i);
-  });
-
-  it("once Docker's start window ends with Docker still stopped, offers to open it and check again, never a new download", async () => {
-    const user = userEvent.setup();
-    renderApp({ to: 'setup' }, mac('docker-wont-start'));
-    await user.click(await screen.findByRole('button', { name: "Install what's missing" }));
-    const docker = await screen.findByRole('listitem', { name: 'Docker Desktop' });
-    // Installed, but Docker didn't answer within its start window: code-learn's install status is gone.
-    expect(await within(docker).findByRole('button', { name: 'Open Docker Desktop' }, { timeout: 4000 })).toBeInTheDocument();
-    expect(within(docker).getByText('Open Docker Desktop, then wait until it says it is running.')).toBeInTheDocument();
-    expect(within(docker).getByRole('button', { name: 'Check now' })).toBeInTheDocument();
-    expect(within(docker).queryByRole('progressbar')).not.toBeInTheDocument();
-    // Opened, Docker starts, and Setup goes on.
-    await user.click(within(docker).getByRole('button', { name: 'Open Docker Desktop' }));
-    expect(await screen.findByRole('heading', { name: 'What do you want to learn?' }, { timeout: 4000 })).toBeInTheDocument();
   });
 });
 
 describe('a look that fails after one worked', () => {
   it('keeps what is missing on screen when a later look fails, says so, and Try again looks again', async () => {
     const user = userEvent.setup();
-    const api = mac('no-docker');
-    const computer = api.computer.bind(api);
+    const api = installable('nothing-installed');
+    const agents = api.agents.bind(api);
     let failing = false;
-    api.computer = () => (failing ? Promise.reject(new Error('code-learn:offline')) : computer());
+    api.agents = () => (failing ? Promise.reject(new Error('code-learn:offline')) : agents());
     renderApp({ to: 'setup' }, api);
-    expect(await screen.findByRole('listitem', { name: 'Docker Desktop' })).toBeInTheDocument();
+    expect(await screen.findByRole('listitem', { name: 'Agent' })).toBeInTheDocument();
     failing = true;
     window.dispatchEvent(new Event('focus'));
     expect(await screen.findByText(/code-learn couldn't refresh this/)).toHaveAttribute('role', 'status');
-    expect(screen.getByRole('listitem', { name: 'Docker Desktop' })).toBeInTheDocument();
+    expect(screen.getByRole('listitem', { name: 'Agent' })).toBeInTheDocument();
     failing = false;
     await user.click(screen.getByRole('button', { name: 'Try again' }));
     await waitFor(() => expect(screen.queryByText(/code-learn couldn't refresh this/)).not.toBeInTheDocument());
