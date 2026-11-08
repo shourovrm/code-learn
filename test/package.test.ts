@@ -17,7 +17,9 @@ let files: string[];
 /** Builds and packs Codemm exactly as it would ship, then installs the tarball into a clean folder. */
 beforeAll(async () => {
   const out = tempDir("codemm-pack-");
-  const packed = JSON.parse(await npm(["pack", "--json", "--pack-destination", out], root))[0];
+  const packOutput = JSON.parse(await npm(["pack", "--json", "--pack-destination", out], root));
+  // npm 10 and 11 print an array of packages; npm 12 prints an object keyed by package name.
+  const packed = Array.isArray(packOutput) ? packOutput[0] : Object.values(packOutput)[0];
   files = packed.files.map((f: { path: string }) => f.path);
   const prefix = tempDir("codemm-install-");
   await npm(["install", "--prefix", prefix, "--prefer-offline", "--no-audit", "--no-fund", join(out, packed.filename)]);
