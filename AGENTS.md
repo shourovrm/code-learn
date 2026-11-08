@@ -46,11 +46,12 @@ code-learn is a harness: the learner's coding agent writes tracks, roadmaps and 
 npm ci
 npm run typecheck
 npm run build
-npm test              # everything; Docker tests run when Docker is up
-npm run test:unit     # no Docker needed
+npm test              # everything; sandbox tests run when bubblewrap and a systemd user session are here
+npm run test:unit     # without the native integration suite
+npm run test:native   # the integration suite (real sandboxes, fake micromamba)
 ```
 
-CI sets `CODE_LEARN_REQUIRE_DOCKER=1`, so Docker tests can't be skipped there.
+Set `CODE_LEARN_REQUIRE_SANDBOX=1` so sandbox tests fail instead of skipping, and `CODE_LEARN_REAL_MICROMAMBA=1` to run the tests that install real conda-forge packages (slow, needs network).
 
 ## Handoff
 

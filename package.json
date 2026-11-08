@@ -19,8 +19,8 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "test:unit": "vitest run --exclude 'test/docker/**'",
-    "test:docker": "vitest run test/docker",
+    "test:unit": "vitest run --exclude 'test/native/**'",
+    "test:native": "vitest run test/native",
     "prepack": "npm run build"
   },
   "dependencies": {
