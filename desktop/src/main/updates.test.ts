@@ -56,7 +56,7 @@ describe('updates', () => {
     const u = updates({ signed: false, updater: f.updater });
     u.start();
     await tick();
-    expect(u.status()).toEqual({ kind: 'available', version: '1.2.0-beta.2', url: 'https://github.com/iignaite/Codemm/releases/tag/v1.2.0-beta.2' });
+    expect(u.status()).toEqual({ kind: 'available', version: '1.2.0-beta.2', url: 'https://github.com/shourovrm/code-learn/releases/tag/v1.2.0-beta.2' });
     await u.restart();
     expect(f.calls).toEqual(['check']);
     u.stop();

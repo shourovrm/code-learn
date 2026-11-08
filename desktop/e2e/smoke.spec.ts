@@ -304,7 +304,7 @@ test('auto-update finds a newer version on a feed, and an unsigned build only li
     const { app, page } = await launch('', { env: { CODE_LEARN_UPDATE_FEED: `http://127.0.0.1:${port}/` } });
     await expect(page.getByRole('button', { name: 'Connect an agent', exact: true })).toBeVisible();
     const update = () => page.evaluate(() => (window as unknown as { codeLearn: { invoke(m: string, a: unknown[]): Promise<unknown> } }).codeLearn.invoke('update', []));
-    await expect.poll(update, { timeout: 15_000 }).toEqual({ kind: 'available', version: '99.0.0', url: 'https://github.com/iignaite/Codemm/releases/tag/v99.0.0' });
+    await expect.poll(update, { timeout: 15_000 }).toEqual({ kind: 'available', version: '99.0.0', url: 'https://github.com/shourovrm/code-learn/releases/tag/v99.0.0' });
     expect(requests.some((u) => u.endsWith('.yml'))).toBe(true);
     // Unsigned: nothing was downloaded.
     expect(requests.some((u) => u.endsWith('.zip') || u.endsWith('.exe'))).toBe(false);

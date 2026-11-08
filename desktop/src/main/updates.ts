@@ -1,7 +1,6 @@
-// Auto-update (DESIGN §7.2), on GitHub Releases through electron-updater. Checked at start and every 6 hours. A signed
-// build downloads a new version in the background and offers Restart to update. An unsigned build can't install
-// one (macOS refuses an unsigned update), so it only says a new version is out, with a link to its Releases page.
-// A prerelease build sees prereleases; a stable build sees stable releases only.
+// Updates (DESIGN §7.2) through electron-updater. code-learn publishes no releases yet (core DESIGN §4.6), so a build
+// checks only a feed given in CODE_LEARN_UPDATE_FEED, which the tests use, and otherwise finds no update and contacts
+// nothing. Builds are unsigned, so a found update is only announced, with a link to its Releases page.
 import type { UpdateStatus } from '../shared/api';
 import type { Log } from './log';
 import { POWERSHELL } from './windows';
@@ -14,7 +13,7 @@ export interface Updater {
 }
 
 const EVERY_MS = 6 * 60 * 60 * 1000;
-const RELEASES = 'https://github.com/iignaite/Codemm/releases/tag/v';
+const RELEASES = 'https://github.com/shourovrm/code-learn/releases/tag/v';
 /** A version as releases are tagged: only then does it go into a link. */
 const VERSION = /^\d+\.\d+\.\d+(-[0-9A-Za-z]+(\.[0-9A-Za-z]+)*)?$/;
 
@@ -165,10 +164,10 @@ export function electronUpdater(current: string, signed: boolean, feed?: string)
   if (process.platform === 'win32' && signed) {
     (autoUpdater as import('electron-updater').NsisUpdater).verifyUpdateCodeSignature = (names, file) => verifyWindowsSignature(names, file, powershell);
   }
-  if (feed) {
-    autoUpdater.forceDevUpdateConfig = true;
-    autoUpdater.setFeedURL({ provider: 'generic', url: feed });
-  }
+  // No release channel yet: without a test feed there is nothing to ask, and Codemm's releases are never asked.
+  if (!feed) return { check: async () => null, download: async () => undefined, install: () => undefined };
+  autoUpdater.forceDevUpdateConfig = true;
+  autoUpdater.setFeedURL({ provider: 'generic', url: feed });
   return {
     async check() {
       const result = await autoUpdater.checkForUpdates();

@@ -1,21 +1,12 @@
-// electron-builder settings for the macOS and Windows installers. Signing
-// comes only from the environment (CI secrets or the owner's shell), never
-// from this repository. Without it the build is unsigned (ad hoc on macOS).
-// See SIGNING.md.
+// electron-builder settings for the Linux installers (core DESIGN §4.6): an AppImage, which runs on any x64
+// distribution, and a pacman package for Arch and its derivatives. Neither is signed, and nothing is published from
+// a build: code-learn has no release channel yet, so the app has no automatic updates.
 
-/**
- * @param {Record<string, string | undefined>} env
- * @param {string} platform the platform being built (each runner builds its own)
- */
-function packaging(env, platform = process.platform) {
-  const azure = {
-    endpoint: env.AZURE_SIGNING_ENDPOINT,
-    codeSigningAccountName: env.AZURE_SIGNING_ACCOUNT,
-    certificateProfileName: env.AZURE_SIGNING_PROFILE,
-    publisherName: env.AZURE_SIGNING_PUBLISHER,
-  };
-  const winSigned = Object.values(azure).every(Boolean);
-  const signed = platform === 'darwin' ? Boolean(env.CSC_LINK) : platform === 'win32' ? winSigned : false;
+/** What every installer needs from the computer: the sandbox (bubblewrap) and the systemd user session it runs in. */
+const SYSTEM_DEPENDENCIES = ['bubblewrap', 'systemd'];
+
+/** @param {Record<string, string | undefined>} _env */
+function packaging(_env) {
   return {
     appId: 'org.codelearn.desktop',
     productName: 'code-learn',
@@ -30,59 +21,25 @@ function packaging(env, platform = process.platform) {
       { from: 'src/renderer/assets/fonts', to: 'fonts', filter: ['OFL-*.txt'] },
       // So do the MIT, ISC and other notices of what the renderer bundles (mermaid among it): vite writes them here.
       { from: 'out/renderer/licenses.md', to: 'licenses.md' },
-      // The WASI engine's wasmtime for this installer's own chip, and its Apache-2.0 license (scripts/fetch-wasmtime.mjs).
-      // electron-builder signs it with the app, with build/entitlements.mac.inherit.plist, which wasmtime needs to run compiled code.
-      { from: 'vendor/wasmtime/${os}-${arch}', to: 'wasmtime' },
+      // The micromamba that installs each track's toolchain, with its notice (scripts/fetch-micromamba.mjs).
+      { from: 'vendor/micromamba/linux-x64', to: 'micromamba', filter: ['micromamba', 'NOTICE'] },
     ],
-    // Auto-update reads GitHub Releases (DESIGN §7.2): the app-update.yml in the app names this repository, and
-    // the release workflow attaches the latest*.yml feeds to its draft. The build itself never publishes.
-    publish: { provider: 'github', owner: 'iignaite', repo: 'code-learn' },
-    // Whether this build is signed: a signed one downloads updates and offers Restart to update; an unsigned one
-    // only says a new version is out, with a link to Releases.
-    extraMetadata: { codeLearn: { signed } },
-    // A build meant to be signed fails rather than ship unsigned: electron-builder otherwise only warns when it finds
-    // no signing identity, and the app would still trust codeLearn.signed.
-    forceCodeSigning: signed,
-    mac: {
-      // Squirrel.Mac updates from the zip; the dmg is for first installs.
+    // No release channel yet, so nothing is published and the app checks for no updates (updates.ts).
+    publish: null,
+    extraMetadata: { codeLearn: { signed: false } },
+    linux: {
       target: [
-        { target: 'dmg', arch: ['arm64', 'x64'] },
-        { target: 'zip', arch: ['arm64', 'x64'] },
+        { target: 'AppImage', arch: ['x64'] },
+        { target: 'pacman', arch: ['x64'] },
       ],
-      category: 'public.app-category.education',
-      // Without a certificate, sign ad hoc ('-'), never from the keychain. An
-      // unsealed arm64 app is "damaged" to Gatekeeper and can't be opened at
-      // all; an ad hoc one gets Open Anyway. Notarization runs only when
-      // APPLE_* credentials are in the environment.
-      identity: env.CSC_LINK ? undefined : '-',
-      // Notarization needs the hardened runtime; ad hoc signing with it fails
-      // library validation at launch, so it's on only with a real certificate.
-      hardenedRuntime: Boolean(env.CSC_LINK),
+      category: 'Education',
+      executableName: 'code-learn',
+      synopsis: 'Graded coding practice that your coding agent writes',
+      maintainer: 'code-learn contributors',
     },
-    win: {
-      target: [{ target: 'nsis', arch: ['x64'] }],
-      azureSignOptions: winSigned ? azure : undefined,
-    },
+    // The pacman package names what it needs; an AppImage can't, so the app's Check this computer says it instead.
+    pacman: { depends: SYSTEM_DEPENDENCIES },
   };
 }
 
-/**
- * Checks a release tag (`v1.2.3`, or `v1.2.3-beta.1` for a prerelease) against the
- * versions of both packages: the core (root package.json), which the app bundles,
- * and the desktop app. Only a prerelease may ship unsigned (DESIGN §7.1).
- * @param {string} tag
- * @param {{ core: string, desktop: string }} versions
- */
-function releaseTag(tag, versions) {
-  const m = /^v(\d+\.\d+\.\d+)(-[0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*)?$/.exec(tag);
-  if (!m) throw new Error(`"${tag}" isn't a release tag (v1.2.3, or v1.2.3-beta.1 for a prerelease).`);
-  // Auto-update moves a prerelease on to the next stable release only from the alpha and beta channels (§7.2).
-  if (m[2] && !/^-(alpha|beta)(\.\d+)?$/.test(m[2])) throw new Error(`"${tag}" is a prerelease, but only alpha or beta prereleases ship (v1.2.3-beta.1).`);
-  const version = tag.slice(1);
-  for (const [name, v] of Object.entries(versions)) {
-    if (v !== version) throw new Error(`The ${name} package is ${v}, but the tag is ${tag}.`);
-  }
-  return { version, prerelease: Boolean(m[2]) };
-}
-
-module.exports = { packaging, releaseTag };
+module.exports = { packaging, SYSTEM_DEPENDENCIES };
