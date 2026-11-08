@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { Agent, AgentId, Computer, DockerInstall } from '../../../shared/api';
+import type { Agent, AgentId } from '../../../shared/api';
 import { useApi } from '../../app/api';
 import { useRouter } from '../../app/router';
 import { Failed, Stale } from '../../app/Problems';
@@ -7,9 +7,7 @@ import { timing, useLoad } from '../../app/useLoad';
 import { Button } from '../../ui/Button';
 import { Status } from '../../ui/Icon';
 import { stagger } from '../../ui/motion';
-import { FIXES, INSTALL } from '../computer/fixes';
 import { InstallProgress, running } from '../connect/Connect';
-import { DockerProgress } from '../computer/DockerProgress';
 import { ExternalLink } from '../../ui/ExternalLink';
 
 /** Each agent's maker and terms, for the learner's go-ahead. */
@@ -19,57 +17,46 @@ const TERMS: Partial<Record<AgentId, { vendor: string; url: string }>> = {
   cursor: { vendor: 'Cursor', url: 'https://cursor.com/terms-of-service' },
 };
 
-/**
- * What code-learn can install here: Docker when it isn't installed and practice can't run without it (core §4.5), and an
- * agent when none is.
- */
-export function missing(computer: Computer, agents: Agent[]) {
-  const docker = Boolean(computer.canInstall && !computer.wasi && computer.checks.find((c) => c.id === 'docker-installed')?.state === 'problem');
-  const agent = agents.every((a) => a.state === 'missing') && agents.some((a) => a.canInstall);
-  return { docker, agent };
+/** An agent can be installed here when none is installed and code-learn knows how to install one. */
+export function agentMissing(agents: Agent[]) {
+  return agents.every((a) => a.state === 'missing') && agents.some((a) => a.canInstall);
 }
 
-const dockerBusy = (install?: DockerInstall) => install !== undefined && install.phase !== 'starting' && install.phase !== 'failed';
-
 /**
- * One action installs everything missing: Docker and the chosen agent, each the maker's own way, side by side.
- * Docker's terms window comes first, then the agent's own sign-in. Nothing downloads before the learner says so.
+ * One action installs the agent the learner chose, the maker's own way. Nothing downloads before the learner says so.
  */
 export function Setup() {
   const api = useApi();
   const { go, fail } = useRouter();
-  const [wanted, setWanted] = useState<{ docker: boolean; agent?: AgentId }>();
+  const [wanted, setWanted] = useState<AgentId>();
   const [choice, setChoice] = useState<AgentId>('claude');
   // Until an agent is connected, look again every few seconds, so one installed elsewhere drops off the list. Once
-  // started, follow both installs. Coming back from a sign-in or Docker's window looks again too.
-  const { data, error, stale, reload } = useLoad(async () => ({ computer: await api.computer(), agents: await api.agents() }), [wanted], {
-    settled: (d) => !wanted && d.agents.some((a) => a.state === 'connected'),
+  // started, follow the install. Coming back from a sign-in looks again too.
+  const { data, error, stale, reload } = useLoad(() => api.agents(), [wanted], {
+    settled: (agents) => !wanted && agents.some((a) => a.state === 'connected'),
     every: wanted ? timing.pollMs : timing.agentsMs,
     onFocus: true,
   });
-  const agent = wanted?.agent ? data?.agents.find((a) => a.id === wanted.agent) : undefined;
-  const ready = Boolean(wanted && data && (!wanted.docker || data.computer.ready) && (!wanted.agent || agent?.state === 'connected'));
+  const agent = wanted ? data?.find((a) => a.id === wanted) : undefined;
+  const ready = agent?.state === 'connected';
   useEffect(() => {
     if (ready) go({ to: 'goal' });
   }, [ready]);
   // Everything was installed elsewhere meanwhile: connecting the agent is what's left.
-  const nothing = Boolean(!wanted && data && !Object.values(missing(data.computer, data.agents)).some(Boolean));
+  const nothing = Boolean(!wanted && data && !agentMissing(data));
   useEffect(() => {
     if (nothing) go({ to: 'connect', then: { to: 'goal' } });
   }, [nothing]);
 
   if (error) return <Failed error={error} retry={reload} />;
   if (!data) return null;
-  const need = wanted ?? missing(data.computer, data.agents);
   // An experimental agent installs from Connect, where it says so, not in one click here.
-  const choices = data.agents.filter((a) => a.canInstall && !a.experimental);
+  const choices = data.filter((a) => a.canInstall && !a.experimental);
 
   async function start() {
-    const next = { docker: need.docker, ...(need.agent ? { agent: choice } : {}) };
     try {
-      if (next.docker) await api.installDocker();
-      if (next.agent) await api.installAgent(next.agent);
-      setWanted(next);
+      await api.installAgent(choice);
+      setWanted(choice);
     } catch (e) {
       fail(e);
     }
@@ -84,48 +71,13 @@ export function Setup() {
     }
   }
 
-  const install = data.computer.install;
-  const dockerInstalled = data.computer.checks.find((c) => c.id === 'docker-installed')?.state === 'ok';
   return (
     <main className="center">
       <div className="stack wide setup-page">
         <h1 className="h1 a-up">Set up this computer</h1>
         <p className="sub a-up" style={stagger(1)}>code-learn installs what's missing, each from its maker.</p>
         <ul className="stack plain">
-          {need.docker && (
-            <li className="card check a-up" style={stagger(2)} aria-label="Docker Desktop">
-              <div className="check-head">
-                {data.computer.ready && <Status kind="ok" size={24} />}
-                <b>Docker Desktop</b>
-                {!wanted && <span className="check-state problem">Not installed</span>}
-              </div>
-              {!wanted ? (
-                <p className="quiet-text">{INSTALL.terms} <ExternalLink className="inline" href={INSTALL.termsUrl}>Read them</ExternalLink></p>
-              ) : data.computer.ready ? (
-                <span className="quiet-text">Ready</span>
-              ) : install?.phase === 'failed' ? (
-                <div className="fix">
-                  <p className="alert" role="alert">{INSTALL.problem[install.problem ?? 'failed']}</p>
-                  {INSTALL.retry.has(install.problem) && <div className="actions"><Button onClick={() => act(() => api.installDocker())}>Try again</Button></div>}
-                  {install.problem === 'windows-version' && <div className="actions"><Button onClick={() => act(() => api.openWindowsUpdate())}>Open Windows Update</Button></div>}
-                </div>
-              ) : !install && dockerInstalled ? (
-                // Docker's start window ended and it still isn't running: Check this computer's own step.
-                <div className="fix">
-                  <p>{FIXES[data.computer.platform]['docker-running'].steps.join(' ')}</p>
-                  <div className="actions">
-                    <Button onClick={() => act(() => api.openDocker())}>Open Docker Desktop</Button>
-                    <Button variant="ghost" onClick={reload}>Check now</Button>
-                  </div>
-                </div>
-              ) : (
-                // Until Docker's first state arrives, its download is just starting: never "Opening Docker" yet.
-                <DockerProgress install={install ? { ...install, phase: install.phase } : { phase: 'downloading', progress: 0 }} platform={data.computer.platform} />
-              )}
-            </li>
-          )}
-          {need.agent && (
-            <li className="card check a-up" style={stagger(3)} aria-label="Agent">
+            <li className="card check a-up" style={stagger(2)} aria-label="Agent">
               <div className="check-head">
                 {agent?.state === 'connected' && <Status kind="ok" size={24} />}
                 <b id="agent-t">{agent ? agent.name : 'Your agent'}</b>
@@ -148,8 +100,7 @@ export function Setup() {
                 <span className="quiet-text">Ready</span>
               ) : agent?.state === 'signed-out' ? (
                 <div className="actions">
-                  {/* Docker's terms window first, then the agent's own sign-in. */}
-                  <Button disabled={need.docker && dockerBusy(install)} onClick={() => act(() => api.signIn(agent.id))}>Sign in</Button>
+                  <Button onClick={() => act(() => api.signIn(agent.id))}>Sign in</Button>
                 </div>
               ) : agent ? (
                 <>
@@ -159,7 +110,6 @@ export function Setup() {
                 </>
               ) : null}
             </li>
-          )}
         </ul>
         {!wanted && (
           <div className="actions a-up" style={stagger(4)}>

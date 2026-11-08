@@ -32,11 +32,11 @@ describe('shared parts', () => {
   });
 
   it('Panel: an alert with art, a heading at the asked level, text and actions', () => {
-    render(<Panel art={<span>art</span>} title="Docker stopped." level={2} text="Start Docker, then try again."><button type="button">Try again</button></Panel>);
+    render(<Panel art={<span>art</span>} title="The sandbox stopped." level={2} text="Check this computer, then try again."><button type="button">Try again</button></Panel>);
     const panel = screen.getByRole('alert');
     expect(panel).toHaveClass('card', 'panel');
-    expect(screen.getByRole('heading', { level: 2, name: 'Docker stopped.' })).toBeInTheDocument();
-    expect(screen.getByText('Start Docker, then try again.')).toHaveClass('sub');
+    expect(screen.getByRole('heading', { level: 2, name: 'The sandbox stopped.' })).toBeInTheDocument();
+    expect(screen.getByText('Check this computer, then try again.')).toHaveClass('sub');
     expect(screen.getByRole('button', { name: 'Try again' }).parentElement).toHaveClass('actions');
   });
 

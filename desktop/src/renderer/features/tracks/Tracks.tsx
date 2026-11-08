@@ -6,6 +6,7 @@ import { Failed } from '../../app/Problems';
 import { useJobs } from '../../app/useJob';
 import { useLoad } from '../../app/useLoad';
 import { Button } from '../../ui/Button';
+import { Dialog } from '../../ui/Dialog';
 import { Emm } from '../../ui/Emm';
 import { Field } from '../../ui/Field';
 import { JobBar } from '../../ui/JobBar';
@@ -22,6 +23,10 @@ export function Tracks() {
   const [rebuilding, setRebuilding] = useState<string>();
   const [rebuilt, setRebuilt] = useState<string>();
   const [failed, setFailed] = useState<{ ref: string; text: string }>();
+  const [confirming, setConfirming] = useState<{ ref: string; name: string }>();
+  const [removing, setRemoving] = useState(false);
+  // A removed track's card takes the focused button with it; focus goes to the heading so it isn't lost to the page.
+  const heading = useRef<HTMLHeadingElement>(null);
   // Rebuilds running now, also those started before the learner left and came back (§4.11).
   const rebuilds = useJobs((p) => p.kind === 'rebuild', []);
   const here = useRef(true);
@@ -54,6 +59,29 @@ export function Tracks() {
     }
   }
 
+  async function remove({ ref, name }: { ref: string; name: string }) {
+    setRemoving(true);
+    setRebuilt(undefined);
+    setFailed(undefined);
+    try {
+      await api.removeTrack(ref);
+      setConfirming(undefined);
+      reload();
+      heading.current?.focus();
+    } catch (e) {
+      setConfirming(undefined);
+      const problem = problemOf(e);
+      if (problem === 'repair' || problem === 'connect' || !here.current) fail(e);
+      else {
+        // Core's refusal ("... is used by course ..., so it can't be removed while they need it.") already says what to do.
+        const say = sayOf(e, problem);
+        setFailed({ ref, text: say === SAY.other ? `Couldn't remove ${name}.` : say });
+      }
+    } finally {
+      setRemoving(false);
+    }
+  }
+
   function start(e: FormEvent) {
     e.preventDefault();
     if (topic.trim()) go({ to: 'research', goal: { topic: topic.trim(), known: '', depth: 'standard', practice: 'code' } });
@@ -61,7 +89,7 @@ export function Tracks() {
 
   return (
     <main className="main page">
-      <h1 className="h2 a-up">Tracks</h1>
+      <h1 className="h2 a-up" ref={heading} tabIndex={-1}>Tracks</h1>
       {tracks.length > 0 && (
         <ul className="track-grid plain">
           {tracks.map((t, i) => {
@@ -72,11 +100,22 @@ export function Tracks() {
                 <b>{t.name}</b>
                 {job && <JobBar job={job} label={`Rebuilding ${t.name}`} compact />}
                 <Button variant="ghost" disabled={rebuilding === t.ref || Boolean(job)} onClick={() => rebuild(t.ref, t.name)}>Rebuild</Button>
+                <Button variant="ghost" disabled={rebuilding === t.ref || Boolean(job)} onClick={() => setConfirming({ ref: t.ref, name: t.name })}>Remove</Button>
                 <span className="quiet-text" role="status">{failed?.ref === t.ref ? failed.text : rebuilt === t.ref ? 'Rebuilt.' : ''}</span>
               </li>
             );
           })}
         </ul>
+      )}
+      {confirming && (
+        <Dialog
+          title={`Remove ${confirming.name}?`}
+          text={`This deletes the ${confirming.name} toolchain that code-learn installed on this computer. You can install it again later.`}
+          onClose={() => setConfirming(undefined)}
+        >
+          <Button variant="ghost" size="lg" onClick={() => setConfirming(undefined)}>Cancel</Button>
+          <Button size="lg" disabled={removing} onClick={() => remove(confirming)}>Remove</Button>
+        </Dialog>
       )}
       <section className="card new a-up" style={stagger(4)} aria-labelledby="new-t">
         <h2 className="h3" id="new-t">Learn something new</h2>

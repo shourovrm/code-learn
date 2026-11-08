@@ -4,7 +4,7 @@ vi.mock('@xterm/addon-fit', () => import('../../testing/xterm'));
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import type { CodeLearnApi, JobProgress } from '../../../shared/api';
+import { NOT_COUNTED, type CodeLearnApi, type JobProgress } from '../../../shared/api';
 import { xterm } from '../../testing/xterm';
 import { scenario, type MockOptions } from '../../../main/mock';
 import { mockWithCourse, mockWithRoadmap, renderApp } from '../../test-utils';
@@ -96,8 +96,8 @@ describe('lesson examples', () => {
     const first = course.topics[0].lessons[0];
     const real = await api.lesson(first.id);
     api.lesson = async () => ({ ...real, markdown: '```example\n1\n```', examples: [{ files: [{ path: 'main.js', text: 'console.log(1)' }] }] });
-    const reasons = ["Docker isn't running.", 'Docker is busy or not answering.', 'Docker ran out of disk space.', 'This computer is out of disk space.', "Docker couldn't reach the network."];
-    const next = ['Open Docker Desktop, then run again.', 'Wait a moment, then run again.', 'Remove unused images in Docker Desktop, then run again.', 'Free some space, then run again.', 'Connect to the internet, then run again.'];
+    const reasons = [NOT_COUNTED.sandbox, NOT_COUNTED['sandbox-busy'], NOT_COUNTED.disk, NOT_COUNTED.offline];
+    const next = ['Check this computer under Settings, then run again.', 'Wait a moment, then run again.', 'Free some space, then run again.', 'Connect to the internet, then run again.'];
     let i = 0;
     api.runExample = async () => ({ kind: 'not-run', reason: reasons[i] });
     renderApp({ to: 'lesson', lessonId: first.id }, api);
@@ -185,7 +185,7 @@ describe('topic page and setup consent', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Set up React on this computer?' });
     expect(dialog).toHaveTextContent('Setup runs code your agent wrote, with internet access. Graded runs are offline.');
     await user.click(within(dialog).getByText('Show the files'));
-    expect(within(dialog).getByRole('region', { name: 'Dockerfile' })).toHaveTextContent('FROM node:22-alpine');
+    expect(within(dialog).getByRole('region', { name: 'track.yaml' })).toHaveTextContent('nodejs=22');
     expect(dialog).toHaveTextContent('The build stops after 10 minutes, and has no memory or CPU limit.');
 
     await user.click(within(dialog).getByRole('button', { name: 'Not now' }));
@@ -258,38 +258,17 @@ describe('topic page and setup consent', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  it('says when Docker stopped during setup, and offers Check this computer', async () => {
+  it('says when the sandbox stopped during setup, and offers Check this computer', async () => {
     const user = userEvent.setup();
-    const { api } = await approved({ setupProblem: 'docker' });
+    const { api } = await approved({ setupProblem: 'sandbox' });
     renderApp({ to: 'topic', topicId: TOPIC }, api);
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Set up' }));
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent('Docker stopped.');
+    expect(within(alert).getByRole('heading', { name: "code-learn's sandbox stopped working." })).toBeInTheDocument();
+    expect(alert).toHaveTextContent('Check this computer, then try again.');
+    expect(within(alert).getAllByRole('button').map((b) => b.textContent)).toEqual(['Stop', 'Check this computer', 'Try again']);
     await user.click(within(alert).getByRole('button', { name: 'Check this computer' }));
     expect(await screen.findByRole('heading', { name: 'Check this computer' })).toBeInTheDocument();
-  });
-
-  it("says when Docker was busy during setup, with Stop and Try again: Docker isn't stopped", async () => {
-    const user = userEvent.setup();
-    const { api } = await approved({ setupProblem: 'docker-busy' });
-    renderApp({ to: 'topic', topicId: TOPIC }, api);
-    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Set up' }));
-    const alert = await screen.findByRole('alert');
-    expect(within(alert).getByRole('heading', { name: 'Docker is busy or not answering.' })).toBeInTheDocument();
-    expect(alert).toHaveTextContent('Wait a moment, then try again.');
-    expect(within(alert).getAllByRole('button').map((b) => b.textContent)).toEqual(['Stop', 'Try again']);
-  });
-
-  it("says when a WASI track's setup couldn't start wasmtime, with Stop and Try again, and nothing about Docker", async () => {
-    const user = userEvent.setup();
-    const { api } = await approved({ setupProblem: 'wasi' });
-    renderApp({ to: 'topic', topicId: TOPIC }, api);
-    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Set up' }));
-    const alert = await screen.findByRole('alert');
-    expect(within(alert).getByRole('heading', { name: "code-learn couldn't start the part that runs your code." })).toBeInTheDocument();
-    expect(alert).toHaveTextContent('Reinstall code-learn, then try again.');
-    expect(alert).not.toHaveTextContent('Docker');
-    expect(within(alert).getAllByRole('button').map((b) => b.textContent)).toEqual(['Stop', 'Try again']);
   });
 
   it('asks again with a new proposal when the gates fail', async () => {
@@ -403,46 +382,23 @@ describe('background work that stopped', () => {
     expect(within(alert).getAllByRole('button').map((b) => b.textContent)).toEqual(['Try again']);
   });
 
-  it('says Docker stopped, with Check this computer and Try again, and no Check your agent', async () => {
+  it('says the sandbox stopped, with Check this computer and Try again, and no Check your agent', async () => {
     const user = userEvent.setup();
-    const { api } = await mockWithCourse({ stalled: 'docker' });
+    const { api } = await mockWithCourse({ stalled: 'sandbox' });
     renderApp({ to: 'topic', topicId: TOPIC }, api);
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent('Docker stopped. Start Docker, then try again.');
+    expect(alert).toHaveTextContent("code-learn's sandbox stopped working. Check this computer, then try again.");
     expect(within(alert).getAllByRole('button').map((b) => b.textContent)).toEqual(['Check this computer', 'Try again']);
     await user.click(within(alert).getByRole('button', { name: 'Check this computer' }));
     expect(await screen.findByRole('heading', { name: 'Check this computer' })).toBeInTheDocument();
   });
 
-  it.each([
-    ['docker-busy', 'Docker is busy or not answering. Wait a moment, then try again.', ['Try again']],
-    ['docker-failed', "Docker couldn't run that. Try again, and restart Docker if it happens again.", ['Check this computer', 'Try again']],
-    ['docker-disk', 'Docker ran out of disk space. Remove unused images in Docker Desktop, then try again.', ['Try again']],
-    ['rebuild', 'This environment needs a rebuild. Rebuild it under Tracks.', ['Go to Tracks', 'Try again']],
-  ] as const)('says when Docker is up but %s, never that it stopped or to check the agent', async (stalled, said, buttons) => {
-    const { api } = await mockWithCourse({ stalled });
+  it('says a track needs a rebuild, with Go to Tracks and Try again, and no Check this computer', async () => {
+    const { api } = await mockWithCourse({ stalled: 'rebuild' });
     renderApp({ to: 'topic', topicId: TOPIC }, api);
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent(said);
-    expect(alert).not.toHaveTextContent('Docker stopped');
-    expect(within(alert).getAllByRole('button').map((b) => b.textContent)).toEqual(buttons);
-  });
-
-  it("says when a WASI track's wasmtime didn't start, with nothing about Docker, which the learner may not have", async () => {
-    const { api } = await mockWithCourse({ stalled: 'wasi' });
-    renderApp({ to: 'topic', topicId: TOPIC }, api);
-    const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent("code-learn couldn't start the part that runs your code. Reinstall code-learn, then try again.");
-    expect(alert).not.toHaveTextContent('Docker');
-    expect(within(alert).getAllByRole('button').map((b) => b.textContent)).toEqual(['Try again']);
-  });
-
-  it("says when code-learn couldn't make its files read-only on this drive, and where to keep its folder", async () => {
-    const { api } = await mockWithCourse({ stalled: 'wasi-seal' });
-    renderApp({ to: 'topic', topicId: TOPIC }, api);
-    const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent("code-learn couldn't make its files read-only on this drive. Keep code-learn's folder on this computer's own drive, then try again.");
-    expect(within(alert).getAllByRole('button').map((b) => b.textContent)).toEqual(['Try again']);
+    expect(alert).toHaveTextContent('This environment needs a rebuild. Rebuild it under Tracks.');
+    expect(within(alert).getAllByRole('button').map((b) => b.textContent)).toEqual(['Go to Tracks', 'Try again']);
   });
 
   it('says the disk is full, with Try again and no Check your agent', async () => {

@@ -111,7 +111,7 @@ function Items({ topic, onRetry }: { topic: TopicView; onRetry: () => void }) {
   );
 }
 
-/** Setup failed and nothing was recorded. Offline, low disk and Docker are this computer's problems: fix, then try the same setup again. */
+/** Setup failed and nothing was recorded. Offline, low disk and the sandbox are this computer's problems: fix, then try the same setup again. */
 function SetupFailed({ course, topicId, onRetry }: { course: CourseView; topicId: string; onRetry: () => void }) {
   const api = useApi();
   const { go, fail } = useRouter();
@@ -119,12 +119,7 @@ function SetupFailed({ course, topicId, onRetry }: { course: CourseView; topicId
   const say = {
     offline: { title: "You're offline.", text: 'Connect to the internet, then try again.' },
     disk: { title: 'Not enough disk space.', text: 'Free some space on this computer, then try again.' },
-    docker: { title: 'Docker stopped.', text: 'Start Docker, then try again.' },
-    'docker-busy': { title: 'Docker is busy or not answering.', text: 'Wait a moment, then try again.' },
-    'docker-failed': { title: "Docker couldn't run that.", text: 'Try again, and restart Docker if it happens again.' },
-    'docker-disk': { title: 'Docker ran out of disk space.', text: 'Remove unused images in Docker Desktop, then try again.' },
-    wasi: { title: "code-learn couldn't start the part that runs your code.", text: 'Reinstall code-learn, then try again.' },
-    'wasi-seal': { title: "code-learn couldn't make its files read-only on this drive.", text: "Keep code-learn's folder on this computer's own drive, then try again." },
+    sandbox: { title: "code-learn's sandbox stopped working.", text: 'Check this computer, then try again.' },
     gates: { title: `Couldn't set up ${course.track}.`, text: 'Try again, or stop and pick something else.' },
   }[problem];
 
@@ -143,8 +138,8 @@ function SetupFailed({ course, topicId, onRetry }: { course: CourseView; topicId
 
   return (
     <Panel art={<Emm mood="think" width={150} name={course.track} perch />} title={say.title} level={2} text={say.text}>
-      {(problem === 'gates' || problem.startsWith('wasi') || problem.startsWith('docker')) && <Button variant="ghost" size="lg" onClick={() => go({ to: 'goal' })}>Stop</Button>}
-      {(problem === 'docker' || problem === 'docker-failed') && <Button variant="ghost" size="lg" onClick={() => go({ to: 'computer', then: { to: 'topic', topicId } })}>Check this computer</Button>}
+      {(problem === 'gates' || problem === 'sandbox') && <Button variant="ghost" size="lg" onClick={() => go({ to: 'goal' })}>Stop</Button>}
+      {problem === 'sandbox' && <Button variant="ghost" size="lg" onClick={() => go({ to: 'computer', then: { to: 'topic', topicId } })}>Check this computer</Button>}
       <Button size="lg" disabled={retrying.busy} onClick={retry}>Try again</Button>
     </Panel>
   );

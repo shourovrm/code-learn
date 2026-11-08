@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { CodeLearnApi, JobProgress, TopicView } from '../../../shared/api';
 import { xterm } from '../../testing/xterm';
+import { NOT_COUNTED } from '../../../shared/api';
 import { scenario } from '../../../main/mock';
 import { jobAt, jobBus, mockWithCourse, renderApp, until } from '../../test-utils';
 
@@ -148,8 +149,8 @@ describe('practice', () => {
     expect((await api.activity('javascript-basics')).files[0].text).toBe('first');
   });
 
-  it('retries Try it, not Check, after Docker stops', async () => {
-    const { user, api } = await open({ docker: 'stopped' });
+  it('retries Try it, not Check, after the sandbox stops', async () => {
+    const { user, api } = await open({ sandbox: 'no-session' });
     let checks = 0;
     const check = api.check;
     api.check = (id) => (checks++, check(id));
@@ -295,8 +296,8 @@ describe('practice', () => {
     expect(within(items.find((i) => i.textContent?.includes('JSX'))!).getByRole('img', { name: 'Now' })).toBeInTheDocument();
   });
 
-  it('keeps the work when Docker stops mid-session, and counts nothing', async () => {
-    const { user } = await open(scenario('docker-stops'));
+  it('keeps the work when the sandbox stops mid-session, and counts nothing', async () => {
+    const { user } = await open(scenario('sandbox-stops'));
     await user.click(screen.getByRole('button', { name: 'Check' }));
     await within(results()).findByRole('heading', { name: '2 of 4 passed' });
     await write(user, 'mine');
@@ -389,7 +390,7 @@ describe('Practice in the sidebar', () => {
     expect(activity).not.toHaveBeenCalled();
     written = true;
     tell(jobAt('author-1', 'author', { concept: topic, ended: true }));
-    // Focus moves in an effect after the heading appears; a slow runner (Windows CI) sees it a moment later.
+    // Focus moves in an effect after the heading appears; a slow runner (CI) sees it a moment later.
     const heading = await screen.findByRole('heading', { name: 'Click Counter' });
     await vi.waitFor(() => expect(heading).toHaveFocus());
   });
@@ -636,9 +637,9 @@ describe('Run', () => {
 
   it("says why a program couldn't run, and what to do next", async () => {
     const { api, user } = await openIo();
-    api.runProgram = async () => ({ kind: 'not-run', reason: "Docker isn't running." });
+    api.runProgram = async () => ({ kind: 'not-run', reason: NOT_COUNTED.sandbox });
     await user.click(screen.getByRole('button', { name: 'Run' }));
-    await vi.waitFor(() => expect(mirror()).toHaveTextContent("Docker isn't running. Open Docker Desktop, then run again."));
+    await vi.waitFor(() => expect(mirror()).toHaveTextContent(`${NOT_COUNTED.sandbox} Check this computer under Settings, then run again.`));
   });
 
   it('shows test results in Results alone: Try it and Check leave the pane to Run', async () => {
@@ -668,7 +669,7 @@ describe('Run', () => {
 
   it('never lets a test report take the pane from a running program, even through Try again', async () => {
     const { api, user } = await openIo();
-    api.tryIt = async () => ({ kind: 'not-counted', reason: "Docker isn't running." });
+    api.tryIt = async () => ({ kind: 'not-counted', reason: NOT_COUNTED.sandbox });
     await user.click(screen.getByRole('button', { name: 'Try it' }));
     await within(results()).findByRole('button', { name: /try again/i });
     const tries: string[] = [];
