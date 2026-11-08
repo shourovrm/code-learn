@@ -451,6 +451,13 @@ The learner's home folder, `$CODE_LEARN_HOME` and the rest of the computer are n
 - §4.2's known limitation stays: a program can forge frames through `/proc/<driver>/fd`. Grading remains honor-system.
 - The install sandbox has network access and runs the track's `setup` and the packages' own install scripts. It can write only the staging folder and the package cache. The learner's consent before an install (§4.4) is still the trust point.
 
+**The desktop app on Linux.** The app is Linux x86_64 only, shipped as an AppImage and a pacman package. Its Docker Desktop, WSL, macOS and Windows code is removed. The changes to its API (`desktop/src/shared/api.ts`):
+- "Check this computer" has two checks in order: `sandbox` (bubblewrap 0.9 or later and a reachable systemd user session, core `sandboxDown`) and `isolation` (core doctor's self-test). A failed `sandbox` check carries core's message and, when bubblewrap is missing, the install command for this distribution, read from `ID` and `ID_LIKE` in `/etc/os-release`: `sudo pacman -S bubblewrap` (Arch and derivatives), `sudo apt install bubblewrap` (Debian, Ubuntu), `sudo dnf install bubblewrap` (Fedora), `sudo zypper install bubblewrap` (openSUSE). The app runs no command as root. `Computer` is `{ checks, ready }`; `installDocker`, `openDocker`, `openWindowsUpdate` and `restartWindows` are removed, and so is the WASI fallback.
+- The bundled micromamba (pinned by SHA-256, from the micromamba-releases project on GitHub) replaces the bundled wasmtime. The app passes `CODE_LEARN_MICROMAMBA` to its core and to every MCP server it starts.
+- "Not counted" reasons and setup problems use core's kinds: `sandbox`, `sandbox-busy` (`check-timeout`), `disk` and `offline`. The Docker and WASI reasons are removed.
+- Tracks gains a **Remove** action (core `removeTrack`), refused with core's message while a course uses the track.
+- Automatic updates are off until code-learn publishes its own releases; the update check never contacts Codemm's releases.
+
 **Phases.** Each phase keeps the build, type check and tests green:
 1. The native engine in the core, with tests that run real bubblewrap.
 2. Remove the Docker and WASI engines and their tests from the core, in the same change as phase 1: Docker can't be tested on a computer without it, so the two engines never coexist.
