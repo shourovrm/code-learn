@@ -13,7 +13,7 @@ export const COMMANDS = {
   skip: { args: [1, 1], options: ws, usage: "skip <concept>" },
   assist: { args: [1, 1], options: ws, usage: "assist on|off" },
   tracks: { args: [0, 0], options: {}, usage: "tracks" },
-  track: { args: [2, 2], options: {}, usage: "track add <folder> | track rebuild <id@version>" },
+  track: { args: [2, 2], options: {}, usage: "track add <folder> | track rebuild <id@version> | track remove <id@version>" },
   mcp: {
     args: [0, 0], options: { ...ws, course: "value", tools: "value", desktop: "flag", progress: "value" },
     usage: "mcp [--workspace <dir>] [--course <course>] [--tools <a,b>] [--desktop] [--progress <file>]",

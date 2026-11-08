@@ -7,7 +7,7 @@ import { homedir } from "node:os";
 import { dirname, join, relative, sep } from "node:path";
 import { CodeLearnError, infraError } from "./errors.js";
 import { assertId, assertRelativePath, type FileMap, readFileMap, validateFileMap, writeFileMap } from "./files.js";
-import type { JudgeTrack } from "./judge.js";
+import type { JudgeTrack, ToolchainFolders } from "./judge.js";
 import type { LearnerEvent } from "./learner.js";
 import { CourseRecord, ExerciseRecord, LearnerEventSchema, LessonRecord, ProposalRecord, TrackRecord, WorkspaceConfig } from "./schemas.js";
 
@@ -15,15 +15,6 @@ import { CourseRecord, ExerciseRecord, LearnerEventSchema, LessonRecord, Proposa
 
 export const codeLearnHome = () => process.env.CODE_LEARN_HOME ?? join(homedir(), ".code-learn");
 
-/**
- * The image tag for a track, named after this code-learn home (8 hex characters of the SHA-256 of its real path), so two
- * homes on one Docker that install the same id@version never overwrite each other's tag.
- */
-export function trackImageTag(id: string, version: number): string {
-  mkdirSync(codeLearnHome(), { recursive: true });
-  const home = createHash("sha256").update(realpathSync.native(codeLearnHome())).digest("hex").slice(0, 8);
-  return `code-learn-track-${home}-${id}:${version}`;
-}
 const tracksDir = () => join(codeLearnHome(), "tracks");
 const courseDir = (course: string) => {
   assertId("course", course);
@@ -229,6 +220,9 @@ export function writeTrackRecord(ref: string, record: TrackRecord): void {
   writeJsonAtomic(join(trackDir(ref), "track.json"), record);
 }
 
+/** Deletes an installed track's record and files. Call while holding the track lock. */
+export const removeTrackRecord = (ref: string) => discard(trackDir(ref));
+
 export function listTracks(): TrackRecord[] {
   if (!existsSync(tracksDir())) return [];
   return readdirSync(tracksDir())
@@ -237,19 +231,25 @@ export function listTracks(): TrackRecord[] {
     .flatMap((ref) => readTrack(ref) ?? []);
 }
 
-/** Where WASI toolchains are stored, each in a folder named by its download's SHA-256 (DESIGN §4.5). */
-export const toolchainsDir = () => join(codeLearnHome(), "toolchains");
-export function toolchainDir(sha256: string): string {
-  if (!/^[0-9a-f]{64}$/.test(sha256)) throw new CodeLearnError(`Invalid toolchain digest "${sha256}".`);
-  return join(toolchainsDir(), sha256);
-}
-/** Held while a digest's folder is stored or replaced. */
-export const toolchainLockPath = (sha256: string) => `${toolchainDir(sha256)}.lock`;
+/**
+ * Where installed toolchains live (DESIGN §4.6): one folder per track, `envs/<id>@<version>/`, holding `env/` (the
+ * conda environment, mounted at /opt/env) and `track/` (the track's own files, mounted at /opt/track).
+ */
+export const envsDir = () => join(codeLearnHome(), "envs");
+export const envDir = (ref: string) => {
+  parseTrackRef(ref);
+  return join(envsDir(), ref);
+};
+/** micromamba's package cache: downloads only, shared by every track, and safe to delete at any time. */
+export const packageCacheDir = () => join(codeLearnHome(), "pkgs");
 
-/** What the judge runs an installed track with: its verified image ID, or its toolchain folder. */
-export function judgeTrack(track: TrackRecord): Omit<TrackRecord, "image" | "imageId" | "wasi"> & JudgeTrack {
-  if (!track.wasi) return { ...track, image: track.imageId };
-  return { ...track, image: "", wasi: { root: toolchainDir(track.wasi.sha256), ...track.wasi } };
+/** The two folders a sandbox mounts from an installed toolchain. */
+export const toolchainFolders = (root: string): ToolchainFolders => ({ env: join(root, "env"), track: join(root, "track") });
+
+/** What the judge runs an installed track with: its toolchain's folders and variables. */
+export function judgeTrack(track: TrackRecord): Omit<TrackRecord, "toolchain"> & JudgeTrack {
+  const { toolchain, ...rest } = track;
+  return { ...rest, folders: toolchainFolders(envDir(`${track.id}@${track.version}`)), vars: toolchain.env };
 }
 
 // ---------- proposals ----------
@@ -322,7 +322,7 @@ export function readProposal(ref: string, digest: string): FileMap | undefined {
 
 export const dropProposals = (ref: string) => discard(proposalsDir(ref));
 
-/** Setup needs room for an image: refuse to build when the volume holding `dir` is nearly full. */
+/** Setup needs room for a toolchain: refuse to install when the volume holding `dir` is nearly full. */
 export const MIN_FREE_BYTES = 5 * 1024 ** 3;
 export function assertFreeSpace(dir: string, min = MIN_FREE_BYTES): void {
   mkdirSync(dir, { recursive: true });

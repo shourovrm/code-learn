@@ -5,8 +5,6 @@ import { z } from "zod";
 import * as app from "./app.js";
 import { CodeLearnError, infraError } from "./errors.js";
 import { assertId, type FileMap, validateFileMap } from "./files.js";
-import { containerCli } from "./sandbox.js";
-import { wasmtimePath } from "./wasi.js";
 
 type Result = { content: { type: "text"; text: string }[]; isError?: boolean };
 
@@ -58,43 +56,17 @@ export function parseToolList(text: string): string[] {
   return names;
 }
 
-/** The engines this computer has (DESIGN §4.5): a container CLI, installed whether or not it runs, and wasmtime (looked for only without one). */
-export type Engines = { docker: boolean; wasi: boolean };
-
-/** Asks each binary only for its version, never a daemon, so whatever state Docker is in it costs a moment. wasmtime only matters without Docker. */
-export function findEngines(): Engines {
-  try {
-    containerCli();
-    return { docker: true, wasi: false };
-  } catch {
-    return { docker: false, wasi: wasmtimePath() !== undefined };
-  }
-}
-
-/** Only servers whose agent chooses or writes a track need to know the engines. */
-export const needsEngines = (tools: string[] | undefined): boolean => !tools || tools.includes("save_track") || tools.includes("save_roadmap");
-
-/** The server instructions about this computer (DESIGN §4.5), or none when a container CLI is installed. */
-function engineInstructions(engines: Engines | undefined): string | undefined {
-  if (!engines || engines.docker) return undefined;
-  return engines.wasi
-    ? "This computer has no container runtime (Docker or Podman) installed, so write WASI tracks: io style, in an interpreted language that has a WASI build."
-    : "This computer has no container runtime (Docker or Podman) installed and no wasmtime, so no track can run here until one is installed: tell the learner.";
-}
-
 /**
  * One server per agent job (docs/desktop/DESIGN.md §4.6): `course` replaces the workspace's active course,
  * `tools` limits the registered tools, and `desktop` makes save_track only propose (the learner consents in the app).
  * `progress` is a file where save_exercise writes which gate runs, by name only, for the app to show (§4.11).
- * `engines` is what this computer has; the server instructions say so when no container runtime is installed.
  */
-export type ServerOptions = { course?: string; tools?: string[]; desktop?: boolean; progress?: string; engines?: Engines };
+export type ServerOptions = { course?: string; tools?: string[]; desktop?: boolean; progress?: string };
 
-export function createServer(ws: string, version: string, { course, tools, desktop, progress, engines }: ServerOptions = {}): McpServer {
+export function createServer(ws: string, version: string, { course, tools, desktop, progress }: ServerOptions = {}): McpServer {
   if (course !== undefined) assertId("course", course);
   if (progress !== undefined && !isAbsolute(progress)) throw new CodeLearnError("--progress needs an absolute path.");
-  const instructions = engineInstructions(engines);
-  const server = new McpServer({ name: "code-learn", version }, instructions ? { instructions } : undefined);
+  const server = new McpServer({ name: "code-learn", version });
   const want = (name: (typeof TOOL_NAMES)[number]) => !tools || tools.includes(name);
 
   if (want("list_tracks")) server.registerTool("list_tracks", { description: "List installed tracks (language or framework environments) with their versions and test styles." }, () =>
@@ -106,14 +78,14 @@ export function createServer(ws: string, version: string, { course, tools, deskt
     desktop
       ? {
           description:
-            "Propose a track: track.yaml, a Dockerfile (a WASI track has none) and probe/ files. code-learn checks the files and asks the learner before building anything. " +
+            "Propose a track: track.yaml (with its toolchain block), any files the toolchain needs, and probe/ files. code-learn checks the files and asks the learner before installing anything. " +
             "It returns the proposed id@version; then end your turn.",
           inputSchema: { files },
         }
       : {
           description:
-            "Install a track: track.yaml, a Dockerfile (a WASI track has none) and probe/ files. Building the image runs the Dockerfile WITH network access " +
-            "(a WASI track downloads its toolchain instead), so only install tracks the learner agrees to. " +
+            "Install a track: track.yaml (with its toolchain block), any files the toolchain needs, and probe/ files. Installing downloads the toolchain's packages " +
+            "and runs its setup command WITH network access, so only install tracks the learner agrees to. " +
             "code-learn then runs the probes with the network off and installs the track only if every gate passes; otherwise it returns what failed.",
           inputSchema: { files },
         },
@@ -203,6 +175,5 @@ export function createServer(ws: string, version: string, { course, tools, deskt
 }
 
 export async function serveMcp(ws: string, version: string, options: ServerOptions = {}): Promise<void> {
-  const engines = needsEngines(options.tools) ? findEngines() : undefined;
-  await createServer(ws, version, { engines, ...options }).connect(new StdioServerTransport());
+  await createServer(ws, version, options).connect(new StdioServerTransport());
 }

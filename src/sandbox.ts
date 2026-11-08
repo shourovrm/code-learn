@@ -1,189 +1,173 @@
+// The sandbox (DESIGN §4.6): every check, Run, install step and self-test runs in bubblewrap, inside its own systemd
+// user scope for the memory, process and CPU limits. Nothing else in code-learn runs track or learner code.
 import { spawn, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, type FSWatcher, lstatSync, mkdirSync, readFileSync, readlinkSync, realpathSync, watch } from "node:fs";
 import { join } from "node:path";
-import { CodeLearnError, INFRA, infraError, type InfraCode } from "./errors.js";
-import { processAlive } from "./store.js";
+import { CodeLearnError, infraError, type InfraCode } from "./errors.js";
+import type { ToolchainFolders } from "./judge.js";
+import { codeLearnHome, processAlive, writeTextAtomic } from "./store.js";
 
-/**
- * The only place code-learn starts containers. Every judge run gets the same
- * host-owned isolation, whatever the track asked for.
- */
-
+/** stdout and stderr together, per sandbox, unless the run sets its own cap. */
 export const OUTPUT_CAP = 4 * 1024 * 1024;
-export const OWNER_LABEL = "code-learn=1";
+/** Every scope code-learn starts is named `code-learn-<owner pid>-<random>`, so leftovers can be told apart. */
+const SCOPE_PREFIX = "code-learn-";
+/** /tmp inside the sandbox, as a judge container's tmpfs was (DESIGN §4.3). */
+const TMP_BYTES = 256 * 1024 * 1024;
+const DEFAULT_TASKS = 256;
+/** How long stopping a scope may take before it counts as failed. */
+const STOP_MS = 10_000;
+/** How often a starting sandbox's memory events file is looked for, and then read as a backstop to watching it. */
+const OOM_POLL_MS = 25;
 
-export type Mount = { host: string; container: string };
+/** A host folder in the sandbox. Read-only unless `writable` (install steps only). */
+export type Mount = { host: string; container: string; writable?: boolean };
+
 export type SandboxRun = {
-  image: string;
-  script: string;
+  /** The program and its arguments, run as process 1 of the sandbox. Never through a host shell. */
+  command: string[];
+  /** Variables for the command, after the sandbox's own (HOME, PATH, TRACK, LANG). */
   env: Record<string, string>;
   mounts: Mount[];
   memoryMb: number;
   deadlineMs: number;
-  /** Keep the program's stdin open for typed input (`docker run -i`); Run only. */
+  /** Keep stdin open for typed input; Run only. */
   stdin?: boolean;
-  /** Each stdout chunk as it arrives, within the output cap (for progress; the result still carries all of it). */
-  onStdout?: (chunk: Buffer) => void;
-  /**
-   * Past this many bytes of stdout and stderr together the container is killed as a flood (default OUTPUT_CAP). The
-   * result keeps at most OUTPUT_CAP of stdout either way; a caller that allows more reads it as it streams.
-   */
+  /** Past this many bytes of stdout and stderr together the run is killed as a flood (default OUTPUT_CAP). */
   outputCap?: number;
+  /** Share the host's network and resolver files: install steps only. */
+  network?: boolean;
+  /** The scope's process limit (default 256). */
+  tasks?: number;
+  /** The working folder inside the sandbox (default /work/src when it's mounted, else /tmp). */
+  cwd?: string;
 };
-/** `oomKilled`: the runtime recorded that the container hit its memory limit (exit 137 from inside, not a kill from outside). */
+
+/** `oomKilled`: the kernel killed a process in this sandbox for going over its memory limit. */
 export type SandboxResult = { exit: number; stdout: Buffer; stderr: string; flooded: boolean; timedOut: boolean; cleanupFailed: boolean; oomKilled: boolean };
 
-const cleanupMs = () => Number(process.env.CODE_LEARN_CLEANUP_MS ?? 30_000);
-/** The bound for a second ask of a silent engine, and for the runtime's answers a grade waits on. */
-const SLOW_MS = 60_000;
-
-export function containerCli(): string {
-  const configured = process.env.CODE_LEARN_CONTAINER_CLI;
-  if (configured) return configured;
-  for (const cli of ["docker", "podman"]) {
-    if (spawnSync(cli, ["--version"], { stdio: "ignore" }).status === 0) return cli;
-  }
-  throw infraError(`No container runtime found. ${runtimeHelp()}`, "no-runtime");
-}
-
-/** What to install and start on this OS. code-learn needs an engine that runs Linux containers. */
-export function runtimeHelp(platform: NodeJS.Platform = process.platform): string {
-  if (platform === "darwin") return "Install Docker Desktop for Mac (or Podman, experimental), start it and retry.";
-  if (platform === "win32") {
-    return "Install Docker Desktop for Windows with the WSL 2 backend (run `wsl --install` first if WSL 2 is missing), " +
-      "make sure it's set to Linux containers, start it and retry. Podman is experimental.";
-  }
-  return "Install Docker Engine (or Podman, experimental), start it (for example `sudo systemctl start docker`) " +
-    "and make sure your user may use it (the docker group, or rootless mode), then retry.";
-}
-
-/** How to start an installed engine that isn't running on this OS. */
-export function startHelp(platform: NodeJS.Platform = process.platform): string {
-  if (platform === "darwin" || platform === "win32") {
-    return "Start Docker Desktop (or `podman machine start` for Podman) and wait until it says it's running, then retry.";
-  }
-  return "Start Docker (for example `sudo systemctl start docker`) and make sure your user may use it " +
-    "(the docker group, or rootless mode), then retry.";
-}
-
-/** Asks the engine for its version and the kind of containers it runs. */
-export const RUNTIME_INFO = ["info", "--format", "{{.ServerVersion}}|{{.OSType}}"];
-
-/** `busy`: the engine gave no answer at all, even with more time (runtimeState). */
-export type RuntimeState = "missing" | "down" | "busy" | "windows" | "ready";
+/** The read-only mounts a toolchain gives every sandbox that runs track code. */
+export const toolchainMounts = (folders: ToolchainFolders): Mount[] => [
+  { host: folders.env, container: "/opt/env" },
+  { host: folders.track, container: "/opt/track" },
+];
 
 /**
- * Reads the RUNTIME_INFO answer. `docker info` exits 0 even when the daemon is down, so a running
- * engine is one that reported a version.
+ * How this computer lays out the system folders a sandbox needs. `links` are top-level links into /usr (merged-usr
+ * systems) as [target, path]; `dirs` are real folders to mount read-only instead. `generatedEtc` holds the sandbox's
+ * own passwd, group and hosts; `networkEtc` the resolver and certificate files an install needs.
  */
-export function runtimeStateOf(r: { exit: number; output: string }): Exclude<RuntimeState, "busy"> {
-  // A configured CLI that doesn't exist fails to spawn.
-  if (r.exit === -1 && /ENOENT/.test(r.output)) return "missing";
-  const m = /^(\S+)\|(\w+)\s*$/m.exec(r.output);
-  if (r.exit !== 0 || !m) return "down";
-  return m[2] === "windows" ? "windows" : "ready";
-}
+export type HostLayout = {
+  links: [string, string][]; dirs: string[]; etc: string[]; generatedEtc: string; networkEtc: string[];
+  /** Whether systemd-run takes --expand-environment (systemd 254 and later). */
+  expandFlag: boolean;
+};
 
-/** What to do about an engine that is up but doesn't answer. */
-export const BUSY_HELP = "It may be busy (a large build, or Docker Desktop resuming from Resource Saver): wait a minute, then retry. If it stays this way, restart it.";
-
-/** Why the runtime can't run checks: its code, and the message, whose last part (`help`) says what to do. */
-export type RuntimeProblem = { code: InfraCode; message: string; help: string };
-const problem = (code: InfraCode, lead: string, help: string): RuntimeProblem => ({ code, message: `${lead} ${help}`, help });
-
-/** The endpoints Docker Desktop and Docker Engine use by default. Another one is a context the learner chose. */
-const OWN_ENDPOINT = /^(?:unix:\/\/\/var\/run\/docker\.sock|unix:\/\/\/\S*\/\.docker\/(?:run|desktop)\/docker\.sock|npipe:\/\/\/\/\.\/pipe\/(?:docker_engine|dockerDesktopLinuxEngine))$/;
-
-/** A runtime that answered but isn't running, named from what its CLI said. */
-function downProblem(output: string, platform: NodeJS.Platform): RuntimeProblem {
-  if (/manually paused|docker desktop is paused/i.test(output)) return problem("runtime-paused", "Docker Desktop is paused.", "Unpause Docker Desktop from its menu, then retry.");
-  if (/permission denied while trying to connect/i.test(output)) {
-    return problem("socket-permission", "This user may not use the container runtime's socket.", "Add this user to the docker group (or use rootless mode), then retry.");
-  }
-  if (/context not found|current context .* is not found/i.test(output)) {
-    return problem("runtime-context", "The Docker CLI's current context doesn't exist.", "Switch with `docker context use default` (`desktop-linux` for Docker Desktop), then retry.");
-  }
-  const endpoint = /Cannot connect to the Docker daemon at (\S+?)\.? Is the docker daemon running/i.exec(output)?.[1];
-  if (endpoint && !OWN_ENDPOINT.test(endpoint)) {
-    return problem("runtime-context", `The Docker CLI's current context points at ${endpoint}, which isn't running.`, "Start the runtime the Docker CLI's context points at, or switch with `docker context use default` (`desktop-linux` for Docker Desktop), then retry.");
-  }
-  return problem("runtime-down", "The container runtime isn't running.", startHelp(platform));
-}
-
-/** What an answer to RUNTIME_INFO means (null: the engine never answered), or undefined when it can run checks. */
-export function runtimeIssue(answer: { exit: number; output: string } | null, platform: NodeJS.Platform = process.platform): RuntimeProblem | undefined {
-  if (!answer) return problem("runtime-busy", "The container runtime isn't answering.", BUSY_HELP);
-  switch (runtimeStateOf(answer)) {
-    case "missing": return problem("no-runtime", "No container runtime found.", runtimeHelp(platform));
-    case "down": return downProblem(answer.output, platform);
-    case "windows": return problem("windows-containers", "Docker is running Windows containers.", "Switch Docker Desktop to Linux containers and retry.");
-    case "ready": return undefined;
-  }
-}
-
-/** What the runtime's answer means for the learner, or undefined when it can run checks. */
-export function runtimeProblem(r: { exit: number; output: string }, platform: NodeJS.Platform = process.platform): string | undefined {
-  return runtimeIssue(r, platform)?.message;
-}
-
-/** The full `run` argument list. Pure, so the isolation flags are easy to test. */
-export function sandboxArgs(run: SandboxRun, name: string, user = hostUser()): string[] {
-  const args = [
-    "run", "--rm", "--name", name, "--label", OWNER_LABEL, "--label", `code-learn.pid=${process.pid}`,
-    "--network", "none",
-    "--read-only",
-    "--tmpfs", "/tmp:rw,exec,nosuid,nodev,size=256m",
-    "--memory", `${run.memoryMb}m`, "--memory-swap", `${run.memoryMb}m`,
-    "--cpus", "2", "--pids-limit", "256",
-    "--security-opt", "no-new-privileges", "--cap-drop", "ALL",
-    "--no-healthcheck", "--log-opt", "max-size=1m",
-    "--entrypoint", "/bin/sh", "--workdir", "/work/src",
-    "-e", "HOME=/tmp",
-    "--user", user,
+/** The full systemd-run argument list, bubblewrap's included. Pure, so the isolation flags are easy to test. */
+export function sandboxArgs(run: SandboxRun, unit: string, layout: HostLayout): string[] {
+  const scope = [
+    "--user", "--scope", "--quiet", "--collect", `--unit=${unit}`, "--slice=app.slice",
+    // systemd-run would otherwise replace $NAME and $$ in the command, which is shell code meant for the sandbox.
+    ...(layout.expandFlag ? ["--expand-environment=no"] : []),
+    "-p", `MemoryMax=${run.memoryMb}M`, "-p", "MemorySwapMax=0",
+    "-p", `TasksMax=${run.tasks ?? DEFAULT_TASKS}`, "-p", "CPUQuota=200%",
+    // A program over the limit is killed; the driver goes on and reports it (DESIGN §4.6).
+    "-p", "OOMPolicy=continue",
+    "--",
   ];
-  for (const [k, v] of Object.entries(run.env)) args.push("-e", `${k}=${v}`);
-  for (const m of run.mounts) args.push("--mount", `type=bind,source=${m.host},target=${m.container},readonly`);
-  if (run.stdin) args.push("-i");
-  args.push(run.image, "-c", run.script);
-  return args;
+  const sandbox = [
+    "bwrap", "--unshare-all", "--die-with-parent", "--new-session", "--as-pid-1", "--clearenv",
+    "--ro-bind", "/usr", "/usr",
+  ];
+  for (const [target, path] of layout.links) sandbox.push("--symlink", target, path);
+  for (const dir of layout.dirs) sandbox.push("--ro-bind", dir, dir);
+  for (const file of layout.etc) sandbox.push("--ro-bind", file, file);
+  for (const name of ["passwd", "group"]) sandbox.push("--ro-bind", join(layout.generatedEtc, name), `/etc/${name}`);
+  if (run.network) {
+    sandbox.push("--share-net");
+    for (const file of layout.networkEtc) sandbox.push("--ro-bind", file, file);
+  } else {
+    sandbox.push("--ro-bind", join(layout.generatedEtc, "hosts"), "/etc/hosts");
+  }
+  sandbox.push("--proc", "/proc", "--dev", "/dev", "--size", String(TMP_BYTES), "--tmpfs", "/tmp");
+  for (const m of run.mounts) sandbox.push(m.writable ? "--bind" : "--ro-bind", m.host, m.container);
+  sandbox.push("--chdir", run.cwd ?? (run.mounts.some((m) => m.container === "/work/src") ? "/work/src" : "/tmp"));
+  const own = { HOME: "/tmp", PATH: "/opt/env/bin:/usr/bin:/bin", TRACK: "/opt/track", LANG: "C.UTF-8" };
+  for (const [name, value] of Object.entries(own)) sandbox.push("--setenv", name, value);
+  for (const [name, value] of Object.entries(run.env)) sandbox.push("--setenv", name, value);
+  return [...scope, ...sandbox, ...run.command];
 }
 
-/** The host user on POSIX. Windows has no uid, so there the code runs as the conventional unprivileged "nobody". */
-function hostUser(): string {
-  return typeof process.getuid === "function" && typeof process.getgid === "function" ? `${process.getuid()}:${process.getgid()}` : "65534:65534";
+/** The resolver and certificate files an install needs, where this distribution keeps them. */
+const NETWORK_ETC = ["/etc/resolv.conf", "/etc/hosts", "/etc/nsswitch.conf", "/etc/ssl", "/etc/ca-certificates", "/etc/pki"];
+
+let layout: HostLayout | undefined;
+
+/** Reads this computer's system folders once, and writes the sandbox's own passwd, group and hosts. */
+export function hostLayout(): HostLayout {
+  if (layout) return layout;
+  const links: [string, string][] = [];
+  const dirs: string[] = [];
+  for (const path of ["/bin", "/sbin", "/lib", "/lib64"]) {
+    if (!existsSync(path)) continue;
+    if (lstatSync(path).isSymbolicLink()) links.push([readlinkSync(path), path]);
+    else dirs.push(path);
+  }
+  layout = {
+    links,
+    dirs,
+    etc: ["/etc/ld.so.cache", "/etc/localtime"].filter((p) => existsSync(p)),
+    generatedEtc: writeSandboxEtc(),
+    // A link (resolv.conf often points into /run) is mounted as the file it points at.
+    networkEtc: NETWORK_ETC.filter((p) => existsSync(p)),
+    expandFlag: /--expand-environment/.test(spawnSync("systemd-run", ["--help"], { encoding: "utf8", timeout: 10_000 }).stdout ?? ""),
+  };
+  return layout;
+}
+
+/** One user and one group, the learner's own ids, so tools that look up the current user find one. */
+function writeSandboxEtc(): string {
+  const dir = join(codeLearnHome(), "sandbox", "etc");
+  mkdirSync(dir, { recursive: true });
+  const uid = process.getuid?.() ?? 65534;
+  const gid = process.getgid?.() ?? 65534;
+  const files = {
+    passwd: `learner:x:${uid}:${gid}:learner:/tmp:/bin/sh\n`,
+    group: `learner:x:${gid}:\n`,
+    hosts: "127.0.0.1 localhost\n::1 localhost\n",
+  };
+  for (const [name, text] of Object.entries(files)) {
+    const path = join(dir, name);
+    if (!existsSync(path) || readFileSync(path, "utf8") !== text) writeTextAtomic(path, text, 0o644);
+  }
+  return realpathSync(dir);
 }
 
 /** Output as it arrives, within the output cap. A handler that throws is dropped; the run goes on. */
 export type SandboxOutput = { stdout?: (chunk: Buffer) => void; stderr?: (chunk: Buffer) => void };
 
 /**
- * A started container: typed input (when `stdin` is set), a kill, and its result. `write` returns false, and
- * drops the text, when it's too long, when input the program isn't reading has piled up, or after the end.
- * `end` closes the input, as end of input in a terminal does; after that, or once the container ended, it does nothing.
+ * A started sandbox: typed input (when `stdin` is set), a kill, and its result. `write` returns false, and drops the
+ * text, when it's too long, when input the program isn't reading has piled up, or after the end. `end` closes the
+ * input, as end of input in a terminal does.
  */
 export type StartedSandbox = {
   write(text: string): boolean;
   end(): void;
   kill(): void;
   done: Promise<SandboxResult>;
-  /** Whether the runtime recorded a memory-limit kill in this container, for a process inside it rather than the whole container. */
+  /** Whether the kernel killed a process in this sandbox for its memory limit, so far. */
   hadOomKill(): Promise<boolean>;
 };
 
 const MAX_WRITE = 64 * 1024;
 const MAX_PENDING_INPUT = 1024 * 1024;
 
-/**
- * Starts one sandboxed container: every flag in sandboxArgs, the output cap, the host deadline and a checked
- * removal, for test runs and Run alike.
- */
+/** Starts one sandbox: every flag in sandboxArgs, the output cap, the host deadline and a checked stop. */
 export function startSandboxed(run: SandboxRun, output: SandboxOutput = {}): StartedSandbox {
-  const cli = containerCli();
-  const name = `code-learn-${randomBytes(6).toString("hex")}`;
-  const started = Date.now();
-  const child = spawn(cli, sandboxArgs(run, name), { stdio: [run.stdin ? "pipe" : "ignore", "pipe", "pipe"] });
+  const unit = `${SCOPE_PREFIX}${process.pid}-${randomBytes(6).toString("hex")}`;
+  const child = spawn("systemd-run", sandboxArgs(run, unit, hostLayout()), { stdio: [run.stdin ? "pipe" : "ignore", "pipe", "pipe"] });
+  const memory = watchMemoryKills(unit);
   const chunks: Buffer[] = [];
   const handlers = { ...output };
   let bytes = 0;
@@ -192,12 +176,12 @@ export function startSandboxed(run: SandboxRun, output: SandboxOutput = {}): Sta
   let timedOut = false;
   let ended = false;
   let cleanup: Promise<boolean> | undefined;
-  // Kill the CLI, then remove the container with a bounded, checked command.
+  // Killing bubblewrap ends its PID namespace and every process in it; stopping the scope is the backstop.
   const stop = () => {
     ended = true;
     if (cleanup) return;
     child.kill("SIGKILL");
-    cleanup = removeContainer(name);
+    cleanup = stopScope(unit);
   };
   const outputCap = run.outputCap ?? OUTPUT_CAP;
   const count = (n: number) => {
@@ -231,17 +215,19 @@ export function startSandboxed(run: SandboxRun, output: SandboxOutput = {}): Sta
     stop();
   }, run.deadlineMs);
   const done = new Promise<SandboxResult>((resolve) => {
-    child.on("close", async (code) => {
+    child.on("close", async (code, signal) => {
       ended = true;
       clearTimeout(timer);
-      // 125 is the runtime's own failure, such as a dropped connection: the container may still be running.
-      if (code === 125 && !cleanup) cleanup = removeContainer(name);
       const removed = cleanup ? await cleanup : true;
-      const oomKilled = code === 137 && !cleanup && (await hadOomEvent(name, started));
-      resolve({ exit: code ?? -1, stdout: Buffer.concat(chunks), stderr, flooded, timedOut, cleanupFailed: !removed, oomKilled });
+      // A signal with no exit code is a kill from outside the sandbox, framed as Docker's 137 was.
+      const exit = code ?? (signal ? 137 : -1);
+      const oomKilled = exit !== 0 && !cleanup && (await memory.kills()) > 0;
+      memory.stop();
+      resolve({ exit, stdout: Buffer.concat(chunks), stderr, flooded, timedOut, cleanupFailed: !removed, oomKilled });
     });
     child.on("error", (e) => {
       clearTimeout(timer);
+      memory.stop();
       resolve({ exit: -1, stdout: Buffer.alloc(0), stderr: e.message, flooded, timedOut, cleanupFailed: false, oomKilled: false });
     });
   });
@@ -258,436 +244,177 @@ export function startSandboxed(run: SandboxRun, output: SandboxOutput = {}): Sta
     },
     kill: stop,
     done,
-    hadOomKill: () => hadOomEvent(name, started),
+    hadOomKill: async () => (await memory.kills()) > 0,
   };
 }
 
 export function runSandboxed(run: SandboxRun): Promise<SandboxResult> {
-  return startSandboxed(run, run.onStdout ? { stdout: run.onStdout } : {}).done;
+  return startSandboxed(run).done;
+}
+
+let managerGroup: string | undefined;
+
+/** The systemd user manager's cgroup, under which every scope's app.slice is (asked once). */
+function userManagerGroup(): string | undefined {
+  if (managerGroup) return managerGroup;
+  const shown = spawnSync("systemctl", ["--user", "show", "-p", "ControlGroup", "--value"], { encoding: "utf8", timeout: 5_000 });
+  const group = shown.stdout?.trim();
+  if (group) managerGroup = group;
+  return managerGroup;
 }
 
 /**
- * Asks the runtime whether it recorded a memory-limit kill for the container. The runtime keeps recent events
- * after `--rm` removes the container. The window is in the runtime's own clock, which may differ from the
- * host's (a VM); the container name is unique, so a few extra seconds can't match another container.
+ * Follows a scope's memory-kill count (`oom_kill` in its cgroup's memory.events). The scope's cgroup is gone as soon
+ * as its last process exits, so the file is watched from the moment it appears (the kernel reports each change to
+ * it as a file change) and also read on a short timer. `kills()` reads it once more if it still can, and otherwise
+ * returns the highest count seen.
  */
-async function hadOomEvent(name: string, startedMs: number): Promise<boolean> {
-  // Newer engines can publish the event after the window closes, so a miss asks once more a moment later. Only a
-  // suspected kill gets here, so a plain exit never waits.
-  if (await oomEventSoFar(name, startedMs)) return true;
-  await new Promise((r) => setTimeout(r, OOM_RECHECK_MS));
-  return oomEventSoFar(name, startedMs);
-}
-
-/** How long a missed memory-kill event waits before the runtime is asked again. */
-const OOM_RECHECK_MS = 2_000;
-
-async function oomEventSoFar(name: string, startedMs: number): Promise<boolean> {
-  // Bounded like a busy engine's second answer: a memory kill the runtime is slow to report must still be graded.
-  const clock = await cli(["info", "--format", "{{.SystemTime}}"], SLOW_MS);
-  const now = Date.parse(clock.output.trim());
-  if (clock.exit !== 0 || Number.isNaN(now)) return false;
-  const at = (ms: number) => (ms / 1000).toFixed(3);
-  const since = now - (Date.now() - startedMs) - 5_000;
-  // The event can be published just after the exit reaches us, so the query waits until 2 s past the runtime's now.
-  const r = await cli(["events", "--since", at(since), "--until", at(now + 2_000), "--filter", `container=${name}`, "--filter", "event=oom", "--format", "{{.Action}}"], SLOW_MS);
-  return r.exit === 0 && /\boom\b/.test(r.output);
-}
-
-/** `rm -f` with a deadline; true when the container is gone (including when `--rm` got there first). */
-async function removeContainer(name: string): Promise<boolean> {
-  const until = Date.now() + cleanupMs();
-  const r = await cli(["rm", "-f", name], cleanupMs());
-  if (r.exit === 0) return true;
-  // `--rm` may already be removing it ("removal ... is already in progress"), so wait until it's gone.
-  for (let left = until - Date.now(); left > 0; left = until - Date.now()) {
-    const still = await cli(["container", "inspect", name], left);
-    if (still.exit !== 0 && /no such (container|object)/i.test(still.output)) return true;
-    await new Promise((r) => setTimeout(r, Math.min(200, Math.max(0, until - Date.now()))));
-  }
-  return false;
-}
-
-/** Runs the container CLI for housekeeping (build, inspect, remove). Not for untrusted code. `onOutput` hears each chunk as it comes. */
-export function cli(args: string[], timeoutMs = 60_000, onOutput?: (text: string, stream: "stdout" | "stderr") => void): Promise<{ exit: number; output: string; timedOut?: true }> {
-  const bin = containerCli();
-  return new Promise((resolve) => {
-    const child = spawn(bin, args, { stdio: ["ignore", "pipe", "pipe"] });
-    let output = "";
-    const keep = (stream: "stdout" | "stderr") => (b: Buffer) => {
-      const text = b.toString("utf8");
-      output += text;
-      if (output.length > 200_000) output = output.slice(-100_000);
-      onOutput?.(text, stream);
-    };
-    child.stdout.on("data", keep("stdout"));
-    child.stderr.on("data", keep("stderr"));
-    let settled = false;
-    const settle = (result: { exit: number; output: string; timedOut?: true }) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      resolve(result);
-    };
-    // Settle at the deadline even if an orphaned grandchild keeps the pipes open.
-    const timer = setTimeout(() => {
-      child.kill("SIGKILL");
-      // A grandchild may still hold the pipes; drop them so code-learn itself can exit.
-      child.stdout.destroy();
-      child.stderr.destroy();
-      child.unref();
-      settle({ exit: -1, output: `${output}\n(timed out after ${timeoutMs} ms)`, timedOut: true });
-    }, timeoutMs);
-    child.on("close", (code) => settle({ exit: code ?? -1, output }));
-    child.on("error", (e) => settle({ exit: -1, output: e.message }));
-  });
-}
-
-/** Asks the engine RUNTIME_INFO within a bound: its answer, or null when none came in time. */
-export type InfoAsk = (timeoutMs: number) => Promise<{ exit: number; output: string } | null>;
-
-const askInfo: InfoAsk = async (timeoutMs) => {
-  const r = await cli(RUNTIME_INFO, timeoutMs);
-  return r.timedOut ? null : r;
-};
-
-/** An engine that is there but not ready: Docker Desktop answers with a server error or a dropped connection while it starts or resumes. */
-const SETTLING = /Internal Server Error|Service Unavailable|Bad Gateway|\bEOF\b|connection reset by peer/i;
-const settling = (answer: { exit: number; output: string } | null) => !answer || (runtimeStateOf(answer) === "down" && SETTLING.test(answer.output));
-
-/**
- * The engine's answer to RUNTIME_INFO, or null when it never gave a real one. An engine that doesn't answer in 20 s,
- * or answers that it isn't ready, is asked once more (a few seconds later), for 60 s: under load (a large build,
- * CPU-heavy checks, Docker Desktop resuming from Resource Saver) `docker info` can take that long. One that answers,
- * even to refuse, is read at once.
- */
-async function runtimeAnswer(ask: InfoAsk, pauseMs: number) {
-  const first = await ask(20_000);
-  if (!settling(first)) return first;
-  if (first) await new Promise((r) => setTimeout(r, pauseMs));
-  const second = await ask(SLOW_MS);
-  return settling(second) ? null : second;
-}
-
-/** The runtime's state now: busy, not stopped, when it never gave a real answer. */
-export async function runtimeState(ask: InfoAsk = askInfo, pauseMs = 5_000): Promise<RuntimeState> {
-  const answer = await runtimeAnswer(ask, pauseMs);
-  return answer ? runtimeStateOf(answer) : "busy";
-}
-
-/** Why the runtime can't run containers right now, or undefined when it can. */
-export async function runtimeDown(ask: InfoAsk = askInfo, pauseMs = 5_000): Promise<RuntimeProblem | undefined> {
-  return runtimeIssue(await runtimeAnswer(ask, pauseMs));
-}
-
-export async function assertRuntime(): Promise<void> {
-  const down = await runtimeDown();
-  if (down) throw infraError(down.message, down.code);
-}
-
-/** A run whose runtime stopped, or stopped answering, under it. `tail` follows "during the run". */
-export function lostRun(down: RuntimeProblem, tail = ""): CodeLearnError {
-  return infraError(`The container runtime stopped${down.code === "runtime-busy" ? " answering" : ""} during the run${tail}. ${down.help}`, down.code);
-}
-
-const NOT_THE_TRACK = "This is not a problem with the track files, so retry with the same files";
-
-/** A build failure that isn't the track's fault: its code, and the kind that follows from it. */
-export type BuildProblem = { message: string; code: InfraCode; kind: "docker" | "disk" | "offline" };
-const buildIssue = (code: InfraCode, message: string): BuildProblem => ({ message, code, kind: INFRA[code] });
-
-/** A download that ended early: Docker's pull, BuildKit's fetch. A compiler's "unexpected EOF" is the track's. */
-const CUT_SHORT = /(?:failed to (?:copy|fetch|resolve|do request|authorize)|error pulling|httpReadSeeker|download failed)[^\n]*unexpected EOF/i;
-
-/** Build output that shows the network failed, its code, and what may be behind it, in order: the first that a line shows wins. */
-const NETWORK: { code: InfraCode; marker: RegExp; lead: string; why: string; retry: string }[] = [
-  {
-    code: "rate-limit",
-    marker: /toomanyrequests|pull rate limit/i,
-    lead: "The track build hit Docker Hub's pull rate limit",
-    why: "Wait a few hours, or sign in to Docker Desktop for a higher limit.",
-    retry: "later",
-  },
-  {
-    code: "tls",
-    // What interception looks like: a certificate no trusted authority signed. An expired certificate, or one for
-    // another name, is the server's, and so the track's choice.
-    marker: /certificate signed by unknown authority|self[- ]signed certificate in certificate chain|unable to get local issuer certificate/i,
-    lead: "The track build couldn't verify a server's certificate",
-    why: "A VPN, proxy or security software may be intercepting Docker's connections.",
-    retry: "once the connection works",
-  },
-  {
-    code: "network-timeout",
-    marker: new RegExp(`i/o timeout|TLS handshake timeout|net/http: request canceled|${CUT_SHORT.source}`, "i"),
-    lead: "The track build's connection timed out or dropped",
-    why: "Docker may be offline, or a VPN, proxy or firewall may be slowing or blocking it.",
-    retry: "once the connection works",
-  },
-  {
-    code: "offline",
-    marker: /temporary failure (?:in name resolution|resolving)|could not resolve (?:host|proxy)|no such host|network is unreachable|getaddrinfo (?:ENOTFOUND|EAI_AGAIN)|proxyconnect/i,
-    lead: "The track build couldn't reach the network",
-    why: "Docker may be offline, or a VPN, proxy or firewall may be blocking it.",
-    retry: "once the connection works",
-  },
-];
-
-/** The build log's first line that a marker matches, trimmed for a message. */
-const lineOf = (log: string, marker: RegExp) => log.split("\n").find((l) => marker.test(l))?.trim().slice(0, 300);
-
-/** Reads a failed build's output for causes outside the track: no disk space, Docker's credential helper, or the network. */
-export function buildProblem(log: string): BuildProblem | undefined {
-  if (/no space left on device/i.test(log)) {
-    return buildIssue("docker-disk", `Docker ran out of disk space while building the track, so nothing was installed. ${NOT_THE_TRACK} ` +
-      "after freeing space in Docker (`docker system prune` removes unused images and build cache), or giving Docker a larger disk.");
-  }
-  // Docker is running but its CLI can't run the helper that signs in to pull the base image (seen in a GUI app's PATH).
-  const credentials = lineOf(log, /error getting credentials/i);
-  if (credentials) {
-    return buildIssue("credentials", `Docker couldn't run its credential helper (${credentials}), so nothing was installed. ${NOT_THE_TRACK} after restarting Docker Desktop.`);
-  }
-  // Stopped at the 10-minute limit while a download (a base image layer, or a package) was still making progress:
-  // the network is slow, and the same files may build next time. A timeout in the track's own commands stays its own.
-  // cli() appends its note after the output's own final newline, so blank lines are skipped.
-  const lines = log.split("\n").map((l) => l.trim()).filter(Boolean);
-  if (/^\(timed out after \d+ ms\)$/.test(lines.at(-1) ?? "")) {
-    const last = lines.at(-2) ?? "";
-    if (/\b\d+(?:\.\d+)?\s?[kMG]i?B\s?\/\s?\d+(?:\.\d+)?\s?[kMG]i?B\b/.test(last)) {
-      return buildIssue("network-timeout", `The track build was still downloading after 10 minutes (${last.slice(0, 300)}), so nothing was installed. ` +
-        `Docker's connection may be slow, or a VPN, proxy or firewall may be slowing it. ${NOT_THE_TRACK} once the connection is faster.`);
+function watchMemoryKills(unit: string): { kills(): Promise<number>; stop(): void } {
+  const manager = userManagerGroup();
+  const events = manager ? join("/sys/fs/cgroup", manager, "app.slice", `${unit}.scope`, "memory.events") : undefined;
+  let highest = 0;
+  let watcher: FSWatcher | undefined;
+  const read = () => {
+    if (!events) return;
+    try {
+      const m = /^oom_kill (\d+)$/m.exec(readFileSync(events, "utf8"));
+      if (m) highest = Math.max(highest, Number(m[1]));
+    } catch {
+      // Not there yet, or gone; keep the highest count seen.
     }
-  }
-  for (const { code, marker, lead, why, retry } of NETWORK) {
-    const line = lineOf(log, marker);
-    if (line) return buildIssue(code, `${lead} (${line}), so nothing was installed. ${why} ${NOT_THE_TRACK} ${retry}.`);
-  }
-  // Anything else is the track's: a gate failure.
-  return undefined;
-}
-
-/** The kind of problem a runtime diagnostic shows, if any: out of disk, offline, or Docker itself (doctor's checks read it). */
-export function infraKind(text: string): "disk" | "offline" | "docker" | undefined {
-  if (/not enough disk space|ran out of disk space|no space left on device/i.test(text)) return "disk";
-  if (/couldn't reach the network|could not resolve host|network is unreachable/i.test(text)) return "offline";
-  if (/container runtime|Windows containers|Cannot connect to the Docker daemon|error getting credentials|container couldn't be removed|Couldn't list code-learn's containers|container couldn't start/i.test(text)) return "docker";
-  return undefined;
-}
-
-/** The kind of a runtime's own failure: what its diagnostic shows, else Docker. */
-export const runtimeKind = (text: string): "disk" | "offline" | "docker" => infraKind(text) ?? "docker";
-
-/** The code of a runtime's own failure: Docker's disk or the network when its diagnostic shows so, else `otherwise`. */
-export function runtimeCode(text: string, otherwise: InfraCode): InfraCode {
-  if (/no space left on device|ran out of disk space/i.test(text)) return "docker-disk";
-  if (/could not resolve host|network is unreachable|no such host|temporary failure in name resolution/i.test(text)) return "offline";
-  return otherwise;
-}
-
-/**
- * Why the runtime refused to start a container (`docker run` exit 125), from its CLI's error, as a fixed phrase. The
- * error itself never leaves: code that had started can write to the same stream.
- */
-export function startRefusal(stderr: string): { code: InfraCode; why: string } {
-  if (/range of CPUs|available CPUs|NanoCPUs/i.test(stderr)) return { code: "docker-cpus", why: "Docker has fewer than the 2 CPUs a check uses: give it more in Docker Desktop's settings" };
-  if (/log[- ]opt|log(?:ging)? driver/i.test(stderr)) return { code: "docker-log-driver", why: "Docker's logging driver refused code-learn's log options: set it to json-file or local" };
-  if (/mounts denied|not shared from the host|file sharing/i.test(stderr)) return { code: "docker-file-sharing", why: "Docker can't share code-learn's run folders: allow them in Docker Desktop's file sharing settings" };
-  const code = runtimeCode(stderr, "container-start");
-  return { code, why: code === "docker-disk" ? "Docker ran out of disk space" : code === "offline" ? "Docker couldn't reach the network" : "the runtime refused it" };
-}
-
-/** A track build is killed after 10 minutes (DESIGN §4.4). */
-export const BUILD_TIMEOUT_MS = 600_000;
-
-export type BuildStep = { done: number; total: number };
-
-/**
- * A build output line's step, as counts only: BuildKit's `#5 [2/7] RUN …` (or `[stage 2/7]`), the legacy builder's
- * `Step 2/7 :` and Podman's `STEP 2/7:`. Anything else, the step's own text included, reads as nothing.
- */
-export function buildStep(line: string): BuildStep | undefined {
-  // BuildKit pads the counter (`[ 2/10]`, `[builder  2/10]`); Podman names the stage (`[2/2] STEP 3/4:`).
-  const m = /^(?:#\d+ \[(?:\S+\s+)?\s*(\d+)\/(\d+)\]|Step (\d+)\/(\d+) :|(?:\[\d+\/\d+\] )?STEP (\d+)\/(\d+):)/.exec(line);
-  if (!m) return undefined;
-  const done = Number(m[1] ?? m[3] ?? m[5]);
-  const total = Number(m[2] ?? m[4] ?? m[6]);
-  return done >= 1 && done <= total ? { done, total } : undefined;
-}
-
-/** Splits streamed output into lines per stream and reports each new build step. A listener that throws is dropped. */
-function stepReader(listener: (step: BuildStep) => void) {
-  let heard: ((step: BuildStep) => void) | undefined = listener;
-  const pending = { stdout: "", stderr: "" };
-  let last = "";
-  return (text: string, stream: "stdout" | "stderr") => {
-    const lines = (pending[stream] + text).split("\n");
-    pending[stream] = lines.pop()!.slice(-1000);
-    for (const line of lines) {
-      const step = buildStep(line.trim());
-      if (!step || `${step.done}/${step.total}` === last) continue;
-      last = `${step.done}/${step.total}`;
+  };
+  const timer = setInterval(() => {
+    read();
+    if (events && !watcher && existsSync(events)) {
       try {
-        heard?.(step);
+        watcher = watch(events, read);
+        watcher.on("error", () => undefined);
       } catch {
-        heard = undefined;
+        // Gone between the check and the watch; the timer still reads it.
       }
     }
+  }, OOM_POLL_MS);
+  timer.unref();
+  return {
+    kills: async () => {
+      read();
+      return highest;
+    },
+    stop: () => {
+      clearInterval(timer);
+      watcher?.close();
+    },
   };
 }
 
-/**
- * Builds a track image from a staged folder. Networked; this is the separate trust boundary in DESIGN §4.4.
- * `imageId` is the image this build produced (`--iidfile`), so another build of the same tag in the meantime can't
- * swap it. `problem` is set when the build failed for a reason outside the track (runtime, network or disk).
- */
-export async function buildImage(
-  contextDir: string, tag: string, timeoutMs = BUILD_TIMEOUT_MS, onStep?: (step: BuildStep) => void,
-): Promise<{ ok: boolean; log: string; imageId?: string; problem?: BuildProblem }> {
-  const out = mkdtempSync(join(tmpdir(), "code-learn-iid-"));
-  try {
-    const args = ["build", "-t", tag, "--iidfile", join(out, "iid")];
-    if (containerCli() === "docker") args.push("--progress", "plain");
-    args.push(contextDir);
-    const r = await cli(args, timeoutMs, onStep && stepReader(onStep));
-    // The failing step's first lines can be far back (gates show them); what the build's problem is read from is the end.
-    const log = r.output.slice(-64_000);
-    const imageId = existsSync(join(out, "iid")) ? readFileSync(join(out, "iid"), "utf8").trim() : "";
-    if (r.exit === 0 && imageId) return { ok: true, log, imageId };
-    // The build worked but the runtime didn't report its image: not the track's fault.
-    if (r.exit === 0) return { ok: false, log, problem: buildIssue("image-id", `The container runtime built the track but didn't report the image ID. ${NOT_THE_TRACK} after updating Docker.`) };
-    const down = await runtimeDown();
-    const problem: BuildProblem | undefined = down ? buildIssue(down.code, down.message) : buildProblem(log.slice(-8000));
-    return { ok: false, log, ...(problem ? { problem } : {}) };
-  } finally {
-    rmSync(out, { recursive: true, force: true });
-  }
-}
-
-/**
- * The image's id and whether it declares volumes, or undefined when the runtime says there is no such image (Docker:
- * "No such image" or "No such object"; Podman: "image not known"). Any other failure is the runtime's, and throws as one.
- */
-export async function inspectImage(tag: string): Promise<{ id: string; hasVolumes: boolean } | undefined> {
-  // The whole record as JSON: Docker 29 leaves Config.Volumes out when an image declares none, and a template that
-  // names a missing key fails.
-  const r = await cli(["image", "inspect", "--format", "{{json .}}", tag]);
-  if (r.exit !== 0) {
-    if (/no such (image|object)|image not known/i.test(r.output)) return undefined;
-    const down = await runtimeDown();
-    if (down) throw infraError(down.message, down.code);
-    throw infraError(`The container runtime couldn't inspect the track image: ${r.output.trim().slice(0, 300)}`, runtimeCode(r.output, "image-inspect"));
-  }
-  const record = inspectRecord<{ Id?: unknown; Config?: { Volumes?: Record<string, unknown> | null } | null }>(r.output);
-  // Docker answered, so this is no stopped runtime: code-learn couldn't read what it said.
-  if (!record || typeof record.Id !== "string") throw infraError(`The container runtime's image record couldn't be read: ${r.output.trim().slice(0, 300)}`, "image-inspect");
-  const volumes = record.Config?.Volumes;
-  return { id: record.Id, hasVolumes: !!volumes && Object.keys(volumes).length > 0 };
-}
-
-/**
- * The images a Dockerfile builds from, once each and in order: not its own stages, scratch, or an image a build
- * argument names. Lines inside a heredoc or after a line continuation are a command's text, not instructions.
- */
-export function baseImages(dockerfile: string): string[] {
-  const stages = new Set<string>();
-  const images: string[] = [];
-  let heredoc: string | undefined;
-  let continued = false;
-  for (const line of dockerfile.split(/\r?\n/)) {
-    if (heredoc !== undefined) {
-      if (line.trim() === heredoc) heredoc = undefined;
-      continue;
-    }
-    const wasContinued = continued;
-    continued = /\\\s*$/.test(line);
-    // A heredoc's word starts with a letter; a here-string (<<<) or a shift (1 << 3) opens none.
-    heredoc = /(?<!<)<<-?\s*["']?([A-Za-z_]\w*)["']?/.exec(line)?.[1];
-    if (wasContinued) continue;
-    const m = /^\s*FROM\s+(?:--\S+\s+)*(\S+)(?:\s+AS\s+(\S+))?\s*$/i.exec(line);
-    if (!m) continue;
-    const image = m[1]!;
-    const own = stages.has(image.toLowerCase()) || image.toLowerCase() === "scratch" || image.includes("$");
-    if (!own && !images.includes(image)) images.push(image);
-    if (m[2]) stages.add(m[2].toLowerCase());
-  }
-  return images;
-}
-
-/** An image from Docker Hub's official library (`alpine:3.20`, not `someone/alpine` or a registry's): all of them are public. */
-const officialImage = (image: string) => {
-  const name = image.split("@")[0]!;
-  const tag = name.lastIndexOf(":");
-  // A registry's port (host:5050/group/app) comes before a slash; a tag comes after the last one.
-  return !(tag > name.lastIndexOf("/") ? name.slice(0, tag) : name).includes("/");
-};
-
-/**
- * The base images the registry says don't exist: a tag it doesn't have, or an official image that isn't there. One
- * top-level manifest request each, side by side. An answer it can't give (offline, no runtime or buildx, a private
- * or namespaced repository it won't show) counts nothing missing: the build then reports it.
- */
-export async function missingBaseImages(dockerfile: string): Promise<string[]> {
-  const answers = await Promise.all(baseImages(dockerfile).map(async (image) => {
-    try {
-      const r = await cli(["buildx", "imagetools", "inspect", "--raw", image], 30_000);
-      if (r.exit === 0) return undefined;
-      const gone = /: not found\b/i.test(r.output) || (officialImage(image) && /repository does not exist/i.test(r.output));
-      return gone ? image : undefined;
-    } catch {
-      return undefined;
-    }
-  }));
-  return answers.filter((image): image is string => image !== undefined);
-}
-
-/**
- * The record of `inspect --format '{{json .}}'`. Docker and Podman 4.4+ print one compact object per line, maybe among
- * warnings; Podman 4.3 and earlier print an indented array of records instead.
- */
-export function inspectRecord<T>(output: string): T | undefined {
-  const parse = (text: string): T | undefined => {
-    try {
-      const value = JSON.parse(text) as unknown;
-      const record = Array.isArray(value) ? value[0] : value;
-      return record && typeof record === "object" ? (record as T) : undefined;
-    } catch {
-      return undefined;
-    }
-  };
-  for (const line of output.split("\n")) {
-    const record = line.trim().startsWith("{") ? parse(line) : undefined;
-    if (record) return record;
-  }
-  const from = output.search(/[[{]/);
-  return from < 0 ? undefined : parse(output.slice(from));
-}
-
-/** Every container code-learn started, with the PID of the code-learn process that owns it. Throws if listing fails. */
-export async function ownedContainers(): Promise<{ id: string; pid: number }[]> {
-  const r = await cli(["ps", "-a", "--filter", `label=${OWNER_LABEL}`, "--format", '{{.ID}} {{.Label "code-learn.pid"}}']);
-  if (r.exit !== 0) {
-    // Down only when the runtime says so; anything else is a runtime that answers but failed to list.
-    const down = await runtimeDown();
-    if (down) throw infraError(down.message, down.code);
-    throw infraError(`Couldn't list code-learn's containers: ${r.output.trim().slice(0, 300)}`, runtimeCode(r.output, "container-list"));
-  }
-  return r.output.split("\n").filter((l) => l.trim()).map((l) => {
-    const [id, pid] = l.trim().split(/\s+/);
-    return { id: id!, pid: Number(pid) || 0 };
+/** Stops a scope, with a deadline. True when it's gone, including when it ended by itself first. */
+function stopScope(unit: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const child = spawn("systemctl", ["--user", "stop", unit], { stdio: "ignore" });
+    const timer = setTimeout(() => {
+      child.kill("SIGKILL");
+      resolve(false);
+    }, STOP_MS);
+    child.on("close", () => {
+      clearTimeout(timer);
+      resolve(!scopeActive(unit));
+    });
+    child.on("error", () => {
+      clearTimeout(timer);
+      resolve(false);
+    });
   });
 }
 
-/** True when the code-learn process that started a container is gone, so the container is abandoned. */
-export const ownerGone = (pid: number): boolean => !pid || !processAlive(pid);
+const scopeActive = (unit: string) =>
+  spawnSync("systemctl", ["--user", "is-active", "--quiet", unit], { stdio: "ignore", timeout: 5_000 }).status === 0;
 
-/**
- * Removes the containers whose owning code-learn process is gone; live ones are never touched (after a cancel or a
- * crash, and doctor --fix). Returns how many were abandoned and how many of those are still there.
- */
+// ---------- requirements ----------
+
+/** Why this computer can't run sandboxes: its code, and the message, whose last part (`help`) says what to do. */
+export type SandboxProblem = { code: InfraCode; message: string; help: string };
+const problem = (code: InfraCode, lead: string, help: string): SandboxProblem => ({ code, message: `${lead} ${help}`, help });
+
+const INSTALL_BWRAP = "Install bubblewrap 0.9 or later from your distribution (the package is usually called bubblewrap), then retry.";
+const START_SESSION = "code-learn needs a systemd user session for its sandbox limits. Log in to a desktop session (not only su or sudo), then retry.";
+
+/** What the sandbox's own failure output means, as a stable code. */
+export function sandboxIssue(output: string): SandboxProblem {
+  if (/failed to connect to (?:the )?bus|failed to create bus connection|no medium found|XDG_RUNTIME_DIR/i.test(output)) {
+    return problem("no-user-session", "The systemd user session isn't reachable.", START_SESSION);
+  }
+  if (/bwrap:.*(?:namespace|uid map|operation not permitted|permission denied)/i.test(output)) {
+    return problem(
+      "sandbox-blocked",
+      "This computer doesn't let bubblewrap create its sandbox.",
+      "Allow unprivileged user namespaces (on Ubuntu, keep the bubblewrap AppArmor profile; elsewhere set kernel.unprivileged_userns_clone=1), then retry.",
+    );
+  }
+  return problem("sandbox-failed", "The sandbox failed to start.", "Run `code-learn doctor`, then retry.");
+}
+
+/** bubblewrap's version, or undefined when it isn't installed. */
+export function bwrapVersion(): string | undefined {
+  const r = spawnSync("bwrap", ["--version"], { encoding: "utf8", timeout: 10_000 });
+  return r.status === 0 ? /(\d+\.\d+(?:\.\d+)?)/.exec(r.stdout)?.[1] : undefined;
+}
+
+const atLeast = (version: string, major: number, minor: number) => {
+  const [a = 0, b = 0] = version.split(".").map(Number);
+  return a > major || (a === major && b >= minor);
+};
+
+/** Checks every requirement, with a canary run; undefined when sandboxes work here. */
+export async function sandboxDown(): Promise<SandboxProblem | undefined> {
+  if (process.getuid?.() === 0) {
+    return problem("sandbox-root", "code-learn is running as root.", "Run it as your own user: a sandbox run as root would own every file it mounts.");
+  }
+  const version = bwrapVersion();
+  if (!version) return problem("no-sandbox", "bubblewrap (bwrap) isn't installed.", INSTALL_BWRAP);
+  if (!atLeast(version, 0, 9)) return problem("no-sandbox", `bubblewrap ${version} is too old.`, INSTALL_BWRAP);
+  const canary = await runSandboxed({ command: ["/bin/sh", "-c", "exit 0"], env: {}, mounts: [], memoryMb: 64, deadlineMs: 30_000, tasks: 16 });
+  if (canary.exit === 0) return undefined;
+  if (canary.exit === -1 && /ENOENT/.test(canary.stderr)) return problem("no-user-session", "systemd-run isn't installed.", START_SESSION);
+  return sandboxIssue(canary.stderr);
+}
+
+let ready: Promise<void> | undefined;
+
+/** Fails with the sandbox's problem as an infrastructure error. A success is remembered for the process. */
+export function assertRuntime(): Promise<void> {
+  ready ??= sandboxDown().then((down) => {
+    if (down) {
+      ready = undefined;
+      throw infraError(down.message, down.code);
+    }
+  });
+  return ready;
+}
+
+/** A run lost to the sandbox failing: nothing is recorded. */
+export function lostRun(down: SandboxProblem, tail = ""): CodeLearnError {
+  return infraError(`${down.message.replace(/\.$/, "")}${tail}.`, down.code);
+}
+
+// ---------- leftovers ----------
+
+/** Scopes code-learn started, with the PID of the process that owns each. */
+export function ownedScopes(): { unit: string; pid: number }[] {
+  const listed = spawnSync("systemctl", ["--user", "list-units", "--type=scope", "--all", "--plain", "--no-legend", `${SCOPE_PREFIX}*`], { encoding: "utf8", timeout: 10_000 });
+  if (listed.status !== 0) return [];
+  return listed.stdout
+    .split("\n")
+    .map((line) => line.trim().split(/\s+/)[0] ?? "")
+    .flatMap((unit) => {
+      const pid = /^code-learn-(\d+)-[0-9a-f]+\.scope$/.exec(unit)?.[1];
+      return pid ? [{ unit, pid: Number(pid) }] : [];
+    });
+}
+
+/** Stops the scopes whose owner process is gone (`doctor --fix`). Live processes' scopes are never touched. */
 export async function removeAbandoned(): Promise<{ abandoned: number; left: number }> {
-  const abandoned = (await ownedContainers()).filter((c) => ownerGone(c.pid));
-  if (abandoned.length === 0) return { abandoned: 0, left: 0 };
-  await cli(["rm", "-f", ...abandoned.map((c) => c.id)]);
-  const left = (await ownedContainers()).filter((c) => abandoned.some((a) => a.id === c.id)).length;
+  const abandoned = ownedScopes().filter((s) => !processAlive(s.pid));
+  let left = 0;
+  for (const scope of abandoned) if (!(await stopScope(scope.unit))) left++;
   return { abandoned: abandoned.length, left };
 }

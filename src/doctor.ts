@@ -1,273 +1,105 @@
-import { createHash, randomBytes } from "node:crypto";
-import { accessSync, constants, mkdirSync, writeFileSync } from "node:fs";
+// `code-learn doctor` (DESIGN §4.6, §10): this computer's requirements, a self-test of the sandbox's isolation, and
+// leftovers from crashed runs.
+import { accessSync, constants, mkdirSync, realpathSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { join } from "node:path";
-import type { CodeLearnError } from "./errors.js";
-import { writeFileMap } from "./files.js";
-import { type RunFolder, runsDir, stageRunFolder } from "./runs.js";
-import { assertRuntime, cli, containerCli, infraKind, inspectRecord, ownedContainers, OWNER_LABEL, ownerGone, removeAbandoned, runSandboxed, runtimeKind } from "./sandbox.js";
-import { codeLearnHome } from "./store.js";
-import { prepareWasi, removeSealed, sealReadOnly, startWasi, wasmtime } from "./wasi.js";
+import { stageRunFolder } from "./runs.js";
+import { bwrapVersion, ownedScopes, removeAbandoned, runSandboxed, sandboxDown } from "./sandbox.js";
+import { codeLearnHome, processAlive } from "./store.js";
+import { micromamba } from "./toolchain.js";
 
-/** A small, pinned utility image used only for the network self-test. */
-const PROBE_IMAGE = "alpine:3.20@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc";
-/** The self-test's server: answers "pong" to every request on port 8080. */
-const PROBE_SERVER = "while true; do printf 'HTTP/1.0 200 OK\\r\\n\\r\\npong' | nc -l -p 8080; done";
+/** `kind`: when this computer's network, disk or sandbox is the cause, as an error's kind says it (errors.ts). */
+export type Check = { name: string; ok: boolean; detail: string; kind?: "offline" | "disk" | "sandbox" };
 
-/** `kind`: when this computer's network, disk or container engine is the cause, as an error's kind says it (errors.ts). */
-export type Check = { name: string; ok: boolean; detail: string; kind?: "offline" | "disk" | "docker" };
-
-const firstLine = (text: string) => text.trim().split("\n")[0] ?? "";
-
-/**
- * What a failed pull of the test image says about the network: DNS, a blocked or slow connection, a proxy, TLS
- * interception (an unknown certificate) or Docker Hub's rate limit all read the same to a learner: offline.
- */
-const PULL_NETWORK = /no such host|server misbehaving|name resolution|could not resolve|network is unreachable|no route to host|connection (?:refused|reset)|i\/o timeout|handshake timeout|timeout exceeded|deadline exceeded|x509|certificate|toomanyrequests|rate limit|proxy|unexpected eof|failed to do request|pinging container registry|dial tcp/i;
-
-/** A failed pull's check. Each cause says what it is; only an unknown failure stays inconclusive. */
-function pullFailure(name: string, output: string): Check {
-  const kind = infraKind(output);
-  // The network line if there is one; else the last line, which is where a pull prints its error after the progress.
-  const lines = output.split("\n").map((l) => l.trim()).filter(Boolean);
-  const line = (lines.find((l) => PULL_NETWORK.test(l)) ?? lines.at(-1) ?? "").slice(0, 300);
-  if (kind === "disk") return { name, ok: false, kind, detail: `Docker ran out of disk space downloading the test image (${line})` };
-  // code-learn's own deadline (the cli's timeout text): a slow connection or a stuck engine, which the words can't tell apart.
-  if (/\(timed out after \d+ ms\)/.test(output)) {
-    return { name, ok: false, kind: "docker", detail: "inconclusive: Docker took more than 3 minutes to download the test image. Check the connection and that Docker is responding, then try again." };
-  }
-  // A stopped Podman machine refuses connections, which would read as the network.
-  if (/cannot connect to podman/i.test(output)) {
-    return { name, ok: false, kind: "docker", detail: `inconclusive: the container engine isn't answering (${line}). Start it, then try again.` };
-  }
-  // A broken credential helper is Docker's own sign-in, whatever else the line says.
-  if (/error getting credentials|credential/i.test(output)) {
-    return { name, ok: false, kind: "docker", detail: `Docker's sign-in helper failed while downloading the test image (${line}). Restart Docker, or run \`docker logout\`, then try again.` };
-  }
-  if (/toomanyrequests|rate limit/i.test(output)) {
-    return { name, ok: false, kind: "offline", detail: `Docker Hub's download limit for this connection was reached (${line}). Wait a while, or sign in to Docker Hub in Docker, then try again.` };
-  }
-  if (/x509|certificate/i.test(output)) {
-    return { name, ok: false, kind: "offline", detail: `Docker couldn't reach the network securely: a proxy or firewall may be intercepting its HTTPS connection (${line}). Connect without it or add its certificate to Docker, then try again.` };
-  }
-  if (kind !== "docker" && (kind === "offline" || PULL_NETWORK.test(output))) {
-    return {
-      name, ok: false, kind: "offline",
-      detail: `Docker couldn't reach the network to download the test image (${line}). Connect to the internet, check any VPN, proxy or firewall, then try again.`,
-    };
-  }
-  return { name, ok: false, kind: "docker", detail: `inconclusive: Docker couldn't download the test image (${line})` };
+/** bubblewrap and the systemd user session, proven with a canary run. */
+async function sandbox(): Promise<Check> {
+  const name = "sandbox";
+  const down = await sandboxDown();
+  if (down) return { name, ok: false, kind: "sandbox", detail: down.message };
+  return { name, ok: true, detail: `bubblewrap ${bwrapVersion()}, systemd user session` };
 }
 
-/** Has the test image, pulling it if it isn't here. Undefined when it's here; else the failed check. */
-async function pullProbeImage(name: string): Promise<Check | undefined> {
-  if ((await cli(["image", "inspect", PROBE_IMAGE])).exit === 0) return undefined;
-  const pulled = await cli(["pull", PROBE_IMAGE], 180_000);
-  return pulled.exit === 0 ? undefined : pullFailure(name, pulled.output);
-}
-
-/**
- * Starts a container the way a check does (the full sandbox, a staged run folder mounted read-only) and reads a file
- * back from it, so an engine that can't mount code-learn's folders fails here, not on every check. Undefined when it works.
- */
-async function mountProblem(name: string): Promise<Check | undefined> {
-  let folder: RunFolder;
+function packageManager(): Check {
+  const name = "package manager";
   try {
-    folder = stageRunFolder();
+    const { bin, version } = micromamba();
+    return { name, ok: true, detail: `micromamba ${version} (${bin})` };
   } catch (e) {
-    // The home isn't writable (or the disk is full): its own row says so, and the rest of doctor still runs.
-    const full = (e as NodeJS.ErrnoException).code === "ENOSPC";
-    return { name, ok: false, ...(full ? { kind: "disk" as const } : {}), detail: `code-learn couldn't make a folder for the test in ${codeLearnHome()} (${(e as Error).message.slice(0, 200)}). Check that it is writable and has free space.` };
+    return { name, ok: false, kind: "sandbox", detail: (e as Error).message };
   }
+}
+
+function dataFolder(): Check {
+  const name = "code-learn home";
   try {
-    const token = randomBytes(8).toString("hex");
-    writeFileMap(join(folder.dir, "src"), { "probe.txt": token });
+    mkdirSync(codeLearnHome(), { recursive: true });
+    accessSync(codeLearnHome(), constants.W_OK);
+    return { name, ok: true, detail: codeLearnHome() };
+  } catch {
+    return { name, ok: false, kind: "disk", detail: `${codeLearnHome()} isn't writable` };
+  }
+}
+
+/**
+ * What a check's sandbox must not be able to do, each tried from inside one (DESIGN §4.6). The script prints one word
+ * per rule that holds, so a missing word names the rule that failed.
+ */
+const ISOLATION_RULES: [word: string, rule: string][] = [
+  ["no-network", "no network but loopback"],
+  ["no-home", "the home folder is hidden"],
+  ["no-data", "code-learn's data is hidden"],
+  ["input-ro", "mounted files are read-only"],
+  ["usr-ro", "/usr is read-only"],
+];
+
+/** Runs the isolation self-test in the same sandbox a check gets. */
+export async function isolation(): Promise<Check> {
+  const name = "sandbox isolation";
+  const folder = stageRunFolder();
+  try {
+    mkdirSync(join(folder.dir, "src"));
+    writeFileSync(join(folder.dir, "src", "probe.txt"), "probe\n");
+    const home = JSON.stringify(realpathSync(homedir()));
+    const data = JSON.stringify(realpathSync(codeLearnHome()));
+    const script = [
+      `[ "$(tail -n +3 /proc/net/dev | cut -d: -f1 | tr -d ' ')" = lo ] && echo no-network`,
+      `[ -e ${home} ] || echo no-home`,
+      `[ -e ${data} ] || echo no-data`,
+      "{ : > probe.txt; } 2>/dev/null || echo input-ro",
+      "{ : > /usr/.code-learn-probe; } 2>/dev/null || echo usr-ro",
+    ].join("\n");
     const r = await runSandboxed({
-      image: PROBE_IMAGE, env: {}, mounts: [{ host: join(folder.dir, "src"), container: "/work/src" }], memoryMb: 64, deadlineMs: 30_000,
-      script: "cat /work/src/probe.txt",
+      command: ["/bin/sh", "-c", script], env: {}, mounts: [{ host: join(folder.dir, "src"), container: "/work/src" }],
+      memoryMb: 64, deadlineMs: 30_000, tasks: 32,
     });
-    if (r.exit === 0 && r.stdout.toString() === token) return undefined;
-    const share =
-      `code-learn keeps what a check mounts in ${runsDir()}. If the engine says it can't see that folder, share it with the engine ` +
-      "(Colima and Rancher Desktop share only your home folder by default), then try again.";
-    const reason = r.timedOut ? "it didn't finish in 30 seconds" : firstLine(r.stderr).slice(0, 300);
-    // 125 is the engine refusing to start the container, -1 the CLI not starting; anything else ran, and didn't read the file.
-    const started = !r.timedOut && r.exit !== 125 && r.exit !== -1;
-    const detail = started
-      ? `Docker mounted code-learn's folder into a container, but it couldn't read the test file there (${reason || "the folder was empty"}). ${share}`
-      : `Docker couldn't start a test container with code-learn's folder mounted (${reason || `exit ${r.exit}`}). ${share}`;
-    return { name, ok: false, kind: "docker", detail };
+    const held = new Set(r.stdout.toString().split("\n"));
+    const broken = ISOLATION_RULES.filter(([word]) => !held.has(word)).map(([, rule]) => rule);
+    if (r.exit !== 0) return { name, ok: false, kind: "sandbox", detail: `the self-test didn't run (exit ${r.exit})` };
+    if (broken.length > 0) return { name, ok: false, kind: "sandbox", detail: `these rules didn't hold: ${broken.join("; ")}` };
+    return { name, ok: true, detail: ISOLATION_RULES.map(([, rule]) => rule).join("; ") };
   } finally {
     folder.remove();
   }
 }
 
-/** The first IPv4 address among a container's networks, from `inspect --format '{{json .}}'`. */
-function bridgeIp(output: string): string | undefined {
-  const record = inspectRecord<{ NetworkSettings?: { Networks?: Record<string, { IPAddress?: unknown } | null> | null } }>(output);
-  const ips = Object.values(record?.NetworkSettings?.Networks ?? {}).map((n) => n?.IPAddress);
-  return ips.find((ip): ip is string => typeof ip === "string" && /^\d{1,3}(\.\d{1,3}){3}$/.test(ip));
-}
-
-/**
- * Proves the sandbox can't reach a server that an ordinary container can.
- * The server runs in an ordinary container, not on the host, so the host's firewall never decides the result.
- * If the ordinary container can't reach it either, nothing is proven, and that's reported as a failure.
- * Before that, it fails the way a real check would: the test image can't be downloaded (offline), or the engine
- * can't mount the folders a check stages under code-learn's home.
- */
-export async function networkIsolation(): Promise<Check> {
-  const name = "network isolation";
-  const unusable = (await pullProbeImage(name)) ?? (await mountProblem(name));
-  if (unusable) return unusable;
-  // Named, so it's removed even when `run` times out before printing its id.
-  const server = `code-learn-probe-${process.pid}-${randomBytes(4).toString("hex")}`;
-  try {
-    const started = await cli(["run", "-d", "--rm", "--name", server, "--label", OWNER_LABEL, "--label", `code-learn.pid=${process.pid}`, PROBE_IMAGE, "sh", "-c", PROBE_SERVER], 120_000);
-    if (started.exit !== 0) return { name, ok: false, detail: `inconclusive: the test server's container failed (${firstLine(started.output)})` };
-    // The whole record as JSON, read here: a template that names a key one Docker version leaves out fails.
-    const inspected = await cli(["inspect", "--format", "{{json .}}", server]);
-    const ip = bridgeIp(inspected.output);
-    if (!ip) return { name, ok: false, detail: "inconclusive: the test server's container has no bridge IP" };
-    const url = `http://${ip}:8080/`;
-    // A few tries, since the server's container may still be starting; wget's errors stay out of the answer.
-    const control = await cli(["run", "--rm", PROBE_IMAGE, "sh", "-c", `for i in 1 2 3 4 5; do wget -q -T 2 -O- "${url}" 2>/dev/null && exit 0; sleep 1; done; exit 1`], 120_000);
-    if (control.output.trim() !== "pong") {
-      return { name, ok: false, detail: `inconclusive: an ordinary container couldn't reach the test server either, so isolation wasn't proven (${firstLine(control.output) || `exit ${control.exit}`})` };
-    }
-    const sandboxed = await runSandboxed({
-      image: PROBE_IMAGE, env: {}, mounts: [], memoryMb: 64, deadlineMs: 30_000,
-      script: `wget -q -T 5 -O- "${url}" && echo reached || echo blocked`,
-    });
-    // wget prints the server's "pong" before "reached". Anything else means the sandbox never ran its script (the
-    // engine refused, or it timed out), which proves nothing either way and is no alarm about the network.
-    const answer = sandboxed.stdout.toString().trim();
-    if (answer === "blocked") return { name, ok: true, detail: "the sandbox can't reach a server that ordinary containers can" };
-    if (answer.endsWith("reached")) return { name, ok: false, detail: "the sandbox reached the network" };
-    const why = sandboxed.timedOut ? "it didn't finish in 30 seconds" : firstLine(sandboxed.stderr) || `exit ${sandboxed.exit}`;
-    return { name, ok: false, kind: runtimeKind(sandboxed.stderr), detail: `inconclusive: the sandbox container didn't run its test, so isolation wasn't proven (${why.slice(0, 300)})` };
-  } finally {
-    await cli(["rm", "-f", server]);
-  }
-}
-
-/**
- * The WASI engine's canary (WebAssembly text, which wasmtime compiles as it is): it prints the file probe.txt from its
- * first folder (/work/src), then tries to create new.txt there and prints "created" if it could.
- */
-const WASI_CANARY = `(module
-  (import "wasi_snapshot_preview1" "path_open" (func $open (param i32 i32 i32 i32 i32 i64 i64 i32 i32) (result i32)))
-  (import "wasi_snapshot_preview1" "fd_read" (func $read (param i32 i32 i32 i32) (result i32)))
-  (import "wasi_snapshot_preview1" "fd_write" (func $write (param i32 i32 i32 i32) (result i32)))
-  (memory (export "memory") 1)
-  (data (i32.const 256) "probe.txt")
-  (data (i32.const 272) "new.txt")
-  (data (i32.const 288) "created")
-  (func (export "_start")
-    (if (i32.eqz (call $open (i32.const 3) (i32.const 0) (i32.const 256) (i32.const 9) (i32.const 0) (i64.const 2) (i64.const 0) (i32.const 0) (i32.const 32)))
-      (then
-        (i32.store (i32.const 0) (i32.const 1024))
-        (i32.store (i32.const 4) (i32.const 1024))
-        (drop (call $read (i32.load (i32.const 32)) (i32.const 0) (i32.const 1) (i32.const 4)))
-        (drop (call $write (i32.const 1) (i32.const 0) (i32.const 1) (i32.const 40)))))
-    (if (i32.eqz (call $open (i32.const 3) (i32.const 0) (i32.const 272) (i32.const 7) (i32.const 1) (i64.const 64) (i64.const 0) (i32.const 0) (i32.const 32)))
-      (then
-        (i32.store (i32.const 0) (i32.const 288))
-        (i32.store (i32.const 4) (i32.const 7))
-        (drop (call $write (i32.const 1) (i32.const 0) (i32.const 1) (i32.const 40)))))))`;
-
-/** The canary's failure that no other engine makes up for: an installed WASI track would still run on it. */
-export const WASI_UNSAFE = "the test program could create a file in its read-only folder, so WASI tracks can't run safely here";
-
-/**
- * The WASI engine (DESIGN §4.5): wasmtime 50 is here, and the canary, compiled and run as a check runs a program (every
- * flag, a staged run folder sealed and mapped at /work/src), reads a file there and can't create one.
- */
-export async function wasiEngine(): Promise<Check> {
-  const name = "WASI engine";
-  let folder: RunFolder;
-  try {
-    wasmtime();
-    folder = stageRunFolder();
-  } catch (e) {
-    return { name, ok: false, detail: (e as Error).message };
-  }
-  try {
-    const token = randomBytes(8).toString("hex");
-    writeFileMap(join(folder.dir, "src"), { "probe.txt": token });
-    writeFileSync(join(folder.dir, "canary.wat"), WASI_CANARY);
-    // Named by its own digest, so a changed canary is compiled again; it holds no token, so the compiled file is reused.
-    const toolchain = { root: folder.dir, sha256: `canary-${createHash("sha256").update(WASI_CANARY).digest("hex").slice(0, 16)}`, module: "canary.wat", dirs: {}, env: {} };
-    const engine = await prepareWasi(toolchain);
-    sealReadOnly(folder.dir);
-    const r = await startWasi({ engine, toolchain, src: join(folder.dir, "src"), run: "", memoryMb: 64, timeMs: 30_000, input: Buffer.alloc(0), outputCap: 65_536 }).done;
-    const out = r.stdout.toString();
-    if (r.exit === 0 && out === token) {
-      const w = wasmtime();
-      return { name, ok: true, detail: `wasmtime ${w.version} (${w.bin})` };
-    }
-    if (out.endsWith("created")) return { name, ok: false, detail: WASI_UNSAFE };
-    return { name, ok: false, detail: `wasmtime couldn't run the test program (${r.timedOut ? "it didn't finish in 30 seconds" : `exit ${r.exit}`})` };
-  } catch (e) {
-    return { name, ok: false, ...((e as CodeLearnError).kind === "disk" ? { kind: "disk" as const } : {}), detail: (e as Error).message };
-  } finally {
-    removeSealed(folder);
-  }
-}
-
-/**
- * Either engine runs checks, so one that's missing fails only when the other doesn't work either (DESIGN §4.5). A
- * computer with a container CLI has Docker, running or not, and a stopped one is fixed by starting it: only `noCli`
- * lets wasmtime stand in for it, and only a container CLI lets a missing wasmtime pass. A WASI engine that isn't safe
- * always fails, since a WASI track installed before Docker still runs on it.
- */
-export function bothEngines(runtime: Check, wasi: Check, noCli: boolean): [Check, Check] {
-  if (!noCli && !wasi.ok && wasi.detail !== WASI_UNSAFE) return [runtime, { ...wasi, ok: true, detail: `${wasi.detail} Only needed on a computer without a container runtime.` }];
-  if (noCli && wasi.ok) return [{ ...runtime, ok: true, detail: `${runtime.detail} WASI tracks run on wasmtime here; Docker tracks need a container runtime.` }, wasi];
-  return [runtime, wasi];
-}
-
-/** Abandoned containers are ones whose owning code-learn process is gone; live checks are never touched. */
+/** Abandoned sandboxes are ones whose owning code-learn process is gone; live checks are never touched. */
 async function leftovers(fix: boolean): Promise<Check> {
-  const name = "leftover containers";
-  let owned: { id: string; pid: number }[];
-  try {
-    owned = await ownedContainers();
-  } catch (e) {
-    return { name, ok: false, detail: (e as Error).message };
-  }
-  const abandoned = owned.filter((c) => ownerGone(c.pid));
+  const name = "leftover sandboxes";
+  const owned = ownedScopes();
+  const abandoned = owned.filter((s) => !processAlive(s.pid));
   if (abandoned.length === 0) return { name, ok: true, detail: owned.length ? `none abandoned (${owned.length} in use by running checks)` : "none" };
   if (!fix) return { name, ok: false, detail: `${abandoned.length} abandoned; run code-learn doctor --fix` };
   const removed = await removeAbandoned();
   return removed.left === 0
-    ? { name, ok: true, detail: `removed ${removed.abandoned}` }
-    : { name, ok: false, detail: `couldn't remove ${removed.left} of ${removed.abandoned}` };
+    ? { name, ok: true, detail: `stopped ${removed.abandoned}` }
+    : { name, ok: false, detail: `couldn't stop ${removed.left} of ${removed.abandoned}` };
 }
 
 export async function doctor(fix: boolean): Promise<Check[]> {
-  const checks: Check[] = [];
-  let runtime: Check;
-  let noCli = false;
-  try {
-    checks.push({ name: "container CLI", ok: true, detail: containerCli() });
-    await assertRuntime();
-    runtime = { name: "container runtime", ok: true, detail: "running" };
-  } catch (e) {
-    // No CLI, or a configured one that isn't there; any other failure is a Docker that is installed.
-    noCli = (e as CodeLearnError).code === "no-runtime";
-    runtime = { name: "container runtime", ok: false, detail: (e as Error).message };
-  }
-  const running = runtime.ok;
-  checks.push(...bothEngines(runtime, await wasiEngine(), noCli));
-  try {
-    mkdirSync(codeLearnHome(), { recursive: true });
-    accessSync(codeLearnHome(), constants.W_OK);
-    checks.push({ name: "code-learn home", ok: true, detail: codeLearnHome() });
-  } catch {
-    checks.push({ name: "code-learn home", ok: false, detail: `${codeLearnHome()} isn't writable` });
-  }
-  if (!running) return checks;
-  checks.push(await networkIsolation());
+  const first = await sandbox();
+  const checks = [first, packageManager(), dataFolder()];
+  if (!first.ok) return checks;
+  checks.push(await isolation());
   checks.push(await leftovers(fix));
   return checks;
 }

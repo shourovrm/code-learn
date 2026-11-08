@@ -1,24 +1,20 @@
-import { CodeLearnError, infraError } from "../errors.js";
+import { CodeLearnError } from "../errors.js";
 import { assertPortablePaths, type FileMap, validateFileMap } from "../files.js";
 import { checkTrackFiles, type TrackProgress, verifyExercise, verifyTrack } from "../gates.js";
 import { type Expected, expectedDigest } from "../grading.js";
-import { containerCli, missingBaseImages, runtimeCode, runtimeDown, cli as sandboxCli } from "../sandbox.js";
-import { parseTrackYaml, type TrackRecord, type TrackSpec } from "../schemas.js";
+import type { ToolchainFolders } from "../judge.js";
+import type { TrackRecord } from "../schemas.js";
 import * as store from "../store.js";
-import { toolchainMissing } from "../toolchain.js";
-
-/** The desktop sets Electron's net.fetch here, for the system's proxy and certificates (DESIGN §4.5). */
-export { setToolchainFetch } from "../toolchain.js";
-import { wasmtimePath } from "../wasi.js";
-import { engineOf, installedTrack, quietly } from "./shared.js";
+import { commitToolchain, removeToolchain, type StagedToolchain } from "../toolchain.js";
+import { installedTrack, quietly } from "./shared.js";
 
 // ---------- tracks ----------
 
 export function listTracks() {
-  return store.listTracks().map((t) => ({ track: `${t.id}@${t.version}`, styles: t.styles, files: t.files, engine: engineOf(t) }));
+  return store.listTracks().map((t) => ({ track: `${t.id}@${t.version}`, styles: t.styles, files: t.files }));
 }
 
-/** Track gate 1, part one: the files are valid, with one engine and complete probes, and name an id@version. */
+/** Track gate 1, part one: the files are valid, with a toolchain block and complete probes, and name an id@version. */
 function readTrackSpec(files: FileMap) {
   assertPortablePaths(validateFileMap(files));
   const { spec } = checkTrackFiles(files);
@@ -32,40 +28,23 @@ function alreadyInstalled(ref: string, version: number, files: FileMap): boolean
   throw new CodeLearnError(`${ref} is already installed with different files. Save your changes as version ${version + 1}.`);
 }
 
-/** Gates 2 to 5, then an atomic install. Call while holding the track lock. */
-async function install(ref: string, files: FileMap, onProgress?: (p: TrackProgress) => void): Promise<{ installed: string; warning?: string }> {
-  // Before building, and again before committing. Roadmap saves check styles under this same track lock,
+/** Gates 2 to 5, then an atomic install: the toolchain moves into place, then the record. Call while holding the track lock. */
+async function install(ref: string, files: FileMap, onProgress?: (p: TrackProgress) => void): Promise<{ installed: string }> {
+  // Before installing, and again before committing. Roadmap saves check styles under this same track lock,
   // so no course can change style in between.
   assertCoursesFit(ref, readTrackSpec(files).spec.styles);
-  const verified = await verifyTrack(files, undefined, onProgress);
-  assertCoursesFit(ref, verified.spec.styles);
-  // A WASI track's url stays in its track.yaml; its record names the toolchain by digest (DESIGN §4.5).
-  const { wasi: _url, ...spec } = verified.spec;
-  const engine = "wasi" in verified ? { wasi: verified.wasi } : { image: verified.image, imageId: verified.imageId };
-  const record: TrackRecord = { format_version: 1, ...spec, ...engine, installedAt: new Date().toISOString() };
-  store.commitFolder(store.trackDir(ref), files, { "track.json": record });
-  return { installed: ref, ...(verified.warning ? { warning: verified.warning } : {}) };
-}
-
-/**
- * A Docker track can never run on a computer with no container runtime. When that computer has wasmtime, the agent
- * hears it now and writes a WASI track instead (DESIGN §4.5). Only a missing runtime counts: a stopped one can start.
- */
-function assertEngineHere(spec: TrackSpec): void {
-  if (spec.wasi || hasContainerCli() || !wasmtimePath()) return;
-  throw new CodeLearnError(
-    "This computer has no container runtime, so a Docker track can't run here, but it has wasmtime. Write a WASI track " +
-      "instead: a wasi block in track.yaml naming a WASI build of the language's interpreter, and no Dockerfile (see the track rules).",
-  );
-}
-
-function hasContainerCli(): boolean {
+  const { spec, staged } = await verifyTrack(files, onProgress);
   try {
-    containerCli();
-    return true;
-  } catch {
-    return false;
+    assertCoursesFit(ref, spec.styles);
+  } catch (e) {
+    staged.remove();
+    throw e;
   }
+  const { toolchain, ...rest } = spec;
+  const record: TrackRecord = { format_version: 1, ...rest, toolchain: { ...toolchain, resolved: staged.resolved }, installedAt: new Date().toISOString() };
+  commitToolchain(staged, ref);
+  store.commitFolder(store.trackDir(ref), files, { "track.json": record });
+  return { installed: ref };
 }
 
 /**
@@ -81,12 +60,29 @@ function assertCoursesFit(ref: string, styles: string[]): void {
   }
 }
 
-export async function saveTrack(files: FileMap): Promise<{ installed: string; unchanged?: true; warning?: string }> {
+export async function saveTrack(files: FileMap): Promise<{ installed: string; unchanged?: true }> {
   const { spec, ref } = readTrackSpec(files);
-  assertEngineHere(spec);
   return store.withLock(store.trackLockPath(spec.id), async () => {
     if (alreadyInstalled(ref, spec.version, files)) return { installed: ref, unchanged: true as const };
     return install(ref, files);
+  });
+}
+
+/**
+ * Removes an installed track: its toolchain folder, then its record (DESIGN §4.6). Refused while a course uses it,
+ * since that course could never run a check again.
+ */
+export async function removeTrack(ref: string): Promise<{ removed: string }> {
+  const { id } = store.parseTrackRef(ref);
+  return store.withLock(store.trackLockPath(id), async () => {
+    installedTrack(ref);
+    const using = store.listCourses().filter((course) => store.readCourse(course)?.track === ref);
+    if (using.length > 0) {
+      throw new CodeLearnError(`${ref} is used by ${using.length === 1 ? "course" : "courses"} ${using.map((c) => `"${c}"`).join(", ")}, so it can't be removed while they need it.`);
+    }
+    removeToolchain(ref);
+    store.removeTrackRecord(ref);
+    return { removed: ref };
   });
 }
 
@@ -99,25 +95,11 @@ const sorted = (map: FileMap) => Object.fromEntries(Object.entries(map).sort(([a
 // ---------- setup proposals (desktop) ----------
 //
 // In the desktop app, save_track only proposes. The learner consents in code-learn, and installProposal
-// builds exactly the files they were shown, identified by digest.
+// installs exactly the files they were shown, identified by digest.
 
 export async function proposeTrack(files: FileMap): Promise<{ installed: string; unchanged: true } | { proposed: string; note: string }> {
   const { spec, ref } = readTrackSpec(files);
-  assertEngineHere(spec);
   assertCoursesFit(ref, spec.styles);
-  // A base image that doesn't exist would fail the build after the learner consents, so the agent hears it now. A
-  // WASI track has none: its toolchain is checked by digest when it downloads.
-  // A WASI track's toolchain is asked for its headers only: one the server says isn't there is refused at once.
-  if (spec.wasi) {
-    if (await toolchainMissing(spec.wasi.url)) {
-      throw new CodeLearnError(`wasi.url (${spec.wasi.url}) isn't there: the server answered that it has no such file. Use a link to a file that exists (check its release page), then call save_track again.`);
-    }
-  } else {
-    const missing = await missingBaseImages(files.Dockerfile ?? "");
-    if (missing.length) {
-      throw new CodeLearnError(`The Dockerfile builds from ${missing.join(" and ")}, which the registry doesn't have. Use an image and tag that exist (check its page on the registry), then call save_track again.`);
-    }
-  }
   return store.withLock(store.trackLockPath(spec.id), async () => {
     if (alreadyInstalled(ref, spec.version, files)) return { installed: ref, unchanged: true as const };
     store.writeProposal(ref, files);
@@ -126,23 +108,14 @@ export async function proposeTrack(files: FileMap): Promise<{ installed: string;
 }
 
 export function listProposals() {
-  return store.listProposals().map(({ record, files }) => ({ track: record.track, digest: record.digest, created: record.created, files, engine: proposalEngine(files) }));
-}
-
-/** A proposal's engine, from its track.yaml. One changed on disk since (installing it refuses) still lists: without a Dockerfile, it's WASI. */
-function proposalEngine(files: FileMap): "docker" | "wasi" {
-  try {
-    return engineOf(parseTrackYaml(files["track.yaml"] ?? ""));
-  } catch {
-    return files.Dockerfile ? "docker" : "wasi";
-  }
+  return store.listProposals().map(({ record, files }) => ({ track: record.track, digest: record.digest, created: record.created, files }));
 }
 
 /**
  * Installs a proposal only if its files still have the digest the learner consented to. `onProgress` hears each
- * build step as counts, then the probes; never the build's output.
+ * install step as counts, then the probes; never the install's output.
  */
-export async function installProposal(ref: string, digest: string, onProgress?: (p: TrackProgress) => void): Promise<{ installed: string; unchanged?: true; warning?: string }> {
+export async function installProposal(ref: string, digest: string, onProgress?: (p: TrackProgress) => void): Promise<{ installed: string; unchanged?: true }> {
   const { id, version } = store.parseTrackRef(ref);
   return store.withLock(store.trackLockPath(id), async () => {
     const files = store.readProposal(ref, digest);
@@ -154,8 +127,6 @@ export async function installProposal(ref: string, digest: string, onProgress?: 
       store.dropProposals(ref);
       return { installed: ref, unchanged: true as const };
     }
-    // An image needs this room; a WASI toolchain checks its own, smaller, need as it downloads.
-    if (!read.spec.wasi) store.assertFreeSpace(store.codeLearnHome());
     const result = await install(ref, files, quietly(onProgress));
     store.dropProposals(ref);
     return result;
@@ -167,47 +138,33 @@ export async function dropProposal(ref: string): Promise<void> {
 }
 
 /**
- * Rebuilds a pruned or changed image, or downloads a missing WASI toolchain again (the same SHA-256), and re-runs every
- * gate before trusting it (DESIGN §4.4, §4.5).
+ * Installs a track's toolchain again and re-runs every gate before trusting it (DESIGN §4.6): the track's probes,
+ * then every stored exercise on it. Only then does the new toolchain replace the installed one; otherwise nothing
+ * changes.
  */
 export async function rebuildTrack(ref: string): Promise<{ rebuilt: string; exercises: number }> {
   const old = installedTrack(ref);
   return store.withLock(store.trackLockPath(old.id), async () => {
-    if (old.wasi) {
-      // The toolchain is named by its digest, so there is nothing to promote: the gates only have to pass on it again.
-      await verifyTrack(store.readTrackFiles(ref), undefined, undefined, { rebuild: true, recorded: old.wasi.sha256 });
-      return { rebuilt: ref, exercises: await recheckExercises(ref, old, "toolchain") };
-    }
-    // Build under a candidate tag; the installed tag and ID stay untouched unless every gate passes.
-    const candidate = `${old.image}-candidate`;
-    const verified = await verifyTrack(store.readTrackFiles(ref), candidate, undefined, { rebuild: true });
-    if (!("imageId" in verified)) throw new CodeLearnError(`${ref} is installed as a Docker track, but its files now describe a WASI track.`);
-    const track: TrackRecord = { ...old, imageId: verified.imageId };
+    const { staged } = await verifyTrack(store.readTrackFiles(ref), undefined, { rebuild: true });
     let count: number;
     try {
-      count = await recheckExercises(ref, track, "image");
+      count = await recheckExercises(ref, old, staged);
     } catch (e) {
-      await sandboxCli(["image", "rm", candidate]);
+      staged.remove();
       throw e;
     }
-    const tagged = await sandboxCli(["tag", verified.imageId, old.image]);
-    if (tagged.exit !== 0) {
-      const down = await runtimeDown();
-      if (down) throw infraError(down.message, down.code);
-      throw infraError(`Couldn't promote the rebuilt image, so nothing changed: ${tagged.output.trim().slice(0, 300)}`, runtimeCode(tagged.output, "image-id"));
-    }
-    store.writeTrackRecord(ref, track);
-    // The image keeps its installed tag, so dropping the candidate tag only untags it.
-    await sandboxCli(["image", "rm", candidate]);
+    commitToolchain(staged, ref);
+    store.writeTrackRecord(ref, { ...old, toolchain: { ...old.toolchain, resolved: staged.resolved } });
     return { rebuilt: ref, exercises: count };
   });
 }
 
 /**
- * Re-runs exercise gates 2 to 6 for every stored exercise on `track`: io outputs must equal the stored ones and unit
- * inventories must match. Returns how many there were, or fails listing the ones that changed.
+ * Re-runs exercise gates 2 to 6 for every stored exercise on `track`, on the staged toolchain: io outputs must equal the
+ * stored ones and unit inventories must match. Returns how many there were, or fails listing the ones that changed.
  */
-async function recheckExercises(ref: string, track: TrackRecord, what: "image" | "toolchain"): Promise<number> {
+async function recheckExercises(ref: string, track: TrackRecord, staged: StagedToolchain): Promise<number> {
+  const folders: ToolchainFolders = staged.folders;
   const changed: string[] = [];
   let count = 0;
   for (const courseId of store.listCourses()) {
@@ -220,21 +177,17 @@ async function recheckExercises(ref: string, track: TrackRecord, what: "image" |
       const { files } = store.readExercise(courseId, ex.slug);
       try {
         // In the exercise's own style: a course whose activities are off keeps its track and its exercises.
-        const again = await verifyExercise(track, { ...course, track: ref, style: ex.style }, files, new Set());
+        const again = await verifyExercise(track, { ...course, track: ref, style: ex.style }, files, new Set(), undefined, [], folders);
         if (JSON.stringify(digests(again.expected)) !== JSON.stringify(digests(ex.expected)) || JSON.stringify(again.inventory) !== JSON.stringify(ex.inventory)) {
           changed.push(`${courseId}/${ex.slug}: results changed`);
         }
       } catch (e) {
-        // This computer's Docker, disk or network failing isn't the track behaving differently.
-        if (e instanceof CodeLearnError && (e.kind === "docker" || e.kind === "disk" || e.kind === "offline")) throw e;
+        // This computer's sandbox, disk or network failing isn't the toolchain behaving differently.
+        if (e instanceof CodeLearnError && (e.kind === "sandbox" || e.kind === "disk" || e.kind === "offline")) throw e;
         changed.push(`${courseId}/${ex.slug}: ${(e as Error).message.split("\n")[0]}`);
       }
     }
   }
-  if (changed.length > 0) {
-    // A toolchain is its digest, so only this computer's wasmtime can have changed: there is nothing else to fall back to.
-    const outcome = what === "image" ? "so it wasn't accepted" : "on this computer's wasmtime";
-    throw new CodeLearnError(`The rebuilt ${what} behaves differently, ${outcome}:\n${changed.join("\n")}`);
-  }
+  if (changed.length > 0) throw new CodeLearnError(`The rebuilt toolchain behaves differently, so it wasn't accepted:\n${changed.join("\n")}`);
   return count;
 }

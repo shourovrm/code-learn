@@ -1,14 +1,11 @@
-// Run folders (DESIGN §4.3): where a check, Run and the self-test stage the files they mount into a container.
+// Run folders (DESIGN §4.3): where a check, Run and the self-test stage the files they mount into a sandbox.
 import { lstatSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { codeLearnHome, processAlive } from "./store.js";
-import { unseal } from "./wasi.js";
 
 /**
- * `<real code-learn home>/runs`. It's under code-learn's home, not the OS temp folder: an engine that runs in a VM (Colima,
- * Rancher Desktop, Podman) shares only the home folder by default, and not macOS's /var/folders, so a bind mount
- * from there fails. It's the real path, so a linked home, a Windows short name (JOHNSM~1) or a non-ASCII folder
- * is what the engine is asked to mount.
+ * `<real code-learn home>/runs`, under code-learn's home where hidden data already lives, never the shared OS temp
+ * folder. It's the real path, so a linked home is mounted by the name that exists.
  */
 export function runsDir(): string {
   mkdirSync(codeLearnHome(), { recursive: true });
@@ -18,7 +15,7 @@ export function runsDir(): string {
 export type RunFolder = { dir: string; remove(): void };
 
 /**
- * A fresh folder for one container run, named after the code-learn process that owns it (`<pid>-<random>`), so a crash
+ * A fresh folder for one sandbox run, named after the code-learn process that owns it (`<pid>-<random>`), so a crash
  * leaves a folder that the next run can tell is abandoned. Folders of crashed processes are removed first.
  */
 export function stageRunFolder(): RunFolder {
@@ -26,33 +23,25 @@ export function stageRunFolder(): RunFolder {
   mkdirSync(root, { recursive: true });
   removeAbandonedRuns();
   const dir = mkdtempSync(join(root, `${process.pid}-`));
-  // Best effort: a folder that can't be removed now (Windows, while the engine lets go) must not fail the run or
-  // hide its result. It's removed with the other leftovers once this process is gone.
-  return { dir, remove: () => removeFolder(dir, false) };
+  // Best effort: a folder that can't be removed now must not fail the run or hide its result. It's removed with the
+  // other leftovers once this process is gone.
+  return { dir, remove: () => removeFolder(dir) };
 }
 
-/**
- * `sealed`: the folder may be a crashed WASI run's, whose contents it sealed (wasi.ts); neither POSIX (a 0555 folder) nor
- * Windows (a deny entry) lets them be removed then, so a failed removal unseals and tries once more. A live WASI run
- * unseals its own folder first (removeSealed).
- */
-function removeFolder(dir: string, sealed: boolean): boolean {
-  for (const unsealFirst of sealed ? [false, true] : [false]) {
-    try {
-      if (unsealFirst) unseal(dir);
-      rmSync(dir, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
-      return true;
-    } catch {
-      // Unseal and retry once, then leave it.
-    }
+function removeFolder(dir: string): boolean {
+  try {
+    rmSync(dir, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
+    return true;
+  } catch {
+    // Left for the next sweep.
+    return false;
   }
-  return false;
 }
 
 /** What `mkdtemp` makes of `<pid>-`: the PID, then six letters or digits. Nothing else in `runs/` is code-learn's to remove. */
 const RUN_FOLDER = /^(\d+)-[A-Za-z0-9]{6}$/;
 
-/** Removes the run folders whose code-learn process is gone, as the containers are (DESIGN §10). Live processes' folders are never touched. */
+/** Removes the run folders whose code-learn process is gone, as abandoned scopes are (DESIGN §10). Live processes' folders are never touched. */
 export function removeAbandonedRuns(): number {
   const root = runsDir();
   let names: string[];
@@ -71,7 +60,7 @@ export function removeAbandonedRuns(): number {
     } catch {
       continue;
     }
-    if (removeFolder(join(root, name), true)) removed++;
+    if (removeFolder(join(root, name))) removed++;
   }
   return removed;
 }

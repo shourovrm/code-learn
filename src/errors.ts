@@ -1,38 +1,25 @@
 /**
  * What kind of failure an error is, for callers that act on it (the desktop) without reading the message:
- * no course yet, a track image that needs a rebuild, a damaged record, a file changed outside code-learn, or this
- * computer's Docker, disk or network.
+ * no course yet, a track toolchain that needs a rebuild, a damaged record, a file changed outside code-learn, or this
+ * computer's sandbox, disk or network.
  */
-export type ErrorKind = "no-course" | "image-missing" | "damaged" | "changed" | "docker" | "disk" | "offline";
+export type ErrorKind = "no-course" | "toolchain-missing" | "damaged" | "changed" | "sandbox" | "disk" | "offline";
 
 /**
  * Which of this computer's problems an infrastructure error is, as a stable code, and its kind. Callers act on the
  * code, never the wording: the desktop in-process, and over MCP, where the tool result's first line is
- * `code-learn:<code>` (mcp.ts). Docker that isn't there or isn't running; Docker that is up but not answering; Docker that
- * answers but refused or failed; Docker's disk or this computer's; the network.
+ * `code-learn:<code>` (mcp.ts). The sandbox's requirements (DESIGN §4.6); a sandbox that failed during a run; the
+ * package manager; the disk; the network.
  */
 export const INFRA = {
-  "no-runtime": "docker",
-  "no-wasmtime": "docker",
-  "wasi-seal": "disk",
-  "runtime-down": "docker",
-  "runtime-paused": "docker",
-  "socket-permission": "docker",
-  "runtime-context": "docker",
-  "runtime-busy": "docker",
-  "check-timeout": "docker",
-  "container-remove": "docker",
-  "windows-containers": "docker",
-  credentials: "docker",
-  "container-start": "docker",
-  "docker-cpus": "docker",
-  "docker-log-driver": "docker",
-  "docker-file-sharing": "docker",
-  "runtime-failed": "docker",
-  "image-id": "docker",
-  "image-inspect": "docker",
-  "container-list": "docker",
-  "docker-disk": "disk",
+  "no-sandbox": "sandbox",
+  "sandbox-blocked": "sandbox",
+  "no-user-session": "sandbox",
+  "sandbox-root": "sandbox",
+  "sandbox-failed": "sandbox",
+  "check-timeout": "sandbox",
+  "scope-stop": "sandbox",
+  "no-micromamba": "sandbox",
   "host-disk": "disk",
   offline: "offline",
   "rate-limit": "offline",

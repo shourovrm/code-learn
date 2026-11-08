@@ -373,7 +373,7 @@ code-learn is a Linux-only fork of [Codemm](https://github.com/iignaite/Codemm) 
 
 ```
 track.yaml
-...other files: copied to /opt/track (test scripts, report converters, package.json)
+...other files: copied to /opt/track with probe/ (test scripts, report converters, package.json)
 probe/<style>/pass/ · probe/<style>/fail/ · probe/<style>/tests/   (as §4.1)
 ```
 
@@ -398,7 +398,7 @@ toolchain:
 
 **Installing a track.** This replaces the image build (§4.4). The probes and gates that follow are unchanged.
 1. Check that 5 GB is free under `$CODE_LEARN_HOME`.
-2. Make a staging folder `$CODE_LEARN_HOME/envs/.staging-<pid>-<random>/` with `env/` and `track/`, and copy the track's files (all but `track.yaml` and `probe/`) into `track/`.
+2. Make a staging folder `$CODE_LEARN_HOME/envs/.staging-<pid>-<random>/` with `env/` and `track/`, and copy the track's files (all but `track.yaml`) into `track/`. The probes are included, so `setup` can run the track's own build once on the pass probe to cache its dependencies; every author receives the probes anyway.
 3. Run micromamba in an install sandbox: the sandbox below, but with the network shared, `/etc/resolv.conf`, `/etc/hosts`, `/etc/nsswitch.conf` and the system certificate folders mounted read-only, staging `env/` writable at `/opt/env`, staging `track/` writable at `/opt/track`, the package cache `$CODE_LEARN_HOME/pkgs` writable at `/opt/pkgs`, and micromamba read-only at `/opt/micromamba`. Command: `/opt/micromamba create -y -p /opt/env --override-channels -c conda-forge <packages...>` with `MAMBA_ROOT_PREFIX=/opt/pkgs`.
 4. Run `setup`, if any, in the same install sandbox.
 5. Steps 3 and 4 share one 10 minute limit (§4.3's track build), 4 GB of memory and 1024 processes. Their log is streamed as build progress and capped as a Docker build's was.
@@ -407,10 +407,10 @@ toolchain:
 
 The environment is always mounted at `/opt/env`, both at install and when checks run, because conda packages store their install path inside some files. That is why the staging folder can be renamed: the path inside the sandbox never changes.
 
-**Running a check.** The command is an argument array:
+**Running a check.** The command is an argument array. `--expand-environment=no` (systemd 254 and later; older systemd-run doesn't expand) stops systemd-run replacing `$NAME` and `$$` in the driver, which is shell code for the sandbox.
 
 ```
-systemd-run --user --scope --quiet --collect --unit=code-learn-<pid>-<random>
+systemd-run --user --scope --quiet --collect --unit=code-learn-<pid>-<random> --slice=app.slice --expand-environment=no
   -p MemoryMax=<memory_mb>M -p MemorySwapMax=0 -p TasksMax=256 -p CPUQuota=200% -p OOMPolicy=continue
   -- bwrap <flags> /bin/sh -c <driver>
 ```
@@ -424,7 +424,7 @@ systemd-run --user --scope --quiet --collect --unit=code-learn-<pid>-<random>
 | `--cap-drop ALL`, `no-new-privileges` | bubblewrap drops capabilities and always sets `no_new_privs` |
 | `--user <uid>:<gid>` | the learner's own uid; `/etc/passwd` and `/etc/group` are generated with one entry each |
 | `--rm`, label `code-learn=1` | `--die-with-parent`; scopes are named `code-learn-<pid>-…` |
-| PID 1 driver | bubblewrap's init is PID 1 and the driver is PID 2; `kill -9 -1` spares both |
+| PID 1 driver | `--as-pid-1`: the driver is PID 1, so a program inside can't kill it, and its `kill -9 -1` spares it |
 
 The sandbox sees only these paths:
 - `/usr` read-only, with `/bin`, `/sbin`, `/lib` and `/lib64` made as the host has them (links into `/usr` on merged-usr systems, read-only binds otherwise);

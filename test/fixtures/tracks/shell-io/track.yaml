@@ -5,3 +5,4 @@ files: [main.sh]
 build: "sh -n main.sh"
 run: "sh main.sh"
 limits: { time_ms: 2000, memory_mb: 128 }
+toolchain: { packages: ["coreutils"] }

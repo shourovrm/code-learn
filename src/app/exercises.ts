@@ -9,7 +9,7 @@ import { type ProgramOptions, type ProgramRun, runProgram } from "../program.js"
 import { lastCheck, nextLesson, nextStep as pickNext, type LessonStep, type Step } from "../learner.js";
 import { parseQuizYaml, parseAnswersYaml, type CourseRecord, type ExerciseRecord, type TrackRecord } from "../schemas.js";
 import * as store from "../store.js";
-import { activeCourse, ensureImage, installedTrack, learnerDir, noteAssistLocked, quietly, trackContract } from "./shared.js";
+import { activeCourse, ensureToolchain, installedTrack, learnerDir, noteAssistLocked, quietly, trackContract } from "./shared.js";
 
 // ---------- exercises ----------
 
@@ -18,8 +18,6 @@ import { activeCourse, ensureImage, installedTrack, learnerDir, noteAssistLocked
  * build, run or test them for this style, the limits, and the track's own probe as a worked example.
  */
 export type TrackContract = {
-  /** "wasi": the WASI engine, where exercises have no input generators (DESIGN §4.5). */
-  engine: "docker" | "wasi";
   files: string[];
   build?: string;
   run?: string;
@@ -116,7 +114,7 @@ export async function saveExercise(ws: string, files: FileMap, bound?: string, o
     }
     return store.withLock(store.trackLockPath(store.parseTrackRef(course.track).id), async () => {
       const track = installedTrack(course.track);
-      await ensureImage(track);
+      await ensureToolchain(track);
       const existing = store.listExercises(courseId);
       const taken = new Set(existing.map((e) => e.slug));
       // Earlier exercises on this track have the same learner files, so their solutions can run against the new tests.
@@ -278,7 +276,7 @@ async function judge(ws: string, ctx: ReturnType<typeof loadExercise>, includeHi
   });
   const { record, files, rel } = ctx;
   if (ctx.style === "quiz") throw new CodeLearnError("A quiz has no practice run. Check it when you're ready.");
-  await ensureImage(ctx.track);
+  await ensureToolchain(ctx.track);
   const track = store.judgeTrack(ctx.track);
   store.materialize(ws, rel, learnerFiles(record, files, ctx.editable));
   const src = store.readLearnerFiles(ws, rel, track.files);
@@ -319,7 +317,7 @@ export async function runInteractive(ws: string, slug: string | undefined, bound
   const ctx = loadExercise(ws, slug, bound);
   if (ctx.style === "quiz") throw new CodeLearnError("A quiz has no program to run.");
   if (!ctx.track.run) throw new CodeLearnError("This track has no run command, so Run isn't available.");
-  await ensureImage(ctx.track);
+  await ensureToolchain(ctx.track);
   store.materialize(ws, ctx.rel, learnerFiles(ctx.record, ctx.files, ctx.editable));
   const src = store.readLearnerFiles(ws, ctx.rel, ctx.track.files);
   return runProgram(store.judgeTrack(ctx.track), src, output, limits);

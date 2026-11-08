@@ -6,7 +6,7 @@ import { replay } from "../learner.js";
 import { type ProgramOptions, type ProgramRun, runProgram } from "../program.js";
 import { assertNotes, parseLesson, type TrackRecord } from "../schemas.js";
 import * as store from "../store.js";
-import { activeCourse, ensureImage, installedTrack } from "./shared.js";
+import { activeCourse, ensureToolchain, installedTrack } from "./shared.js";
 
 // ---------- lessons ----------
 
@@ -64,7 +64,7 @@ export async function saveLesson(ws: string, input: unknown, bound?: string): Pr
     if (examples.length > 0) {
       if (!track || !style) throw new CodeLearnError(course.track ? `Examples run in ${course.track}, which isn't set up yet. Save the lesson without examples.` : "Examples need an installed track. Save the lesson without examples.");
       examples.forEach((files, i) => assertExampleFits(i + 1, files, track, style));
-      await ensureImage(track);
+      await ensureToolchain(track);
       for (const [i, files] of examples.entries()) {
         const run = await runOne(track, style, files);
         if (!run.clean) throw new CodeLearnError(`Example ${i + 1} didn't run cleanly (exit ${run.exit}):\n${cap(run.errors || run.output, 2000)}`);
@@ -95,7 +95,7 @@ export async function runExampleLive(
   if (record.style !== "io") throw new CodeLearnError(`Example ${index} runs as tests, so it has no live run.`);
   const track = installedTrack(record.track);
   assertExampleFits(index, files, track, record.style);
-  await ensureImage(track);
+  await ensureToolchain(track);
   const learner = Object.fromEntries(track.files.map((f) => [f, files[f]!]));
   return runProgram(store.judgeTrack(track), learner, output, options);
 }
@@ -107,7 +107,7 @@ export async function runExample(ws: string, lessonId: string, index: number, bo
   if (!files || !record.track || !record.style) throw new CodeLearnError(`Lesson "${lessonId}" has no example ${index}.`);
   const track = installedTrack(record.track);
   assertExampleFits(index, files, track, record.style);
-  await ensureImage(track);
+  await ensureToolchain(track);
   const { exit, output, errors } = await runOne(track, record.style, files);
   return { exit, output: cap(output, 16_384), errors: cap(errors, 4096) };
 }

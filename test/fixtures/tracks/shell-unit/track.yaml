@@ -2,5 +2,6 @@ id: shell-unit
 version: 1
 styles: [unit]
 files: [lib.sh]
-test: "sh /code-learn/test.sh"
+test: "sh /opt/track/test.sh"
 limits: { time_ms: 5000, memory_mb: 128 }
+toolchain: { packages: ["coreutils"] }

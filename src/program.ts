@@ -1,29 +1,28 @@
 // Run (DESIGN §4.3): the learner's program, interactively, in the sandbox, with typed stdin and its output as it
 // comes. Never graded or recorded. The checks' test sets run in judge.ts.
-import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { StringDecoder } from "node:string_decoder";
 import { CodeLearnError, infraError } from "./errors.js";
 import { type FileMap, writeFileMap } from "./files.js";
 import { learnerPaths } from "./grading.js";
-import { BUILD_SECONDS, type JudgeTrack, seconds, type WasiToolchain } from "./judge.js";
+import { BUILD_SECONDS, type JudgeTrack, seconds } from "./judge.js";
 import { stageRunFolder } from "./runs.js";
-import { lostRun, OUTPUT_CAP, runtimeDown, startRefusal, startSandboxed } from "./sandbox.js";
-import { checkWasi, compileModule, removeSealed, sealReadOnly, type StartedWasi, startWasi } from "./wasi.js";
+import { lostRun, sandboxDown, startSandboxed, toolchainMounts } from "./sandbox.js";
 
 /** How long Run lets a program wait for typing and run: a person types, so longer than a test case gets. */
 export const RUN_LIMIT_MS = 120_000;
 
 // Each stage runs in the foreground, so it keeps the typed stdin, with a watchdog beside it. At the limit the
 // watchdog says so first (a timeout marker), then `kill -9 -1` stops everything but the driver: the shell stays
-// PID 1 (no exec), and a kill aimed at PID 1 from inside is ignored. So a timeout is the driver's own statement, never
+// PID 1 (bubblewrap's --as-pid-1, and no exec), and a kill aimed at PID 1 from inside is ignored. So a timeout is the driver's own statement, never
 // read from an exit code or from timing, and it needs no `timeout` tool. Markers on stderr say when each stage starts
 // and how it ended, then the driver exits 0: an end marker means the driver finished, whatever the program printed or
 // returned. A program can print a marker too, but the driver's end marker comes last, and a forged timeout only
 // mislabels the program's own unrecorded run. If `sleep` fails, the watchdog stays quiet and the host deadline stops
 // the run instead; grading checks for `sleep`, so an installed track has it. A shell reports a killed command
 // ("Killed") on the stderr that command was given, so the program takes the real stderr back itself (from fd 3) while
-// the driver's goes to /dev/null as it waits: code-learn's own "time's up" is the only word on it.
+// the driver's goes to /dev/null as it waits: code-learn's own "time's up" is the only word on it. After a 137 the
+// driver waits a second before it exits, so the host can still read a memory kill from the sandbox's cgroup.
 const PROGRAM_DRIVER = `mark() { printf '\\n@@code-learn-run %s\\n' "$*" >&2; }
 limited() {
   ( sleep "$2" 2>/dev/null && { mark timeout "$1"; kill -9 -1 2>/dev/null; } ) &
@@ -34,11 +33,12 @@ limited() {
 if [ -n "\${CODE_LEARN_BUILD:-}" ]; then
   mark start build
   limited build "$CODE_LEARN_BUILD_S" "$CODE_LEARN_BUILD"
-  if [ "$c" != 0 ]; then mark end build "$c"; exit 0; fi
+  if [ "$c" != 0 ]; then mark end build "$c"; [ "$c" = 137 ] && sleep 1; exit 0; fi
 fi
 mark start run
 limited run "$CODE_LEARN_TIME_S" "$CODE_LEARN_RUN"
 mark end run "$c"
+[ "$c" = 137 ] && sleep 1
 exit 0`;
 
 /**
@@ -58,7 +58,6 @@ export type ProgramOptions = { limitMs?: number; buildLimitMs?: number; onStart?
 export function runProgram(track: JudgeTrack, src: FileMap, output: (text: string, stream: "stdout" | "stderr") => void, limits: ProgramOptions = {}): ProgramRun {
   if (!track.run) throw new CodeLearnError("This track has no run command, so Run isn't available.");
   const limitMs = limits.limitMs ?? RUN_LIMIT_MS;
-  if (track.wasi) return runWasiProgram(track, track.wasi, src, output, limitMs, limits.onStart);
   const buildLimitMs = limits.buildLimitMs ?? BUILD_SECONDS * 1000;
   const folder = stageRunFolder();
   const dir = folder.dir;
@@ -67,17 +66,10 @@ export function runProgram(track: JudgeTrack, src: FileMap, output: (text: strin
   let ended: { stage: "build" | "run"; code: number } | undefined;
   let timedOutIn: "build" | "run" | undefined;
   const begun = new Set<"build" | "run">();
-  // What the runtime printed before the driver started: with exit 125 and nothing on stdout, no code ran, so
-  // it's the runtime's own reason for not starting.
-  let beforeStart = "";
-  let printed = false;
   // A traceback names the learner's files as they know them, not by the sandbox's paths.
   const errors = learnerPathStream((text) => say("stderr", text));
   const markers = runMarkers(
-    (text) => {
-      if (begun.size === 0 && beforeStart.length < 2000) beforeStart += text;
-      errors.write(text);
-    },
+    (text) => errors.write(text),
     ([what, stage, code]) => {
       if (stage !== "build" && stage !== "run") return;
       if (what === "end" && code !== undefined && /^\d+$/.test(code)) ended = { stage, code: Number(code) };
@@ -96,15 +88,14 @@ export function runProgram(track: JudgeTrack, src: FileMap, output: (text: strin
     if (track.build) env.CODE_LEARN_BUILD = track.build;
     started = startSandboxed(
       {
-        image: track.image,
-        script: PROGRAM_DRIVER,
-        env,
-        mounts: [{ host: join(dir, "src"), container: "/work/src" }],
+        command: ["/bin/sh", "-c", PROGRAM_DRIVER],
+        env: { ...track.vars, ...env },
+        mounts: [...toolchainMounts(track.folders), { host: join(dir, "src"), container: "/work/src" }],
         memoryMb: track.limits.memory_mb,
         deadlineMs: (track.build ? buildLimitMs : 0) + limitMs + 5_000,
         stdin: true,
       },
-      { stdout: (b) => ((printed ||= b.length > 0), say("stdout", decoders.stdout.write(b))), stderr: (b) => markers.write(decoders.stderr.write(b)) },
+      { stdout: (b) => say("stdout", decoders.stdout.write(b)), stderr: (b) => markers.write(decoders.stderr.write(b)) },
     );
   } catch (e) {
     folder.remove();
@@ -117,9 +108,9 @@ export function runProgram(track: JudgeTrack, src: FileMap, output: (text: strin
       markers.end();
       errors.end();
       // What code-learn stopped first: the learner, the host deadline or the output cap. It's the program's doing, even when
-      // removing its container was slow.
+      // stopping its sandbox was slow.
       if (stopped || r.timedOut || r.flooded) return { exit: r.exit, timedOut: r.timedOut, flooded: r.flooded, ...(stopped ? { stopped } : {}) };
-      if (r.cleanupFailed) throw infraError("A run container couldn't be removed. Run `code-learn doctor --fix`, then retry.", "container-remove");
+      if (r.cleanupFailed) throw infraError("A run's sandbox couldn't be stopped. Run `code-learn doctor --fix`, then retry.", "scope-stop");
       if (ended) {
         // The watchdog's marker says the stage timed out. Otherwise a 137 may be the memory limit killing the program while the driver went on.
         const timedOut = timedOutIn === ended.stage;
@@ -128,15 +119,9 @@ export function runProgram(track: JudgeTrack, src: FileMap, output: (text: strin
       }
       // No end marker: the driver itself was killed. Only a memory-limit kill is the program's doing.
       if (r.oomKilled) return { exit: 137, timedOut: false, flooded: false, outOfMemory: true };
-      if (r.exit === 125 && !printed && begun.size === 0 && beforeStart.trim()) {
-        // Nothing of the program ran yet, so this is the runtime's own error: shown when no known reason names it.
-        const shown = beforeStart.trim().slice(0, 500);
-        const { code, why } = startRefusal(shown);
-        throw infraError(code === "container-start" ? `The container couldn't start: ${shown}` : `The container couldn't start (${why}).`, code);
-      }
-      const down = await runtimeDown();
+      const down = await sandboxDown();
       if (down) throw lostRun(down);
-      throw infraError("The container runtime failed during the run. Try again, and restart Docker if it happens again.", "runtime-failed");
+      throw infraError("The sandbox failed during the run. Run `code-learn doctor`, then try again.", "sandbox-failed");
     })
     .finally(folder.remove);
   return {
@@ -147,78 +132,6 @@ export function runProgram(track: JudgeTrack, src: FileMap, output: (text: strin
       started.kill();
     },
     done,
-  };
-}
-
-/**
- * Run on the WASI engine (DESIGN §4.5): the checks a set gets, then the run command alone (a WASI track has no build),
- * with typed stdin, the same flags as a check and the learner's files sealed read-only. Here code-learn's own kill is the
- * time limit and the engine's timer backs it up a second later, so a stop at the limit never puts wasmtime's report
- * of it on the learner's screen. When this wasmtime has no compiled module yet, it is compiled first, and typing
- * before the program starts waits for it (at most 1 MB, as unread input does).
- */
-function runWasiProgram(
-  track: JudgeTrack, wasi: WasiToolchain, src: FileMap, output: (text: string, stream: "stdout" | "stderr") => void, limitMs: number,
-  onStart: ProgramOptions["onStart"],
-): ProgramRun {
-  const { ready, ...engine } = checkWasi(wasi);
-  const folder = stageRunFolder();
-  const dir = join(folder.dir, "src");
-  try {
-    mkdirSync(dir, { recursive: true });
-    writeFileMap(dir, src);
-    sealReadOnly(folder.dir);
-  } catch (e) {
-    removeSealed(folder);
-    throw e;
-  }
-  const decoders = { stdout: new StringDecoder("utf8"), stderr: new StringDecoder("utf8") };
-  const say = (stream: "stdout" | "stderr", text: string) => text && output(text, stream);
-  const errors = learnerPathStream((text) => say("stderr", text));
-  let stopped = false;
-  let ended = false;
-  let started: StartedWasi | undefined;
-  const early: string[] = [];
-  let earlyBytes = 0;
-  const begin = async (): Promise<ProgramResult> => {
-    if (!ready) await compileModule(wasi);
-    if (stopped) return { exit: 137, timedOut: false, flooded: false, stopped };
-    started = startWasi(
-      { engine, toolchain: wasi, src: dir, run: track.run!, memoryMb: track.limits.memory_mb, timeMs: limitMs + 1000, killMs: limitMs, outputCap: OUTPUT_CAP },
-      { stdout: (b) => say("stdout", decoders.stdout.write(b)), stderr: (b) => errors.write(decoders.stderr.write(b)) },
-    );
-    for (const text of early.splice(0)) started.write(text);
-    if (ended) started.end();
-    try {
-      onStart?.("run", limitMs);
-    } catch {
-      // A listener that throws is dropped; the run goes on.
-    }
-    const r = await started.done;
-    say("stdout", decoders.stdout.end());
-    errors.write(decoders.stderr.end());
-    errors.end();
-    if (stopped || r.flooded) return { exit: r.exit, timedOut: false, flooded: r.flooded, ...(stopped ? { stopped } : {}) };
-    return { exit: r.exit, stage: "run", timedOut: r.timedOut, flooded: false };
-  };
-  return {
-    write: (text) => {
-      if (started) return started.write(text);
-      const size = Buffer.byteLength(text);
-      if (ended || stopped || size > 64 * 1024 || earlyBytes + size > 1024 * 1024) return false;
-      early.push(text);
-      earlyBytes += size;
-      return true;
-    },
-    end: () => {
-      ended = true;
-      started?.end();
-    },
-    kill: () => {
-      stopped = true;
-      started?.kill();
-    },
-    done: begin().finally(() => removeSealed(folder)),
   };
 }
 

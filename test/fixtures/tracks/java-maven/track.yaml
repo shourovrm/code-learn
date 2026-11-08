@@ -4,3 +4,12 @@ styles: [unit]
 files: [Solution.java]
 test: "sh /opt/track/run-tests.sh"
 limits: { time_ms: 90000, memory_mb: 1024 }
+toolchain:
+  packages: ["openjdk=21", "maven=3.9"]
+  # Checks have no network, so setup caches every plugin and dependency the test command needs: running the real
+  # build once on the pass probe caches them all.
+  setup: >-
+    javac -d /opt/track Report.java
+    && mkdir -p /tmp/warm/src/main/java /tmp/warm/src/test/java
+    && cp pom.xml /tmp/warm/ && cp probe/unit/pass/*.java /tmp/warm/src/main/java/ && cp probe/unit/tests/*.java /tmp/warm/src/test/java/
+    && cd /tmp/warm && mvn -B -q -Dmaven.repo.local=/opt/env/m2 test

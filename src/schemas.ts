@@ -33,50 +33,39 @@ function parseWith<T>(schema: z.ZodType<T>, yaml: string, what: string): T {
   return parsed.data;
 }
 
-/** A path in a WASI toolchain's archive (§3's file-map rules), with no ":" since wasmtime's --dir splits on "::". */
-const ArchivePath = z.string().max(512).superRefine((p, ctx) => {
-  try {
-    assertRelativePath(p);
-    if (p.includes(":")) throw new Error();
-  } catch {
-    ctx.addIssue({ code: "custom", message: "must be a relative path in the archive, with \"/\" separators, no \".\" or \"..\" parts and no \":\"" });
-  }
-});
-
-/** A folder's path inside the sandbox: absolute, with no "." or ".." part, and not /work or under it, where the learner's files are. */
-const sandboxDir = (p: string) =>
-  /^(\/[A-Za-z0-9._-]+)+$/.test(p) && p.split("/").every((part) => part !== "." && part !== "..") && p !== "/work" && !p.startsWith("/work/");
 const MAX_ENV_VALUE = 1024;
+/** Variables the sandbox sets itself (DESIGN §4.6), so a track can't replace them. */
+const RESERVED_ENV = new Set(["PATH", "HOME", "TRACK", "TESTS", "OUT", "LANG"]);
+const isReservedEnv = (name: string) => RESERVED_ENV.has(name) || name.startsWith("CODE_LEARN_");
 
-/** A WASI build of the language's interpreter, as a Docker track names a base image (DESIGN §4.5). */
-const WasiYaml = z
+/** Environment variables for a track's commands: at most 32, uppercase names, values at most 1 KB. */
+const TrackEnv = z
+  .record(
+    z.string()
+      .regex(/^[A-Z_][A-Z0-9_]*$/, "env names are uppercase letters, digits and _")
+      .refine((name) => !isReservedEnv(name), "env can't set PATH, HOME, TRACK, TESTS, OUT, LANG or a CODE_LEARN_ name: the sandbox sets those"),
+    z.string().refine((v) => Buffer.byteLength(v) <= MAX_ENV_VALUE && !v.includes("\0"), "env values are at most 1 KB"),
+  )
+  .refine((e) => Object.keys(e).length <= 32, "env holds at most 32 names");
+
+/**
+ * A conda match spec such as `python=3.13` or `openjdk>=21,<22` (DESIGN §4.6). It starts with a letter or digit, so
+ * micromamba can never read it as an option.
+ */
+const PackageSpec = z.string().regex(
+  /^[A-Za-z0-9][A-Za-z0-9_.*=<>!,-]{0,99}$/,
+  "each package is a conda-forge match spec like python=3.13: letters, digits and _ . * = < > ! , -, starting with a letter or digit, at most 100 characters",
+);
+
+/** What the track installs into its own folder from conda-forge, then sets up (DESIGN §4.6). */
+const ToolchainYaml = z
   .object({
-    url: z.string().max(2000).refine((u) => {
-      try {
-        const url = new URL(u);
-        return url.protocol === "https:" && url.username === "" && url.password === "" && /\.(wasm|zip|tar\.gz)$/.test(url.pathname);
-      } catch {
-        return false;
-      }
-    }, "must be an https link with no credentials, whose path ends in .wasm, .zip or .tar.gz"),
-    /** Optional: without it, code-learn records the digest it downloads and installs with a warning (DESIGN §4.5). */
-    sha256: z.string().regex(/^[0-9a-f]{64}$/, "must be the downloaded file's SHA-256, as 64 lowercase hex digits").optional(),
-    module: ArchivePath,
-    dirs: z
-      .record(z.string().refine(sandboxDir, "dirs keys must be absolute folders in the sandbox, other than /, /work and folders under /work"), ArchivePath)
-      .refine((d) => Object.keys(d).length <= 16, "dirs lists at most 16 folders")
-      .refine((d) => !Object.keys(d).some((a) => Object.keys(d).some((b) => a.startsWith(`${b}/`))), "a dirs key can't be under another")
-      .default({}),
-    env: z
-      .record(
-        z.string().regex(/^[A-Z_][A-Z0-9_]*$/, "env names are uppercase letters, digits and _"),
-        z.string().refine((v) => Buffer.byteLength(v) <= MAX_ENV_VALUE && !v.includes("\0"), "env values are at most 1 KB"),
-      )
-      .refine((e) => Object.keys(e).length <= 32, "env holds at most 32 names")
-      .default({}),
+    packages: z.array(PackageSpec).min(1, "toolchain.packages lists at least one package").max(64, "toolchain.packages lists at most 64 packages"),
+    setup: z.preprocess((v) => v ?? undefined, z.string().min(1).max(4096, "toolchain.setup is at most 4 KB").optional()),
+    env: TrackEnv.default({}),
   })
   .strict();
-export type WasiSpec = z.infer<typeof WasiYaml>;
+export type ToolchainSpec = z.infer<typeof ToolchainYaml>;
 
 /** A command; an empty one (\`test:\` with no value, which YAML reads as null) counts as left out. */
 const Command = z.preprocess((v) => v ?? undefined, z.string().min(1).max(2000).optional());
@@ -91,7 +80,7 @@ const TrackYaml = z
     run: Command,
     test: Command,
     limits: z.object({ time_ms: z.number().int().positive().optional(), memory_mb: z.number().int().positive().optional() }).strict().optional(),
-    wasi: WasiYaml.optional(),
+    toolchain: ToolchainYaml,
   })
   .strict();
 
@@ -113,23 +102,6 @@ export function parseTrackYaml(yaml: string): TrackSpec {
   if (clash) throw new CodeLearnError(`Invalid track.yaml: "${clash}" can't be both a file and a folder.`);
   if (t.styles.includes("io") && !t.run) throw new CodeLearnError("Invalid track.yaml: an io track needs a run command.");
   if (t.styles.includes("unit") && !t.test) throw new CodeLearnError("Invalid track.yaml: a unit track needs a test command.");
-  if (t.wasi) {
-    // The WASI engine runs io programs of interpreted languages only (DESIGN §4.5).
-    if (t.styles.length !== 1 || t.styles[0] !== "io") throw new CodeLearnError("Invalid track.yaml: a WASI track's styles must be [io].");
-    if (t.build || t.test) throw new CodeLearnError(`Invalid track.yaml: a WASI track has no ${t.build ? "build" : "test"} command. It runs an interpreter's WASI build, so remove it.`);
-    const path = new URL(t.wasi.url).pathname;
-    if (path.endsWith(".wasm")) {
-      let name = "";
-      try {
-        name = decodeURIComponent(path.split("/").at(-1)!);
-      } catch {
-        // Not a name: refused below.
-      }
-      if (!name || name.includes("/") || t.wasi.module !== name) {
-        throw new CodeLearnError(`Invalid track.yaml: when wasi.url is a .wasm, wasi.module must be the downloaded file's name${name && !name.includes("/") ? `, "${name}"` : ", and the url must end in a plain file name"}.`);
-      }
-    }
-  }
   return { ...t, limits: { time_ms: clamp(t.limits?.time_ms, LIMITS.time_ms), memory_mb: clamp(t.limits?.memory_mb, LIMITS.memory_mb) } };
 }
 
@@ -265,17 +237,18 @@ const TrackBase = z.object({
   limits: z.object({ time_ms: z.number(), memory_mb: z.number() }),
   installedAt: z.string(),
 });
-/** Where a WASI track's toolchain is ($CODE_LEARN_HOME/toolchains/<sha256>/) and how it runs; the url stays in track.yaml. */
-// Its paths are held to track.yaml's rules again, so a track.json changed outside code-learn can't map another folder.
-export const WasiRecord = z.object({
-  sha256: z.string().regex(/^[0-9a-f]{64}$/), module: ArchivePath, dirs: z.record(z.string().refine(sandboxDir), ArchivePath), env: z.record(z.string(), z.string()),
+/**
+ * What a track installed (DESIGN §4.6): its toolchain block, and `resolved`, the package files micromamba put in its
+ * folder, which takes the place of a verified image ID.
+ */
+export const ToolchainRecord = z.object({
+  packages: z.array(z.string()),
+  setup: z.string().optional(),
+  env: z.record(z.string(), z.string()),
+  resolved: z.array(z.string()),
 });
-export type WasiRecord = z.infer<typeof WasiRecord>;
-/** Exactly one engine: a Docker track's image (and the ID checks run by), or a WASI track's toolchain (DESIGN §4.5). */
-export const TrackRecord = z.union([
-  TrackBase.extend({ image: z.string(), imageId: z.string(), wasi: z.undefined().optional() }),
-  TrackBase.extend({ wasi: WasiRecord, image: z.undefined().optional(), imageId: z.undefined().optional() }),
-]);
+export type ToolchainRecord = z.infer<typeof ToolchainRecord>;
+export const TrackRecord = TrackBase.extend({ toolchain: ToolchainRecord });
 export type TrackRecord = z.infer<typeof TrackRecord>;
 
 export const CourseRecord = z.discriminatedUnion("style", [

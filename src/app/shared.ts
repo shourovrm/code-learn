@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { CodeLearnError } from "../errors.js";
 import { subMap } from "../files.js";
-import { assertRuntime, inspectImage } from "../sandbox.js";
+import { assertRuntime } from "../sandbox.js";
 import { type CourseRecord, type TrackRecord } from "../schemas.js";
 import * as store from "../store.js";
 import type { TrackContract } from "./exercises.js";
@@ -24,19 +24,15 @@ export function installedTrack(ref: string): TrackRecord {
 }
 
 /**
- * Fails, without recording anything, when what the track runs on isn't there: the runtime or the verified image, or a
- * WASI track's toolchain folder (DESIGN §4.5).
+ * Fails, without recording anything, when what the track runs on isn't there: a working sandbox, and the track's
+ * installed toolchain (DESIGN §4.6).
  */
-export async function ensureImage(track: TrackRecord): Promise<void> {
+export async function ensureToolchain(track: TrackRecord): Promise<void> {
   const ref = `${track.id}@${track.version}`;
-  const rebuild = `Run \`code-learn track rebuild ${ref}\`, then retry.`;
-  if (track.wasi) {
-    if (!existsSync(join(store.toolchainDir(track.wasi.sha256), track.wasi.module))) throw new CodeLearnError(`The toolchain for ${ref} is missing. ${rebuild}`, "image-missing");
-    return;
-  }
   await assertRuntime();
-  const info = await inspectImage(track.imageId);
-  if (!info) throw new CodeLearnError(`The image for ${ref} is missing or changed. ${rebuild}`, "image-missing");
+  if (!existsSync(join(store.envDir(ref), "env", "conda-meta"))) {
+    throw new CodeLearnError(`The toolchain for ${ref} is missing. Run \`code-learn track rebuild ${ref}\`, then retry.`, "toolchain-missing");
+  }
 }
 
 /** A progress listener that throws is dropped; the work goes on. */
@@ -51,14 +47,10 @@ export function quietly<T>(listener?: (p: T) => void): ((p: T) => void) | undefi
   });
 }
 
-/** Which engine runs a track (DESIGN §4.5): a wasi block means the WASI engine, anything else Docker. */
-export const engineOf = (track: { wasi?: unknown }): "docker" | "wasi" => (track.wasi ? "wasi" : "docker");
-
 export function trackContract(track: TrackRecord, style: string): TrackContract {
   const files = store.readTrackFiles(`${track.id}@${track.version}`);
   const commands = style === "io" ? { ...(track.build ? { build: track.build } : {}), run: track.run } : { test: track.test };
   return {
-    engine: engineOf(track),
     files: track.files,
     ...commands,
     limits: track.limits,

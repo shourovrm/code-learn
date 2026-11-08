@@ -18,7 +18,7 @@ const USAGE = `code-learn ${VERSION}: your coding agent writes the exercises, co
 
 Usage:
   code-learn init [--host claude|codex|cursor]...   set up this project for your agent(s)
-  code-learn doctor [--fix]                          check Docker and sandbox isolation
+  code-learn doctor [--fix]                          check the sandbox, micromamba and isolation
   code-learn status                                  your progress and the next step
   code-learn test [exercise]                         run the visible tests (not recorded)
   code-learn check [exercise]                        run every test and record the attempt
@@ -26,7 +26,8 @@ Usage:
   code-learn assist on|off                           let your agent edit exercise files (counts for less)
   code-learn tracks                                  list installed tracks
   code-learn track add <folder>                      install a track from a folder
-  code-learn track rebuild <id@version>              rebuild a track image and re-verify its exercises
+  code-learn track rebuild <id@version>              reinstall a track's toolchain and re-verify its exercises
+  code-learn track remove <id@version>               delete a track and its toolchain folder
   code-learn mcp [--workspace <dir>]                 run the MCP server (your agent starts this)
              [--course <c>] [--tools <a,b>] [--desktop]   bind it to one course, limit its tools, or propose tracks
              [--progress <file>]                 write which gate save_exercise runs to <file>
@@ -136,7 +137,6 @@ async function main(argv: string[]): Promise<number> {
       if (rest[0] === "add") {
         const r = await app.saveTrack(readFileMap(resolve(rest[1]!)));
         print(r.unchanged ? `${r.installed} is already installed.` : `Installed ${r.installed}.`);
-        if (r.warning) print(`Warning: ${r.warning}`);
         return 0;
       }
       if (rest[0] === "rebuild") {
@@ -144,7 +144,12 @@ async function main(argv: string[]): Promise<number> {
         print(`Rebuilt ${r.rebuilt}; ${r.exercises} exercise(s) re-verified.`);
         return 0;
       }
-      throw new CodeLearnError("Use code-learn track add <folder> or code-learn track rebuild <id@version>.");
+      if (rest[0] === "remove") {
+        const r = await app.removeTrack(rest[1]!);
+        print(`Removed ${r.removed} and its toolchain.`);
+        return 0;
+      }
+      throw new CodeLearnError("Use code-learn track add <folder>, code-learn track rebuild <id@version> or code-learn track remove <id@version>.");
     }
     case "mcp":
       await serveMcp(ws, VERSION, {
