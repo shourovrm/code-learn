@@ -2,35 +2,21 @@
 // recorded, no agent retry is spent, and the learner can fix them (DESIGN §5, §6.1).
 
 /**
- * What the learner is told: Docker isn't there or isn't running, is busy and not answering, or answers but failed;
- * Docker's disk is full, or this computer's; the network failed; or for a WASI track (core §4.5), wasmtime didn't
- * start, or code-learn couldn't make its files read-only on this drive.
+ * What the learner is told: the sandbox can't run code here, or was too busy to finish in time; this computer's disk is
+ * full; or the network failed.
  */
-export type Infra = 'docker' | 'docker-busy' | 'docker-failed' | 'docker-disk' | 'disk' | 'offline' | 'wasi' | 'wasi-seal';
+export type Infra = 'sandbox' | 'sandbox-busy' | 'disk' | 'offline';
 
 /** core src/errors.ts INFRA: each of core's codes, and what the learner is told about it. */
 const CODES = {
-  'no-runtime': 'docker',
-  'no-wasmtime': 'wasi',
-  'wasi-seal': 'wasi-seal',
-  'runtime-down': 'docker',
-  'runtime-paused': 'docker',
-  'socket-permission': 'docker',
-  'runtime-context': 'docker',
-  'runtime-busy': 'docker-busy',
-  'check-timeout': 'docker-busy',
-  'container-remove': 'docker-busy',
-  'windows-containers': 'docker-failed',
-  credentials: 'docker-failed',
-  'container-start': 'docker-failed',
-  'docker-cpus': 'docker-failed',
-  'docker-log-driver': 'docker-failed',
-  'docker-file-sharing': 'docker-failed',
-  'runtime-failed': 'docker-failed',
-  'image-id': 'docker-failed',
-  'image-inspect': 'docker-failed',
-  'container-list': 'docker-failed',
-  'docker-disk': 'docker-disk',
+  'no-sandbox': 'sandbox',
+  'sandbox-blocked': 'sandbox',
+  'no-user-session': 'sandbox',
+  'sandbox-root': 'sandbox',
+  'sandbox-failed': 'sandbox',
+  'scope-stop': 'sandbox',
+  'no-micromamba': 'sandbox',
+  'check-timeout': 'sandbox-busy',
   'host-disk': 'disk',
   offline: 'offline',
   'rate-limit': 'offline',
@@ -47,7 +33,7 @@ export interface Failure {
 }
 
 /** core src/errors.ts ErrorKind: what kind of failure a CodeLearnError is. */
-export type CoreErrorKind = 'no-course' | 'image-missing' | 'damaged' | 'changed' | 'docker' | 'disk' | 'offline';
+export type CoreErrorKind = 'no-course' | 'toolchain-missing' | 'damaged' | 'changed' | 'sandbox' | 'disk' | 'offline';
 
 const fromCore = (e: unknown): (Error & { kind?: CoreErrorKind; code?: unknown }) | undefined =>
   e instanceof Error && e.name === 'CodeLearnError' ? e : undefined;
@@ -66,15 +52,15 @@ const tagOf = (text: string) => /^[^\n]*?\bcode-learn:([a-z][a-z-]*)(?:\n|$)/.ex
 /** This computer's problem, from a tool result's code: what an agent relays back over MCP carries no error object. */
 export const infra = (text: string): Failure | null => failureOf(tagOf(text));
 
-/** A tool result that says a track image needs a rebuild. */
-export const needsRebuild = (text: string): boolean => tagOf(text) === 'image-missing';
+/** A tool result that says a track's toolchain needs a rebuild. */
+export const needsRebuild = (text: string): boolean => tagOf(text) === 'toolchain-missing';
 
 /** This computer's problem behind an error thrown in this process: core's code, or a write that ran out of space. */
 export function infraOf(e: unknown): Failure | null {
   const core = fromCore(e);
   const coded = failureOf(core?.code);
   if (coded) return coded;
-  // A kind without a code: what Docker or the disk said before codes. Docker reads as stopped, as it always has.
-  if (core?.kind === 'docker' || core?.kind === 'disk' || core?.kind === 'offline') return { infra: core.kind, cause: 'other' };
+  // A kind without a code: a sandbox, disk or network failure core didn't name more closely.
+  if (core?.kind === 'sandbox' || core?.kind === 'disk' || core?.kind === 'offline') return { infra: core.kind, cause: 'other' };
   return (e as NodeJS.ErrnoException | undefined)?.code === 'ENOSPC' ? { infra: 'disk', cause: 'host-disk' } : null;
 }

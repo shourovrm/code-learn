@@ -20,7 +20,6 @@ describe('the learner-safe boundary (D4)', () => {
     for (const level of ['log', 'info', 'warn', 'error', 'debug'] as const) {
       vi.spyOn(console, level).mockImplementation((...args: unknown[]) => void logged.push(args.map(String).join(' ')));
     }
-    const docker: string[] = [];
     const t: ReturnType<typeof live> = live(
       {
         // A tutor's agent that searches the web anyway (Codex can): only research shows searches and pages (§4.11).
@@ -38,7 +37,6 @@ describe('the learner-safe boundary (D4)', () => {
           return {};
         },
       },
-      { docker: { install: () => void docker.push('install'), open: async () => void docker.push('open'), windowsUpdate: async () => void docker.push('windows-update'), restartWindows: async () => void docker.push('restart') } },
     );
     const activity = await practising(t);
     const onScreen = t.c.roadmap!.course;
@@ -68,10 +66,6 @@ describe('the learner-safe boundary (D4)', () => {
       installAgent: ['cursor'],
       signIn: ['claude'],
       computer: [],
-      installDocker: [],
-      openDocker: [],
-      openWindowsUpdate: [],
-      restartWindows: [],
       tracks: [],
       course: [],
       courses: [],
@@ -98,6 +92,7 @@ describe('the learner-safe boundary (D4)', () => {
       retryJobs: [],
       skip: ['values'],
       rebuild: ['react@1'],
+      removeTrack: ['react@1'],
       usage: [],
       update: [],
       restartToUpdate: [],
@@ -133,7 +128,6 @@ describe('the learner-safe boundary (D4)', () => {
     // The tutor's own searches and pages never reached the window.
     expect(jobs.some((p) => p.kind === 'tutor')).toBe(true);
     expect(jobs.filter((p) => p.kind !== 'research').every((p) => p.steps.every((s) => s.kind === 'step'))).toBe(true);
-    expect(docker).toEqual(['install', 'open', 'windows-update', 'restart']);
 
     for (const payload of payloads) expect(payload).not.toMatch(leaks);
     for (const line of logged) expect(line).not.toMatch(leaks);

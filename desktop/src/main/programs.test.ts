@@ -24,7 +24,7 @@ function subject(ready: () => Promise<void> = async () => {}) {
   const heard: RunOutput[] = [];
   const logged: unknown[] = [];
   const p = programs({
-    whenDockerReady: (operation) => ready().then(operation),
+    whenReady: (operation) => ready().then(operation),
     log: (event, fields) => void logged.push([event, fields]),
   });
   p.onOutput((o) => heard.push(o));
@@ -54,7 +54,7 @@ describe("Run's programs (§4.10)", () => {
     for (const r of runs) expect(await r).toMatchObject({ stopped: true });
   });
 
-  it('stopped while waiting for Docker, it ends at once, frees its place, and never starts', async () => {
+  it('stopped while waiting for its turn, it ends at once, frees its place, and never starts', async () => {
     let ready!: () => void;
     const { p } = subject(() => new Promise<void>((r) => (ready = r)));
     const f = fake();
@@ -67,7 +67,7 @@ describe("Run's programs (§4.10)", () => {
     expect(startSpy).not.toHaveBeenCalled();
   });
 
-  it('frees a run stopped while waiting for Docker by the time stop() settles, so its id can start again', async () => {
+  it('frees a run stopped while waiting for its turn by the time stop() settles, so its id can start again', async () => {
     let ready!: () => void;
     const { p } = subject(() => new Promise<void>((r) => (ready = r)));
     const first = p.start('run-1', fake().start);
@@ -79,10 +79,10 @@ describe("Run's programs (§4.10)", () => {
     expect(await again).toMatchObject({ stopped: true });
   });
 
-  it("says why it didn't run when Docker is down, and logs it", async () => {
+  it("says why it didn't run when the sandbox is down, and logs it", async () => {
     const { p, logged } = subject();
-    expect(await p.start('run-1', async () => Promise.reject(coreError('docker down', 'docker')))).toEqual({ kind: 'not-run', reason: "Docker isn't running." });
-    expect(logged).toEqual([['not-counted', { run: 'program', reason: "Docker isn't running.", cause: 'other' }]]);
+    expect(await p.start('run-1', async () => Promise.reject(coreError('no session', 'sandbox')))).toEqual({ kind: 'not-run', reason: "code-learn's sandbox couldn't run that." });
+    expect(logged).toEqual([['not-counted', { run: 'program', reason: "code-learn's sandbox couldn't run that.", cause: 'other' }]]);
     await expect(p.start('run-2', async () => Promise.reject(new Error('other')))).rejects.toThrow('other');
   });
 

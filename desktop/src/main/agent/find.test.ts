@@ -3,7 +3,7 @@ import { chmodSync, mkdirSync, realpathSync, symlinkSync, writeFileSync } from '
 import { delimiter, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { posix as posixPath, win32 } from 'node:path';
-import { dockerDesktops, dockerFolders, find, folders, here, shimTarget, withDockerFolders, type Where } from './find';
+import { find, folders, here, shimTarget, type Where } from './find';
 import { tempDir } from '../testing/temp';
 
 /** What every npm `.cmd` shim starts with (npm's cmd-shim). */
@@ -181,84 +181,13 @@ describe('find (§3.1)', () => {
     expect(find('cursor-agent', { platform: 'win32', path: at('bin'), home: at('home') })).toMatchObject({ path: at('bin', 'node.exe'), args: [at('bin', 'index.js')] });
   });
 
-  it("finds Docker Desktop installed for one user, on Windows (Docker's default since 4.83) and in a Mac's ~/Applications", () => {
-    const win = tree();
-    mkdirSync(win.at('local', 'Programs', 'DockerDesktop', 'resources', 'bin'), { recursive: true });
-    writeFileSync(win.at('local', 'Programs', 'DockerDesktop', 'resources', 'bin', 'docker.exe'), 'MZ');
-    // Program Files of its own: a PC with Docker Desktop for all users would find that one first.
-    const w: Where = { platform: 'win32', path: '', home: win.at('home'), localAppData: win.at('local'), programFiles: win.at('pf') };
-    expect(find('docker', w)?.path).toBe(join(win.at('local'), 'Programs', 'DockerDesktop', 'resources', 'bin', 'docker.exe'));
-
-    const mac = tree();
-    const bin = mac.at('home', 'Applications', 'Docker.app', 'Contents', 'Resources', 'bin');
-    mkdirSync(bin, { recursive: true });
-    writeFileSync(join(bin, 'code-learn-fake-engine'), 'binary');
-    expect(find('code-learn-fake-engine', posix('/usr/bin', mac.at('home')))).toEqual({ path: join(bin, 'code-learn-fake-engine'), js: false });
-  });
-
-  it("knows where Docker Desktop installs, for all users and for one: its app, and the folder of its CLI and credential helpers", () => {
-    expect(dockerDesktops({ platform: 'darwin', home: '/Users/me' }, posixPath.join)).toEqual([
-      { app: '/Applications/Docker.app', bin: '/Applications/Docker.app/Contents/Resources/bin' },
-      { app: '/Users/me/Applications/Docker.app', bin: '/Users/me/Applications/Docker.app/Contents/Resources/bin' },
-    ]);
-    expect(dockerDesktops({ platform: 'win32', home: 'C:\\Users\\me', programFiles: 'D:\\Programs', localAppData: 'C:\\Users\\me\\AppData\\Local' }, win32.join)).toEqual([
-      { app: 'D:\\Programs\\Docker\\Docker\\Docker Desktop.exe', bin: 'D:\\Programs\\Docker\\Docker\\resources\\bin' },
-      { app: 'C:\\Users\\me\\AppData\\Local\\Programs\\DockerDesktop\\Docker Desktop.exe', bin: 'C:\\Users\\me\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin' },
-    ]);
-    expect(dockerDesktops({ platform: 'win32', home: 'C:\\Users\\me' }, win32.join)).toEqual([
-      { app: 'C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe', bin: 'C:\\Program Files\\Docker\\Docker\\resources\\bin' },
-    ]);
-    expect(dockerDesktops({ platform: 'linux', home: '/home/me' })).toEqual([]);
-  });
-
-  it("finds Docker where OrbStack, Rancher Desktop and Docker Desktop's own install link it (a GUI app's PATH has none of them)", () => {
-    for (const where of [['.orbstack', 'bin'], ['.rd', 'bin'], ['.docker', 'bin']]) {
-      const { at } = tree();
-      mkdirSync(at('home', ...where), { recursive: true });
-      // Any name will do: the folders don't depend on it, and a real `docker` on this machine would be found first.
-      writeFileSync(at('home', ...where, 'code-learn-fake-engine'), 'binary');
-      expect(find('code-learn-fake-engine', posix('/usr/bin', at('home')))).toEqual({ path: at('home', ...where, 'code-learn-fake-engine'), js: false });
-    }
-  });
-
-  it("also looks in Podman's installer folder, and Homebrew's, where Colima's Docker client lives", () => {
-    const usual = folders(posix('', '/Users/someone'));
-    // Home folders are joined with this machine's separator, as find does.
-    expect(usual).toEqual(expect.arrayContaining(['/opt/podman/bin', '/opt/homebrew/bin', '/usr/local/bin', join('/Users/someone', '.orbstack', 'bin'), join('/Users/someone', '.rd', 'bin')]));
-    // Windows keeps its own list.
-    expect(folders({ platform: 'win32', path: '', home: 'C:\\Users\\someone' })).not.toContain('/opt/podman/bin');
-  });
-
-  it("gives Docker's calls the folders its credential helpers live in, as well as the one it was found in", () => {
-    const dir = realpathSync(tempDir('code-learn-docker-'));
-    const cellar = join(dir, 'Cellar', 'docker', 'bin');
-    const desktop = join(dir, 'Docker.app', 'Contents', 'Resources', 'bin');
-    mkdirSync(cellar, { recursive: true });
-    mkdirSync(desktop, { recursive: true });
-    mkdirSync(join(dir, 'bin'));
-    writeFileSync(join(cellar, 'docker'), '');
-    symlinkSync(join(cellar, 'docker'), join(dir, 'bin', 'docker'));
-    // Homebrew's Docker CLI, beside Docker Desktop: the helpers are only in Docker Desktop's folder.
-    expect(dockerFolders(join(dir, 'bin', 'docker'), [desktop])).toEqual([join(dir, 'bin'), cellar, desktop]);
-    expect(dockerFolders(join(cellar, 'docker'), [join(dir, 'missing')])).toEqual([cellar]);
-  });
-
-  it("adds Docker's folders to a PATH once, keeping what was there", () => {
-    const dir = realpathSync(tempDir('code-learn-path-'));
-    writeFileSync(join(dir, 'docker'), '');
-    const path = ['/usr/bin', '/bin'].join(delimiter);
-    const once = withDockerFolders(path, join(dir, 'docker'), []);
-    expect(once).toBe([path, dir].join(delimiter));
-    expect(withDockerFolders(once, join(dir, 'docker'), [])).toBe(once);
-  });
-
-  it('searches only the given folders when a test sets them: the journey\'s "no Docker" run', () => {
+  it("searches only the given folders when a test sets them: a journey's no-agent run", () => {
     const dir = realpathSync(tempDir('code-learn-only-'));
-    writeFileSync(join(dir, 'docker'), '#!/bin/sh\n');
-    chmodSync(join(dir, 'docker'), 0o755);
+    writeFileSync(join(dir, 'claude'), '#!/bin/sh\n');
+    chmodSync(join(dir, 'claude'), 0o755);
     const w: Where = { platform: 'darwin', path: '', home: '/nowhere', searchDirs: [] };
-    expect(find('docker', w)).toBeNull();
-    expect(find('docker', { ...w, searchDirs: [dir] })).toEqual({ path: join(dir, 'docker'), js: false });
+    expect(find('claude', w)).toBeNull();
+    expect(find('claude', { ...w, searchDirs: [dir] })).toEqual({ path: join(dir, 'claude'), js: false });
     expect(here({ CODE_LEARN_TEST_SEARCH_DIRS: [dir, '/also'].join(delimiter) }).searchDirs).toEqual([dir, '/also']);
     expect(here({}).searchDirs).toBeUndefined();
   });

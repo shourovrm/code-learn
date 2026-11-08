@@ -80,11 +80,11 @@ describe('live CodeLearnApi: the activity: files, Try it, Check, Run and lesson 
     expect(await ran).toMatchObject({ kind: 'ran', stopped: true });
   });
 
-  it('says why a program couldn\'t run when Docker is down, and records nothing', async () => {
+  it('says why a program couldn\'t run when the sandbox is down, and records nothing', async () => {
     const t = live();
     const { id } = await practising(t);
     t.c.down = true;
-    expect(await t.api.runProgram(id, 'run-1')).toEqual({ kind: 'not-run', reason: expect.stringMatching(/Docker/) });
+    expect(await t.api.runProgram(id, 'run-1')).toEqual({ kind: 'not-run', reason: expect.stringMatching(/sandbox/) });
   });
 
   it('says whether Come back later can move on: not when leaving the stuck topic opens nothing else', async () => {
@@ -116,23 +116,23 @@ describe('live CodeLearnApi: the activity: files, Try it, Check, Run and lesson 
     expect(await t.api.check(activity.id)).toMatchObject({ kind: 'graded', passed: 2, mastered: true, tests: [{ hidden: false }, { hidden: true, index: 1, status: 'pass' }] });
   });
 
-  it('a Docker failure is not counted, for Check and for Try it', async () => {
+  it('a sandbox failure is not counted, for Check and for Try it', async () => {
     const t = live();
     const activity = await practising(t);
     t.c.down = true;
-    expect(await t.api.check(activity.id)).toEqual({ kind: 'not-counted', reason: "Docker isn't running." });
-    expect(await t.api.tryIt(activity.id)).toEqual({ kind: 'not-counted', reason: "Docker isn't running." });
+    expect(await t.api.check(activity.id)).toEqual({ kind: 'not-counted', reason: "code-learn's sandbox couldn't run that." });
+    expect(await t.api.tryIt(activity.id)).toEqual({ kind: 'not-counted', reason: "code-learn's sandbox couldn't run that." });
     expect(t.c.checks).toEqual([]);
   });
 
-  it("shows a lesson's examples and runs one in core's sandbox; a stopped Docker means it didn't run", async () => {
+  it("shows a lesson's examples and runs one in core's sandbox; a stopped sandbox means it didn't run", async () => {
     const t = live();
     await practising(t);
     t.c.lessons.push({ id: 'ex', concept: 'values', title: 'Run it', markdown: 'See:\n\n```example\n1\n```\n', notes: '', examples: [{ 'main.c': 'int main(){}' }] });
     expect((await t.api.lesson('ex')).examples).toEqual([{ files: [{ path: 'main.c', text: 'int main(){}' }] }]);
     expect(await t.api.runExample('ex', 1)).toEqual({ kind: 'ran', exit: 0, output: 'ran main.c\n', errors: '' });
     t.c.down = true;
-    expect(await t.api.runExample('ex', 1)).toEqual({ kind: 'not-run', reason: "Docker isn't running." });
+    expect(await t.api.runExample('ex', 1)).toEqual({ kind: 'not-run', reason: "code-learn's sandbox couldn't run that." });
   });
 
   it("runs a lesson's io example live with typed input, tagged with the run, and records nothing", async () => {
@@ -156,7 +156,7 @@ describe('live CodeLearnApi: the activity: files, Try it, Check, Run and lesson 
     expect(t.c.checks).toEqual([]);
   });
 
-  it("stops a lesson example's live Run when asked, and says why it couldn't run when Docker is down", async () => {
+  it("stops a lesson example's live Run when asked, and says why it couldn't run when the sandbox is down", async () => {
     const t = live();
     await practising(t);
     t.c.lessons.push({ id: 'ex', concept: 'values', title: 'Run it', markdown: '', notes: '', examples: [{ 'main.c': 'int main(){}' }], style: 'io' });
@@ -164,7 +164,7 @@ describe('live CodeLearnApi: the activity: files, Try it, Check, Run and lesson 
     await t.api.stopRun('run-1');
     expect(await ran).toMatchObject({ kind: 'ran', stopped: true });
     t.c.down = true;
-    expect(await t.api.runExampleLive('ex', 1, 'run-2')).toEqual({ kind: 'not-run', reason: expect.stringMatching(/Docker/) });
+    expect(await t.api.runExampleLive('ex', 1, 'run-2')).toEqual({ kind: 'not-run', reason: expect.stringMatching(/sandbox/) });
   });
 
   it('keeps a stuck activity open beside the ways forward', async () => {
@@ -195,72 +195,11 @@ describe('live CodeLearnApi: the activity: files, Try it, Check, Run and lesson 
     expect((await t.api.activity('values')).id).toBe(activity.id);
   });
 
-  it('a Check or Try it started while Docker is starting waits for it first', async () => {
-    let open: () => void = () => {};
-    const started = new Promise<void>((r) => (open = r));
-    let ready = async () => {};
-    const t = live({}, { dockerReady: () => ready() });
+  it('a Check started once quitting has begun never runs', async () => {
+    const t = live();
     const activity = await practising(t);
-    ready = () => started;
-    const check = t.api.check(activity.id);
-    await new Promise((r) => setTimeout(r, 20));
-    expect(t.c.checks).toEqual([]);
-    open();
-    await check;
-    expect(t.c.checks).toEqual([activity.id]);
-  });
-
-  it('a Run stopped while Docker is starting ends at once, frees its place, and never starts', async () => {
-    let open: () => void = () => {};
-    const started = new Promise<void>((r) => (open = r));
-    let ready = async () => {};
-    const t = live({}, { dockerReady: () => ready() });
-    await practising(t);
-    t.c.lessons.push({ id: 'ex', concept: 'values', title: 'Run it', markdown: '', notes: '', examples: [{ 'main.c': 'int main(){}' }], style: 'io' });
-    ready = () => started;
-    const runs = ['run-1', 'run-2', 'run-3', 'run-4'].map((run) => t.api.runExampleLive('ex', 1, run));
-    for (const run of ['run-1', 'run-2', 'run-3', 'run-4']) await t.api.stopRun(run);
-    for (const run of runs) expect(await run).toMatchObject({ kind: 'ran', stopped: true });
-    // Their places are free again.
-    const fifth = t.api.runExampleLive('ex', 1, 'run-5');
-    open();
-    await vi.waitFor(() => expect(t.c.runs).toEqual(['ex#1']));
-    await t.api.stopRun('run-5');
-    expect(await fifth).toMatchObject({ kind: 'ran', stopped: true });
-    await new Promise((r) => setTimeout(r, 20));
-    expect(t.c.runs).toEqual(['ex#1']);
-  });
-
-  it("never waits for Docker on a WASI track: its setup, Try it, Check, Run, examples and rebuild run on wasmtime (core §4.5)", async () => {
-    const t = live({}, { dockerReady: () => new Promise(() => {}) });
-    t.c.wasi.add('react@1');
-    const activity = await practising(t);
-    expect((await t.api.tryIt(activity.id)).kind).not.toBe('not-counted');
-    await t.api.check(activity.id);
-    expect(t.c.checks).toEqual([activity.id]);
-    t.c.lessons.push({ id: 'ex', concept: 'values', title: 'Run it', markdown: '', notes: '', examples: [{ 'main.py': 'print(1)' }], style: 'io' });
-    expect((await t.api.runExample('ex', 1)).kind).not.toBe('not-run');
-    const run = t.api.runExampleLive('ex', 1, 'run-1');
-    await vi.waitFor(() => expect(t.c.runs).toEqual(['ex#1']));
-    await t.api.stopRun('run-1');
-    await run;
-    await t.api.rebuild('react@1');
-  });
-
-  it('quitting waits for a Check that is waiting for Docker, and that Check then never runs', async () => {
-    let open: () => void = () => {};
-    const started = new Promise<void>((r) => (open = r));
-    let ready = async () => {};
-    const t = live({}, { dockerReady: () => ready() });
-    const activity = await practising(t);
-    ready = () => started;
-    const check = t.api.check(activity.id).catch(() => 'not run');
-    let stopped = false;
-    const stopping = t.api.stop().then(() => (stopped = true));
-    await new Promise((r) => setTimeout(r, 20));
-    expect(stopped).toBe(false);
-    open();
-    await Promise.all([check, stopping]);
+    await t.api.stop();
+    await expect(t.api.check(activity.id)).rejects.toThrow('code-learn is quitting.');
     expect(t.c.checks).toEqual([]);
   });
 });

@@ -4,5 +4,5 @@ import { live } from './testing/fakes';
 
 codeLearnApiContract('live, over a fake core and fake agents', () => {
   const t = live();
-  return { api: t.api, stopDocker: () => void (t.c.down = true) };
+  return { api: t.api, stopSandbox: () => void (t.c.down = true) };
 });

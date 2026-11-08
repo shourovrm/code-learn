@@ -213,11 +213,11 @@ describe('live CodeLearnApi: agent jobs: models, lanes, stalls, the tutor, progr
     await expect(researched(s)).rejects.toThrow(OFFLINE);
   });
 
-  it("a job Docker or the disk stopped stalls background work as this computer's problem, not the agent's", async () => {
-    const t = live({ setup: () => ({ ok: false, problem: 'docker' }) });
+  it("a job the sandbox or the disk stopped stalls background work as this computer's problem, not the agent's", async () => {
+    const t = live({ setup: () => ({ ok: false, problem: 'sandbox' }) });
     const r = await researched(t);
     await t.api.approve(r.roadmap!.concepts);
-    expect(await until(t.api, (c) => c.stalled !== undefined)).toMatchObject({ stalled: 'docker' });
+    expect(await until(t.api, (c) => c.stalled !== undefined)).toMatchObject({ stalled: 'sandbox' });
 
     const s = live({ setup: () => ({ ok: false, problem: 'disk' }) });
     const q = await researched(s);
@@ -248,12 +248,12 @@ describe('live CodeLearnApi: agent jobs: models, lanes, stalls, the tutor, progr
     expect(await until(t.api, (c) => c.stalled !== undefined)).toMatchObject({ stalled: 'rebuild' });
   });
 
-  it("a job Docker was too busy to answer stalls as busy, not stopped, and the log says which failure it was", async () => {
-    const t = live({ setup: () => ({ ok: false, problem: 'docker-busy', cause: 'runtime-busy' }) });
+  it("a job the sandbox was too busy to finish stalls as the sandbox's, and the log says which failure it was", async () => {
+    const t = live({ setup: () => ({ ok: false, problem: 'sandbox-busy', cause: 'check-timeout' }) });
     const r = await researched(t);
     await t.api.approve(r.roadmap!.concepts);
-    expect(await until(t.api, (c) => c.stalled !== undefined)).toMatchObject({ stalled: 'docker-busy' });
-    expect(readFileSync(t.logFile, 'utf8')).toMatch(/ job-end kind=setup ok=false problem=docker-busy cause=runtime-busy ms=\d+\n/);
+    expect(await until(t.api, (c) => c.stalled !== undefined)).toMatchObject({ stalled: 'sandbox' });
+    expect(readFileSync(t.logFile, 'utf8')).toMatch(/ job-end kind=setup ok=false problem=sandbox-busy cause=check-timeout ms=\d+\n/);
   });
 
   it('keeps the first stall, and launches no queued background work after it', async () => {
@@ -501,15 +501,15 @@ describe('live CodeLearnApi: agent jobs: models, lanes, stalls, the tutor, progr
   });
 
   it('starts no agent when Come back later is chosen during a stall it was not offered for (§5)', async () => {
-    const t = live({ lesson: () => ({ ok: false, problem: 'docker' }) });
+    const t = live({ lesson: () => ({ ok: false, problem: 'sandbox' }) });
     const r = await researched(t);
     await t.api.approve(r.roadmap!.concepts);
-    expect(await until(t.api, (c) => c.stalled !== undefined)).toMatchObject({ stalled: 'docker' });
+    expect(await until(t.api, (c) => c.stalled !== undefined)).toMatchObject({ stalled: 'sandbox' });
     const before = t.jobs.ran.length;
     await t.api.skip('values');
     await new Promise((res) => setTimeout(res, 30));
     expect(t.jobs.ran.length).toBe(before);
-    expect(await t.api.course()).toMatchObject({ stalled: 'docker' });
+    expect(await t.api.course()).toMatchObject({ stalled: 'sandbox' });
   });
 
   it('offers no Come back later when no other topic would open', async () => {

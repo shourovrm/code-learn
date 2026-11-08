@@ -18,7 +18,7 @@ export const codex: AgentCli = {
     for (const feature of ['shell_tool', 'unified_exec', 'browser_use', 'computer_use', 'apps', 'multi_agent']) args.push('--disable', feature);
     for (const c of [
       'sandbox_mode="read-only"',
-      // Only research, review and setup may search the web (§3.2): setup finds a WASI build's release file. Codex 0.156 accepts disabled, cached, indexed or live.
+      // Only research, review and setup may search the web (§3.2): setup looks up a package's name. Codex 0.156 accepts disabled, cached, indexed or live.
       ...(web ? [] : ['web_search="disabled"']),
       `mcp_servers.code-learn.command=${toml(server.command)}`,
       `mcp_servers.code-learn.args=${toml(server.args)}`,

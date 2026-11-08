@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parse, stringify } from 'yaml';
-import { CHANGED, NO_AGENT, PLAN_LIMIT, REBUILD, SIGNED_OUT, type CodeLearnApi, type CourseView, type JobProgress } from '../shared/api';
+import { CHANGED, NO_AGENT, NOT_COUNTED, PLAN_LIMIT, REBUILD, SIGNED_OUT, type CodeLearnApi, type CourseView, type JobProgress } from '../shared/api';
 import { isSafeLink } from './links';
 import { AGENT_INFO } from './connect';
 import { createMock, scenario, SCENARIOS, type MockOptions } from './mock';
@@ -60,7 +60,7 @@ async function practising(options?: MockOptions) {
 
 describe('mock: quiz', () => {
   async function quiz() {
-    const { api, roadmap } = await roadmapped({ docker: 'missing', imageMissing: true, style: 'io' }, 'quiz');
+    const { api, roadmap } = await roadmapped({ sandbox: 'no-bwrap', toolchainMissing: true, style: 'io' }, 'quiz');
     await api.approve(roadmap.concepts);
     return { api, roadmap, activity: await api.activity(roadmap.concepts[0].id) };
   }
@@ -191,7 +191,7 @@ describe('mock: roadmap and setup', () => {
     await api.approve(roadmap.concepts);
     expect((await api.course())!.setup).toBe('consent');
     const consent = (await api.course())!;
-    expect(consent.proposal!.files.map((f) => f.path)).toEqual(['Dockerfile', 'track.yaml']);
+    expect(consent.proposal!.files.map((f) => f.path)).toEqual(['track.yaml']);
     await expect(api.install('0'.repeat(64))).rejects.toThrow('The setup changed');
     await api.install(consent.proposal!.digest);
     expect((await api.course())!.setup).toBe('ready');
@@ -335,62 +335,48 @@ describe('mock: agents', () => {
 
 describe('mock: environment', () => {
   it('runs the computer checks in order, and only the first failing one is a problem', async () => {
-    expect(await createMock({ docker: 'missing', platform: 'windows' }).computer()).toEqual({
-      platform: 'windows',
-      ready: false,
-      canInstall: true,
-      checks: [
-        { id: 'docker-installed', state: 'problem' },
-        { id: 'docker-running', state: 'waiting' },
-        { id: 'sandbox', state: 'waiting' },
-      ],
-    });
-    expect((await createMock(scenario('docker-starting')).computer()).checks[1]).toEqual({ id: 'docker-running', state: 'problem', detail: 'starting' });
-    expect((await createMock(scenario('windows-containers')).computer()).checks[1]).toEqual({ id: 'docker-running', state: 'problem', detail: 'windows-containers' });
+    const missing = await createMock(scenario('no-bwrap')).computer();
+    expect(missing.ready).toBe(false);
+    expect(missing.checks).toEqual([
+      { id: 'sandbox', state: 'problem', reason: expect.stringContaining("bubblewrap (bwrap) isn't installed"), installCommand: 'sudo pacman -S bubblewrap' },
+      { id: 'isolation', state: 'waiting' },
+    ]);
+    // A distribution code-learn doesn't know gets the reason without a command.
+    expect((await createMock(scenario('no-bwrap-unknown')).computer()).checks[0]).not.toHaveProperty('installCommand');
+    expect((await createMock(scenario('no-user-session')).computer()).checks[0]).toMatchObject({ id: 'sandbox', state: 'problem', reason: expect.stringContaining('systemd user session') });
+    expect((await createMock(scenario('isolation-failed')).computer()).checks.map((c) => c.state)).toEqual(['ok', 'problem']);
+    expect(await createMock().computer()).toMatchObject({ ready: true });
   });
 
-  it('installs Docker step by step, then it starts and the computer is ready', async () => {
-    const api = createMock({ docker: 'missing', platform: 'mac' });
-    await api.installDocker();
-    const seen: string[] = [];
-    for (let i = 0; i < 10 && seen.at(-1) !== 'ready'; i++) {
-      const c = await api.computer();
-      const now = c.ready ? 'ready' : `${c.install?.phase ?? '-'}:${c.checks.find((x) => x.state === 'problem')?.id ?? ''}`;
-      if (seen.at(-1) !== now) seen.push(now);
-    }
-    expect(seen).toEqual(['downloading:docker-installed', 'checking:docker-installed', 'installing:docker-installed', 'starting:docker-running', 'ready']);
-    expect((await createMock({ docker: 'missing', platform: 'linux' }).computer()).canInstall).toBeUndefined();
-  });
-
-  it('opens a stopped Docker, which starts, then runs', async () => {
-    const api = createMock({ docker: 'stopped', platform: 'mac' });
-    expect((await api.computer()).checks[1]).toEqual({ id: 'docker-running', state: 'problem' });
-    await api.openDocker();
-    expect((await api.computer()).checks[1]).toEqual({ id: 'docker-running', state: 'problem', detail: 'starting' });
-    expect((await api.computer()).ready).toBe(true);
-  });
-
-  it('sees Docker change while the app runs', async () => {
-    const options: MockOptions = { docker: 'stopped', platform: 'mac' };
+  it('sees the sandbox change while the app runs', async () => {
+    const options: MockOptions = { sandbox: 'no-bwrap' };
     const api = createMock(options);
-    expect((await api.computer()).checks.map((c) => c.state)).toEqual(['ok', 'problem', 'waiting']);
-    options.docker = 'ready';
+    expect((await api.computer()).checks.map((c) => c.state)).toEqual(['problem', 'waiting']);
+    options.sandbox = 'ready';
     expect(await api.computer()).toMatchObject({ ready: true });
   });
 
-  it('records nothing when Docker stops mid-session, and keeps the work', async () => {
-    const { api, activity } = await practising(scenario('docker-stops'));
+  it('records nothing when the sandbox stops mid-session, and keeps the work', async () => {
+    const { api, activity } = await practising(scenario('sandbox-stops'));
     expect(await api.check(activity.id)).toMatchObject({ kind: 'graded' });
     const digest = await api.saveFile(activity.id, activity.files[0].path, 'mine', activity.files[0].digest);
-    expect(await api.check(activity.id)).toEqual({ kind: 'not-counted', reason: "Docker isn't running." });
+    expect(await api.check(activity.id)).toEqual({ kind: 'not-counted', reason: NOT_COUNTED.sandbox });
     expect(await api.tryIt(activity.id)).toMatchObject({ kind: 'not-counted' });
     expect((await api.activity(activity.concept)).files[0]).toMatchObject({ text: 'mine', digest });
   });
 
-  it('says a check needs a rebuild when the track image is missing, and records nothing', async () => {
-    const { api, activity } = await practising(scenario('image-missing'));
+  it('says a check needs a rebuild when the track toolchain is missing, and records nothing', async () => {
+    const { api, activity } = await practising(scenario('toolchain-missing'));
     expect(await api.check(activity.id)).toEqual({ kind: 'not-counted', reason: REBUILD });
     expect(await api.tryIt(activity.id)).toEqual({ kind: 'not-counted', reason: REBUILD });
+  });
+
+  it("refuses to remove the open course's track in core's words, and says so for one that isn't installed", async () => {
+    const { api } = await practising();
+    const [track] = await api.tracks();
+    await expect(api.removeTrack(track.ref)).rejects.toThrow(`${track.ref} is used by course "course-1", so it can't be removed while they need it.`);
+    expect(await api.tracks()).toHaveLength(1);
+    await expect(api.removeTrack('nothing@1')).rejects.toThrow('Track nothing@1 is not installed.');
   });
 
   it('fails setup offline or low on disk, records nothing, and retries the same proposal', async () => {
@@ -421,7 +407,7 @@ describe('mock: environment', () => {
   });
 
   it('names every scenario, and rejects unknown ones', () => {
-    expect(Object.keys(SCENARIOS)).toHaveLength(33);
+    expect(Object.keys(SCENARIOS)).toHaveLength(28);
     expect(scenario(undefined)).toEqual({});
     expect(() => scenario('nope')).toThrow('Unknown mock scenario');
   });

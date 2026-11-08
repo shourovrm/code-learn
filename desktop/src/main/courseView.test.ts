@@ -68,9 +68,9 @@ describe('course view', () => {
 
   it('during setup, the current topic is the first one ready to learn, and a failed setup keeps its proposal', () => {
     const proposal = { digest: 'd'.repeat(64), retry: false, files: [] };
-    const view = courseView(progress({ kind: 'setup', track: 'react@1' }), [], { state: 'failed', problem: 'docker', proposal }, new Set(['lesson:state']));
+    const view = courseView(progress({ kind: 'setup', track: 'react@1' }), [], { state: 'failed', problem: 'sandbox', proposal }, new Set(['lesson:state']));
     expect(view.topics[1]).toMatchObject({ id: 'state', state: 'now', activity: 'writing', lessons: [{ state: 'writing' }] });
-    expect(view).toMatchObject({ setup: 'failed', setupProblem: 'docker', proposal });
+    expect(view).toMatchObject({ setup: 'failed', setupProblem: 'sandbox', proposal });
   });
 
   it('keeps a stuck activity open', () => {

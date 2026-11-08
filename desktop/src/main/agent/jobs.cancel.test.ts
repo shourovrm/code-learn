@@ -31,7 +31,7 @@ describe('a job whose agent could not be stopped', () => {
   });
 
   it('says so at once, without waiting for a container cleanup', async () => {
-    // Live latches its no-more-agents guard on this outcome; a cleanup that waits on Docker must not delay it.
+    // Live latches its no-more-agents guard on this outcome; a cleanup that waits on the sandbox must not delay it.
     const cleanup = vi.fn(() => new Promise<void>(() => undefined));
     const outcome = await runJob({
       kind: 'lesson',

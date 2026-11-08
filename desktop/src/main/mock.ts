@@ -662,7 +662,7 @@ export function createMock(options: MockOptions = {}): CodeLearnApi {
 
     async removeTrack(trackRef) {
       // Core refuses a track a course uses (core removeTrack); the mock's open course uses its track.
-      const using = [...kept.entries()].filter(([, k]) => k.course.track === trackRef).map(([id]) => `"${id}"`);
+      const using = [...kept.entries()].filter(([, k]) => `${slugOf(k.course.track)}@1` === trackRef).map(([id]) => `"${id}"`);
       if (using.length > 0) throw new Error(`${trackRef} is used by ${using.length === 1 ? 'course' : 'courses'} ${using.join(', ')}, so it can't be removed while they need it.`);
       const at = tracks.findIndex((t) => t.ref === trackRef);
       if (at < 0) throw new Error(`Track ${trackRef} is not installed. Install it first (save_track).`);

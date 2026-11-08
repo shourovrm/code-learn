@@ -21,12 +21,12 @@ export function codeLearnServer({ runtime, coreDir, ws, env }: ServerPlaces) {
       ...(progress ? ['--progress', progress] : []),
     ],
     // Codex starts MCP servers without the app's environment, so the server is told where code-learn's data is,
-    // the PATH the app found Docker and its helpers on (§3.1), and the wasmtime the app bundles (core §4.5).
+    // the PATH the app was started with, and the micromamba the app bundles (core §4.6).
     env: {
       ELECTRON_RUN_AS_NODE: '1',
       ...(env.CODE_LEARN_HOME ? { CODE_LEARN_HOME: env.CODE_LEARN_HOME } : {}),
       ...(env.PATH ? { PATH: env.PATH } : {}),
-      ...(env.CODE_LEARN_WASMTIME ? { CODE_LEARN_WASMTIME: env.CODE_LEARN_WASMTIME } : {}),
+      ...(env.CODE_LEARN_MICROMAMBA ? { CODE_LEARN_MICROMAMBA: env.CODE_LEARN_MICROMAMBA } : {}),
     },
   });
 }
