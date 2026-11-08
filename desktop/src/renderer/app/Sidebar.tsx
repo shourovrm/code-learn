@@ -12,6 +12,7 @@ import { offeredTopic } from './course';
 import { Courses } from './Courses';
 import { ExternalLink } from '../ui/ExternalLink';
 import { editorRoute, WorkNow } from './WorkNow';
+import { ThemeSwitch } from './ThemeSwitch';
 
 type Section = 'learn' | 'practice' | 'tracks';
 
@@ -91,6 +92,7 @@ export function Sidebar({ slim: slimHere = false }: { slim?: boolean }) {
         <WorkNow course={course} slim />
         <UpdateNotice slim />
         <Courses slim />
+        <ThemeSwitch slim />
       </nav>
     );
   }
@@ -102,6 +104,7 @@ export function Sidebar({ slim: slimHere = false }: { slim?: boolean }) {
       <div className="foot">
         <UpdateNotice />
         <Courses />
+        <ThemeSwitch />
       </div>
     </nav>
   );

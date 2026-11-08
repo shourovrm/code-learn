@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, net, protocol, shell, type IpcMainInvokeEvent, type WebContents } from 'electron';
+import { app, BrowserWindow, ipcMain, nativeTheme, net, protocol, shell, type IpcMainInvokeEvent, type WebContents } from 'electron';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -89,7 +89,8 @@ function createWindow() {
     minWidth: 800,
     minHeight: 600,
     title: 'code-learn',
-    backgroundColor: '#F5F7FA',
+    // The page's ground before it paints, by the desktop's theme (renderer/styles/tokens.css), so a dark desktop never flashes light.
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#0B1730' : '#F5F7FA',
     titleBarStyle: 'hidden',
     titleBarOverlay: { color: '#0B1F44', symbolColor: '#AFC0DD', height: 36 },
     trafficLightPosition: { x: 14, y: 11 },

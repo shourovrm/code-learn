@@ -17,7 +17,7 @@ export function Complete({ course, onView }: { course: CourseView; onView: () =>
         <ul className="pills" style={{ listStyle: 'none', margin: 0, padding: 0 }} aria-label={course.activities ? 'Mastered' : 'Read'}>
           {course.topics.map((t, i) => (
             <li key={t.id} className="pill a-pop" style={stagger(i, 400)}>
-              <Icon name="check" color="#0E7C35" size={12} />
+              <Icon name="check" color="var(--green-ink)" size={12} />
               {t.title}
             </li>
           ))}

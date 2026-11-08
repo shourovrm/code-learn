@@ -76,7 +76,8 @@ export function Emm({ mood = 'ready', width = 160, perch = false, name }: { mood
   const leg = (d: string) => <path d={d} stroke={dark} strokeWidth="11" strokeLinecap="round" />;
   return (
     <svg className={`emm ${mood}`} viewBox="0 0 200 170" width={width} height={Math.round((width * 170) / 200)} aria-hidden="true">
-      {perch && <rect x="14" y="140" width="176" height="12" rx="6" fill={INK} />}
+      {/* The perch follows the theme; the face keeps INK, since it sits on Emm's own body color. */}
+      {perch && <rect x="14" y="140" width="176" height="12" rx="6" style={{ fill: 'var(--perch)' }} />}
       <path d="M60 108 C 34 106, 20 128, 28 146 C 36 162, 62 160, 64 144 C 66 132, 50 128, 46 138" fill="none" stroke={dark} strokeWidth="13" strokeLinecap="round" />
       {leg('M82 124 L 76 142')}
       {leg('M120 126 L 126 142')}

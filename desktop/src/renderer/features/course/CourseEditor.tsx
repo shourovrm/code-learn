@@ -162,7 +162,7 @@ export function CourseEditor({ roadmap }: { roadmap: Roadmap }) {
             {adding && <TopicItem index={concepts.length} count={concepts.length + 1} title="" editing onEdit={() => {}} onRename={add} />}
           </ol>
           <button className="add a-up" type="button" style={stagger(0, 100)} disabled={adding || working} onClick={() => setAdding(true)}>
-            <Icon name="plus" color="#0E2754" size={16} />
+            <Icon name="plus" color="var(--ink)" size={16} />
             Add a topic
           </button>
         </div>

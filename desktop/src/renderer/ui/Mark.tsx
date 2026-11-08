@@ -1,4 +1,5 @@
 import { useId } from 'react';
+import { useTheme } from '../app/theme';
 import logo from '../../../../docs/brand/code-learn-logo.svg';
 import logoOnNavy from '../../../../docs/brand/code-learn-logo-dark.svg';
 
@@ -18,7 +19,8 @@ export function Mark({ size = 24 }: { size?: number }) {
   );
 }
 
-/** The brand logo (the wordmark is outlined, so it needs no font). */
+/** The brand logo (the wordmark is outlined, so it needs no font): the light wordmark on navy and in the dark theme. */
 export function Logo({ height, onNavy = false, className }: { height: number; onNavy?: boolean; className?: string }) {
-  return <img className={className} src={onNavy ? logoOnNavy : logo} alt="code-learn" height={height} />;
+  const dark = useTheme() === 'dark';
+  return <img className={className} src={onNavy || dark ? logoOnNavy : logo} alt="code-learn" height={height} />;
 }
