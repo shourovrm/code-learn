@@ -1,12 +1,11 @@
 // @vitest-environment node
-// An agent or Docker installed while code-learn is open, on Windows: its installer adds a folder to the PATH in the
+// An agent installed while code-learn is open, on Windows: its installer adds a folder to the PATH in the
 // registry, which a running process never sees in its own environment (§3.1).
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { find, type Where } from './agent/find';
 import { livePath } from './agent/livePath';
-import { computerCheck } from './computer';
 import { connector } from './connect';
 import { desktopState } from './state';
 import { live, researched } from './testing/fakes';
@@ -14,7 +13,7 @@ import { tempDir } from './testing/temp';
 
 /**
  * A Windows whose registry PATH an installer can change, and a clock to let a 2-second-old read go stale. PATH starts
- * empty: a runner's own folders (System32 holds a docker.exe on GitHub's) would answer first.
+ * empty: a runner's own folders would answer first.
  */
 function windows() {
   const env: NodeJS.ProcessEnv = { PATH: '', LOCALAPPDATA: tempDir('code-learn-local-') };
@@ -46,20 +45,6 @@ describe('found once installed, with no restart (§3.1)', () => {
     w.later();
     expect((await api.agents()).find((a) => a.id === 'claude')!.state).toBe('not-connected');
     expect((await api.connect('claude')).state).toBe('connected');
-  });
-
-  it('Check this computer finds Docker installed while code-learn was open on the next check', async () => {
-    const w = windows();
-    const computer = computerCheck({ find: () => find('docker', w.where()), state: async () => 'ready', sandbox: async () => ({ ok: true, detail: 'blocked' }), now: () => 0 }, 'win32');
-    const { api } = live({}, { computer, livePath: w.refresh });
-    expect((await api.computer()).ready).toBe(false);
-
-    const dir = join(w.env.LOCALAPPDATA!, 'Programs', 'DockerDesktop', 'resources', 'bin');
-    mkdirSync(dir, { recursive: true });
-    writeFileSync(join(dir, 'docker.exe'), 'MZ');
-    w.registry.user = dir;
-    w.later();
-    expect((await api.computer()).ready).toBe(true);
   });
 
   it('a job starts on the PATH as it is now, which the agent and its code-learn server inherit', async () => {

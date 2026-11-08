@@ -33,8 +33,8 @@ process.on('unhandledRejection', (e) => log('error', { where: 'main', ...errorFi
 const mock = !app.isPackaged && process.env.CODE_LEARN_MOCK !== undefined;
 const live = mock ? null : liveApi({
   coreDir: app.isPackaged ? join(process.resourcesPath, 'core') : join(__dirname, '../core'),
-  // packaging.cjs ships this chip's wasmtime; in development, scripts/fetch-wasmtime.mjs fetches it.
-  wasmtimeDir: app.isPackaged ? join(process.resourcesPath, 'wasmtime') : join(__dirname, '../../vendor/wasmtime', `${process.platform === 'win32' ? 'win' : 'mac'}-${process.arch}`),
+  // packaging.cjs ships this chip's micromamba; in development it is vendor/micromamba/linux-<arch>, if present.
+  micromambaDir: app.isPackaged ? join(process.resourcesPath, 'micromamba') : join(__dirname, '../../vendor/micromamba', `linux-${process.arch}`),
   userData: app.getPath('userData'),
   log,
 });

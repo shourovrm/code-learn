@@ -43,8 +43,8 @@ export const SAVE_BOUND = 3;
 export const OFFLINE = /connection error|ENOTFOUND|EAI_AGAIN|network is unreachable|could not resolve host|error sending request|connection lost/i;
 
 /**
- * An Infra problem: this computer's Docker (stopped, busy, or failing while it runs), disk or network stopped a save,
- * or removing an ended attempt's containers. `rebuild`: a track image needs a rebuild. `infra`: the code-learn server or
+ * An Infra problem: this computer's sandbox (unavailable, busy, or failing while it runs), disk or network stopped a save,
+ * or stopping an ended attempt's sandbox. `rebuild`: a track's toolchain needs a rebuild. `infra`: the code-learn server or
  * the agent failed to start. None records anything or spends an attempt (§6.1). `unstoppable`: a cancel the agent
  * survived.
  */
@@ -85,8 +85,8 @@ export interface Job {
   /** Null when the agent's sign-in check couldn't answer: a timeout, or offline. */
   signedIn: () => Promise<boolean | null>;
   /**
-   * Removes the containers of code-learn processes that are gone (core's removeAbandoned), after an attempt code-learn ended:
-   * a cancelled job's gate container would otherwise run on beside the next one (§5).
+   * Stops the sandboxes of code-learn processes that are gone (core's removeAbandoned), after an attempt code-learn ended:
+   * a cancelled job's gate sandbox would otherwise run on beside the next one (§5).
    */
   cleanup?: () => Promise<void>;
   deadlineMs?: number;
@@ -107,11 +107,11 @@ interface Attempt {
   text: string[];
   /** A cancel the agent's process group survived (§3.1). */
   unstoppable: boolean;
-  /** code-learn ended the attempt (a cancel, the deadline, or a failure that stops it), so it may have left containers. */
+  /** code-learn ended the attempt (a cancel, the deadline, or a failure that stops it), so it may have left sandboxes running. */
   ended: boolean;
   /**
-   * `server`: the code-learn server didn't start. A code-learn tool hit this computer's Docker, disk or network, or
-   * (`rebuild`) a track image that needs a rebuild. `unstarted`: the agent exited before it started.
+   * `server`: the code-learn server didn't start. A code-learn tool hit this computer's sandbox, disk or network, or
+   * (`rebuild`) a track toolchain that needs a rebuild. `unstarted`: the agent exited before it started.
    */
   infra?: 'server' | 'rebuild' | 'unstarted' | Infra;
   cause?: Cause;
@@ -209,7 +209,7 @@ async function once(job: Job): Promise<Attempt> {
 
 /**
  * Runs a job and checks it against core records. A failed job is relaunched at most once, never after
- * a plan limit, a sign-out or an infrastructure failure, never while its agent or its container may still be running,
+ * a plan limit, a sign-out or an infrastructure failure, never while its agent or its sandbox may still be running,
  * and never when its save landed anyway (a save can commit just before a crash).
  */
 export async function runJob(job: Job): Promise<JobOutcome> {
@@ -225,13 +225,13 @@ export async function runJob(job: Job): Promise<JobOutcome> {
     last = await once(again);
     // An agent that won't continue the session (it exited before starting) gets the fresh relaunch instead.
     if (again !== job && last.infra === 'unstarted' && !job.signal?.aborted && !job.blocked?.() && job.usable?.() !== false) last = await once(job);
-    // Said at once: the caller stops every other agent on this, and a cleanup waiting on Docker must not delay it.
+    // Said at once: the caller stops every other agent on this, and a cleanup waiting on the sandbox must not delay it.
     if (last.unstoppable) return { ok: false, problem: 'unstoppable', text: last.text };
-    // Before a relaunch or the end, an attempt code-learn ended leaves no container behind. Why a cleanup failed is
-    // Docker's to say: busy, or answering but failing. A busy Docker would only keep the learner waiting on it, and
+    // Before a relaunch or the end, an attempt code-learn ended leaves no sandbox behind. Why a cleanup failed is
+    // the sandbox's to say: busy, or failing. A busy sandbox would only keep the learner waiting on it, and
     // nothing relaunches after it: a later cleanup removes what's left once this attempt's processes are gone.
-    const tidy = last.ended && job.cleanup && last.infra !== 'docker-busy';
-    const unclean = tidy ? await job.cleanup!().then((): Failure | null => null, (e: unknown): Failure => infraOf(e) ?? { infra: 'docker-failed', cause: 'other' }) : null;
+    const tidy = last.ended && job.cleanup && last.infra !== 'sandbox-busy';
+    const unclean = tidy ? await job.cleanup!().then((): Failure | null => null, (e: unknown): Failure => infraOf(e) ?? { infra: 'sandbox', cause: 'other' }) : null;
     if (await job.done({ ok: last.ok })) return { ok: true, session: last.session, text: last.text };
     if (job.signal?.aborted) break;
     if (last.error && PLAN_LIMIT.test(last.error)) return { ok: false, problem: 'plan-limit', text: last.text };

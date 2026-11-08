@@ -15,8 +15,8 @@ export type StartProgram = (
 ) => Promise<CoreProgramRun>;
 
 export interface ProgramDeps {
-  /** Runs a container operation once Docker isn't starting, tracked so quitting waits for it (live.ts). */
-  whenDockerReady<T>(operation: () => Promise<T>): Promise<T>;
+  /** Runs a sandboxed operation, tracked so quitting waits for it (live.ts). */
+  whenReady<T>(operation: () => Promise<T>): Promise<T>;
   log: Log;
 }
 
@@ -26,7 +26,7 @@ interface Entry {
   cancel?: () => void;
 }
 
-export function programs({ whenDockerReady, log }: ProgramDeps) {
+export function programs({ whenReady, log }: ProgramDeps) {
   const entries = new Map<string, Entry>();
   const listeners = new Set<(o: RunOutput) => void>();
   const tell = (o: RunOutput) => listeners.forEach((l) => l(o));
@@ -52,10 +52,10 @@ export function programs({ whenDockerReady, log }: ProgramDeps) {
       try {
         const r = await new Promise<Awaited<CoreProgramRun['done']> | undefined>((resolve, reject) => {
           let starting = false;
-          // Stopped while waiting for Docker: it ends now, frees its place, and never starts.
+          // Stopped while waiting for its turn: it ends now, frees its place, and never starts.
           entry.cancel = () => !starting && resolve(undefined);
           // Tracked until the program has ended, so quitting waits for its container and files to go.
-          whenDockerReady(async () => {
+          whenReady(async () => {
             if (entry.stopped) return undefined;
             starting = true;
             const program = await startProgram((text, stream) => tell({ run, stream, text }), { onStart: (stage, limitMs) => tell({ run, started: stage, limitMs }) });

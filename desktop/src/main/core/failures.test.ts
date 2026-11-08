@@ -4,29 +4,15 @@ import { INFRA, infraError, type InfraCode } from '../../../../src/errors';
 import { infra, infraOf, needsRebuild } from './failures';
 
 const told: Record<InfraCode, string> = {
-  'no-runtime': 'docker',
-  // A WASI track without a wasmtime that runs (core §4.5): nothing about Docker, which the learner may not have.
-  'no-wasmtime': 'wasi',
-  // code-learn couldn't make its files read-only on this disk (FAT, exFAT, or icacls failing): its own words.
-  'wasi-seal': 'wasi-seal',
-  'runtime-down': 'docker',
-  'runtime-paused': 'docker',
-  'socket-permission': 'docker',
-  'runtime-context': 'docker',
-  'runtime-busy': 'docker-busy',
-  'check-timeout': 'docker-busy',
-  'container-remove': 'docker-busy',
-  'windows-containers': 'docker-failed',
-  credentials: 'docker-failed',
-  'container-start': 'docker-failed',
-  'docker-cpus': 'docker-failed',
-  'docker-log-driver': 'docker-failed',
-  'docker-file-sharing': 'docker-failed',
-  'runtime-failed': 'docker-failed',
-  'image-id': 'docker-failed',
-  'image-inspect': 'docker-failed',
-  'container-list': 'docker-failed',
-  'docker-disk': 'docker-disk',
+  'no-sandbox': 'sandbox',
+  'sandbox-blocked': 'sandbox',
+  'no-user-session': 'sandbox',
+  'sandbox-root': 'sandbox',
+  'sandbox-failed': 'sandbox',
+  'scope-stop': 'sandbox',
+  'no-micromamba': 'sandbox',
+  // Every case had its own limit: only a busy computer reaches this, and it is never told its sandbox is missing.
+  'check-timeout': 'sandbox-busy',
   'host-disk': 'disk',
   offline: 'offline',
   'rate-limit': 'offline',
@@ -36,51 +22,44 @@ const told: Record<InfraCode, string> = {
 
 describe("core's failure codes (src/errors.ts INFRA)", () => {
   it.each(Object.keys(INFRA) as InfraCode[])('tells the learner what %s means, over MCP and in this process', (code) => {
-    // Docker that is up (busy, or answering but failing) is never told it stopped.
     expect(infra(`code-learn:${code}\nSome wording.`)).toEqual({ cause: code, infra: told[code] });
     expect(infraOf(infraError('Some wording.', code))).toEqual({ cause: code, infra: told[code] });
   });
 
-  it("tells an inspect that failed while Docker answers (Docker 29's template error) apart from a stopped Docker", () => {
-    const failed = infraError('The container runtime couldn\'t inspect the track image: template: :1:12: executing "" at <.Config.Volumes>: map has no entry for key "Volumes"', 'image-inspect');
-    expect(infraOf(failed)).toEqual({ cause: 'image-inspect', infra: 'docker-failed' });
-    expect(infra(`code-learn:image-inspect\n${failed.message}`)).toEqual({ cause: 'image-inspect', infra: 'docker-failed' });
-  });
-
   it('reads the code after words an agent put before it on the first line', () => {
-    expect(infra('Error: code-learn:runtime-busy\nThe container runtime isn\'t answering.')).toEqual({ cause: 'runtime-busy', infra: 'docker-busy' });
-    expect(infra('<tool_use_error>code-learn:docker-disk\nDocker ran out of disk space.</tool_use_error>')).toEqual({ cause: 'docker-disk', infra: 'docker-disk' });
+    expect(infra("Error: code-learn:check-timeout\nThe check didn't finish in time.")).toEqual({ cause: 'check-timeout', infra: 'sandbox-busy' });
+    expect(infra('<tool_use_error>code-learn:host-disk\nThis computer is out of disk space.</tool_use_error>')).toEqual({ cause: 'host-disk', infra: 'disk' });
   });
 
   it("reads nothing but core's code: not its wording, and not output a message quotes", () => {
     // Core's wording without its code, a program's stderr in a lesson example, a runner's output in a gate failure.
-    expect(infra("The container runtime isn't running. Start Docker Desktop.")).toBeNull();
+    expect(infra("bubblewrap (bwrap) isn't installed. Install bubblewrap 0.9 or later.")).toBeNull();
     expect(infra('Example 1 didn\'t run cleanly (exit 1):\nconnect: Network is unreachable\ncode-learn:offline\n')).toBeNull();
-    expect(infra('Gate "probe pass" failed: the io pass probe should pass every test:\nIt printed:\ncode-learn:runtime-down\nCannot connect to the Docker daemon')).toBeNull();
+    expect(infra('Gate "probe pass" failed: the io pass probe should pass every test:\nIt printed:\ncode-learn:no-sandbox\nbwrap: command not found')).toBeNull();
     expect(infra('code-learn:no-course\nNo course in this workspace yet.')).toBeNull();
     expect(infra('code-learn:made-up\nx')).toBeNull();
   });
 
-  it('tells a track image that needs a rebuild', () => {
-    expect(needsRebuild('code-learn:image-missing\nThe image for py@1 is missing or changed.')).toBe(true);
-    expect(needsRebuild('The image for py@1 is missing or changed.')).toBe(false);
-    expect(needsRebuild('Gate "build" failed:\nIt printed:\ncode-learn:image-missing')).toBe(false);
+  it('tells a track whose toolchain needs a rebuild', () => {
+    expect(needsRebuild('code-learn:toolchain-missing\nThe toolchain for py@1 is missing or changed.')).toBe(true);
+    expect(needsRebuild('The toolchain for py@1 is missing or changed.')).toBe(false);
+    expect(needsRebuild('Gate "build" failed:\nIt printed:\ncode-learn:toolchain-missing')).toBe(false);
   });
 });
 
 describe('errors core threw in this process', () => {
   const core = (message: string, kind?: string) => Object.assign(new Error(message), { name: 'CodeLearnError', ...(kind ? { kind } : {}) });
 
-  it("keeps a kind without a code, Docker as stopped, and reads a write that ran out of space as this computer's disk", () => {
-    expect(infraOf(core('Some wording', 'docker'))).toEqual({ cause: 'other', infra: 'docker' });
+  it("keeps a kind without a code, and reads a write that ran out of space as this computer's disk", () => {
+    expect(infraOf(core('Some wording', 'sandbox'))).toEqual({ cause: 'other', infra: 'sandbox' });
     expect(infraOf(core('Some wording', 'disk'))).toEqual({ cause: 'other', infra: 'disk' });
     expect(infraOf(Object.assign(new Error('ENOSPC: no space left on device, write'), { code: 'ENOSPC' }))).toEqual({ cause: 'host-disk', infra: 'disk' });
   });
 
   it("is no infrastructure failure without core's kind or code, whatever it says", () => {
-    expect(infraOf(core("The container runtime isn't running."))).toBeNull();
+    expect(infraOf(core("bubblewrap isn't installed."))).toBeNull();
     expect(infraOf(core('Reload the file.', 'changed'))).toBeNull();
-    expect(infraOf(new Error("The container runtime isn't running."))).toBeNull();
-    expect(infraOf(Object.assign(new Error('x'), { code: 'runtime-down' }))).toBeNull();
+    expect(infraOf(new Error("bubblewrap isn't installed."))).toBeNull();
+    expect(infraOf(Object.assign(new Error('x'), { code: 'no-sandbox' }))).toBeNull();
   });
 });

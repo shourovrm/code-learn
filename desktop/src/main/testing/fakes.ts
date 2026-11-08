@@ -17,7 +17,7 @@ export const CANARY = 'printf("CANARY-SOLUTION-LINE %d", count + 1);';
 
 type FakeRoadmap = { course: string; title?: string; goal: string; track?: string; style: string; concepts: { id: string; title: string; requires: string[] }[]; sources?: { title: string; url: string }[] };
 
-const DOCKER_DOWN = "The container runtime isn't running. Start Docker Desktop and wait until it says it's running, then retry.";
+const SANDBOX_DOWN = "The systemd user session isn't reachable. code-learn needs a systemd user session for its sandbox limits.";
 
 /** An error as core throws it: a CodeLearnError, with its kind when it has one (src/errors.ts). */
 /** A CodeLearnError as core throws it: with its kind, and for this computer's problems its code (core src/errors.ts INFRA). */
@@ -58,9 +58,7 @@ export function fakeCore() {
       this.active = r?.course;
     },
     tracks: [] as string[],
-    /** Tracks on the WASI engine (core §4.5): their setup proposes a track.yaml with a wasi block and no Dockerfile. */
-    wasi: new Set<string>(),
-    proposals: [] as { track: string; digest: string; created: string; files: Record<string, string>; engine?: 'docker' | 'wasi' }[],
+    proposals: [] as { track: string; digest: string; created: string; files: Record<string, string> }[],
     lessons: [] as { id: string; concept: string; title: string; markdown: string; notes: string; examples?: Record<string, string>[]; style?: 'io' | 'unit' }[],
     reads: new Set<string>(),
     exercises: new Map<string, { concept: string; file: string; digest: string; created: string; difficulty?: number }>(),
@@ -122,12 +120,12 @@ export function fakeCore() {
   });
   const app: CoreApp = {
     JOB_BRIEFS,
-    networkIsolation: async () => ({ name: 'network isolation', ok: true, detail: 'blocked' }),
-    RUNTIME_INFO: ['info'],
-    runtimeState: async () => 'ready',
+    sandboxDown: async () => undefined,
+    isolation: async () => ({ name: 'sandbox isolation', ok: true, detail: 'holds' }),
     readWorkspace: () => ({ course: c.roadmap?.course, current: c.current }),
     hiddenMaterial: () => [CANARY, 'printf("CANARY-MUTANT-LINE %d", count + 2);', 'CANARY-HIDDEN-INPUT-LINE with enough length', 'CANARY-EXPECTED-OUTPUT-LINE 42'],
-    listTracks: () => c.tracks.map((track) => ({ track, styles: ['io'], files: ['main.c'], engine: c.wasi.has(track) ? 'wasi' : 'docker' })),
+    listTracks: () => c.tracks.map((track) => ({ track, styles: ['io'], files: ['main.c'] })),
+    removeTrack: async (ref) => ({ removed: ref }),
     cleanupLeftovers: async () => void c.cleanups++,
     rebuildTrack: async () => ({}),
     saveRoadmap: async (_ws, course, yaml, _bound, activate = true) => {
@@ -155,14 +153,14 @@ export function fakeCore() {
     },
     testExercise: async (_ws, slug, bound, onProgress) => {
       c.bound.push(bound);
-      if (c.down) throw coreError(DOCKER_DOWN, 'docker');
+      if (c.down) throw coreError(SANDBOX_DOWN, 'sandbox', 'no-user-session');
       onProgress?.({ phase: 'visible', done: 1, total: 1 });
       onProgress?.({ phase: 'visible', done: 1, total: 1, test: { name: 'visible/01', status: 'fail', message: 'Output differs from the expected output.', actual: '0\n' } });
       return view(slug!, 1, false);
     },
     checkExercise: async (_ws, slug, bound, onProgress) => {
       c.bound.push(bound);
-      if (c.down) throw coreError(DOCKER_DOWN, 'docker');
+      if (c.down) throw coreError(SANDBOX_DOWN, 'sandbox', 'no-user-session');
       onProgress?.({ phase: 'visible', done: 1, total: 1 });
       // A hidden event never carries a test, even if core sent one.
       onProgress?.({ phase: 'hidden', done: 1, total: 2, test: { name: 'hidden/01', status: 'fail', actual: 'CANARY-HIDDEN-OUTPUT' } });
@@ -192,18 +190,18 @@ export function fakeCore() {
     // Run: asks for a name and greets it; stops when killed.
     runInteractive: async (_ws, slug, bound, output, options) => {
       c.bound.push(bound);
-      if (c.down) throw coreError(DOCKER_DOWN, 'docker');
+      if (c.down) throw coreError(SANDBOX_DOWN, 'sandbox', 'no-user-session');
       c.runs.push(slug!);
       return greeter(output, options);
     },
     runExampleLive: async (_ws, id, index, _bound, output, options) => {
-      if (c.down) throw coreError(DOCKER_DOWN, 'docker');
+      if (c.down) throw coreError(SANDBOX_DOWN, 'sandbox', 'no-user-session');
       c.runs.push(`${id}#${index}`);
       return greeter(output, options);
     },
     runExample: async (_ws, id, index, bound) => {
       c.bound.push(bound);
-      if (c.down) throw coreError(DOCKER_DOWN, 'docker');
+      if (c.down) throw coreError(SANDBOX_DOWN, 'sandbox', 'no-user-session');
       const files = c.lessons.find((l) => l.id === id)?.examples?.[index - 1];
       if (!files) throw new Error(`Lesson "${id}" has no example ${index}.`);
       return { exit: 0, output: `ran ${Object.keys(files).join(',')}\n`, errors: '' };
@@ -266,10 +264,8 @@ export function fakeJobs(c: ReturnType<typeof fakeCore>['c'], over: Partial<Reco
       // Proposes the track the brief names.
       const track = /Propose exactly the track `([^`]+)`/.exec(job.brief)?.[1] ?? 'react@1';
       const id = `id: ${track.split('@')[0]}`;
-      const wasi = c.wasi.has(track);
-      // Core names the engine; a WASI proposal here even carries a Dockerfile, so the desktop can't guess from the files.
-      const files = { Dockerfile: 'FROM node:22', 'track.yaml': wasi ? `${id}\nwasi:\n  module: python.wasm` : id };
-      c.proposals.push({ track, digest: (track === 'react@1' ? 'a' : 'b').repeat(64), created: new Date().toISOString(), files, engine: wasi ? 'wasi' : 'docker' });
+      const files = { 'track.yaml': id };
+      c.proposals.push({ track, digest: (track === 'react@1' ? 'a' : 'b').repeat(64), created: new Date().toISOString(), files });
       return {};
     },
     lesson: (job) => {

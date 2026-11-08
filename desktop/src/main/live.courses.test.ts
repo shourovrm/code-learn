@@ -85,13 +85,13 @@ describe('live CodeLearnApi: several courses (§4.13)', () => {
   });
 
   it("stalls only the course whose background job failed, and Try again restarts only that course", async () => {
-    const t = live({ setup: (job, usual) => (job.brief.includes('`react@1`') ? { ok: false, problem: 'docker' } : usual()) });
+    const t = live({ setup: (job, usual) => (job.brief.includes('`react@1`') ? { ok: false, problem: 'sandbox' } : usual()) });
     const react = await approved(t, 'React');
-    await until(t.api, (c) => c.stalled === 'docker');
+    await until(t.api, (c) => c.stalled === 'sandbox');
     const python = await approved(t, 'Python');
     expect(await until(t.api, (c) => c.setup === 'consent')).not.toHaveProperty('stalled');
     await t.api.switchCourse(react);
-    expect((await t.api.course())!.stalled).toBe('docker');
+    expect((await t.api.course())!.stalled).toBe('sandbox');
     await t.api.retryJobs();
     await settle(async () => ran(t, 'setup'), (r) => r.filter((c) => c === react).length === 2, "React's setup again");
     expect(ran(t, 'setup').filter((c) => c === python)).toHaveLength(1);
@@ -212,14 +212,14 @@ describe('live CodeLearnApi: several courses (§4.13)', () => {
 
   it('stalls every course on a track when their shared setup fails', async () => {
     const held = gate();
-    const t = live({ research: (_job, usual) => (usual(), (t.c.roadmap!.track = 'react@1'), {}), setup: async () => (await held.opened, { ok: false, problem: 'docker' }) });
+    const t = live({ research: (_job, usual) => (usual(), (t.c.roadmap!.track = 'react@1'), {}), setup: async () => (await held.opened, { ok: false, problem: 'sandbox' }) });
     const react = await approved(t, 'React');
     await settle(async () => ran(t, 'setup'), (r) => r.length === 1, "React's setup");
     await approved(t, 'Vue');
     held.open();
-    await until(t.api, (c) => c.stalled === 'docker');
+    await until(t.api, (c) => c.stalled === 'sandbox');
     await t.api.switchCourse(react);
-    expect((await t.api.course())!.stalled).toBe('docker');
+    expect((await t.api.course())!.stalled).toBe('sandbox');
     await pause();
     expect(ran(t, 'setup')).toHaveLength(1);
   });
@@ -283,8 +283,10 @@ describe('live CodeLearnApi: several courses (§4.13)', () => {
     expect(heard.some((p) => p.kind === 'research')).toBe(true);
   });
 
-  it.each(['docker', 'docker-busy', 'docker-failed'] as const)('ends a %s stall once Check this computer passes, and starts the course again; other stalls stay', async (stalled) => {
-    let problem: typeof stalled | undefined = stalled;
+  it.each(['sandbox', 'sandbox-busy'] as const)('ends a stall a %s failure caused once Check this computer passes, and starts the course again; other stalls stay', async (failure) => {
+    // A busy sandbox is shown as the sandbox's stall: the banner has no row for "too busy".
+    const stalled = 'sandbox';
+    let problem: typeof failure | undefined = failure;
     const t = live({ setup: (_job, usual) => (problem ? { ok: false, problem } : usual()) });
     await approved(t, 'React');
     await until(t.api, (c) => c.stalled === stalled);
@@ -300,7 +302,8 @@ describe('live CodeLearnApi: several courses (§4.13)', () => {
     expect((await other.api.course())!.stalled).toBe('plan-limit');
   });
 
-  it.each(['disk', 'docker-disk'] as const)("ends a course's %s stall once its check succeeds, and starts its work again", async (stalled) => {
+  it("ends a course's disk stall once its check succeeds, and starts its work again", async () => {
+    const stalled = 'disk';
     let full = false;
     const t = live({ lesson: (_job, usual) => (full ? { ok: false, problem: stalled } : usual()) });
     const activity = await practising(t);

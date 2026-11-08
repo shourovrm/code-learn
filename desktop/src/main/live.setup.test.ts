@@ -82,24 +82,16 @@ describe('live CodeLearnApi: setup consent and install (§4.1)', () => {
     await stopping;
   });
 
-  it('an install still waiting for Docker when quitting starts never runs, and records nothing', async () => {
-    let open: () => void = () => {};
-    const dockerUp = new Promise<void>((r) => (open = r));
-    let ready = async () => {};
-    const t = live({}, { dockerReady: () => ready() });
+  it('an install requested once quitting has begun never runs, and records nothing', async () => {
+    const t = live();
     const r = await researched(t);
     await t.api.approve(r.roadmap!.concepts);
     const { proposal } = await until(t.api, (c) => c.setup === 'consent');
     let installs = 0;
     t.c.install = async () => (installs++, {});
-    ready = () => dockerUp;
-    await t.api.install(proposal!.digest);
-    let stopped = false;
-    const stopping = t.api.stop().then(() => (stopped = true));
+    await t.api.stop();
+    await t.api.install(proposal!.digest).catch(() => undefined);
     await new Promise((res) => setTimeout(res, 20));
-    expect(stopped).toBe(false);
-    open();
-    await stopping;
     expect(installs).toBe(0);
     // Quitting isn't a failed gate: the proposal stays.
     expect(t.c.proposals.map((p) => p.digest)).toContain(proposal!.digest);
@@ -142,29 +134,6 @@ describe('live CodeLearnApi: setup consent and install (§4.1)', () => {
     await Promise.all([rebuilding, stopping]);
   });
 
-  it("shows a WASI track's language downloading before its checks (core §4.5)", async () => {
-    const t = live();
-    t.c.wasi.add('react@1');
-    const r = await researched(t);
-    await t.api.approve(r.roadmap!.concepts);
-    const { proposal } = await until(t.api, (c) => c.setup === 'consent');
-    const heard: JobProgress[] = [];
-    t.api.onJobProgress((p) => heard.push(p));
-    t.app.installProposal = async (ref, digest, onProgress) => {
-      onProgress?.({ phase: 'downloading' });
-      onProgress?.({ phase: 'checking' });
-      return t.c.install(ref, digest);
-    };
-    await t.api.install(proposal!.digest);
-    await until(t.api, (c) => c.setup === 'ready');
-    const install = heard.filter((p) => p.kind === 'setup' && p.thinking === false && !p.ended);
-    expect(install.map((p) => [p.stage, p.steps[0]?.kind === 'step' ? p.steps[0].label : undefined, p.part])).toEqual([
-      [1, undefined, undefined],
-      [1, 'Downloading the language', undefined],
-      [2, undefined, undefined],
-    ]);
-  });
-
   it("shows a track rebuild as a job of its own, named for the track, that ends with it, failed or not (§4.11)", async () => {
     const t = live();
     await practising(t);
@@ -184,10 +153,10 @@ describe('live CodeLearnApi: setup consent and install (§4.1)', () => {
 
     heard.length = 0;
     t.app.rebuildTrack = async () => {
-      throw coreError('The container runtime isn\'t running. Start Docker Desktop (or `podman machine start`).', 'docker');
+      throw coreError('bwrap: Creating new namespace failed: Operation not permitted', 'sandbox', 'sandbox-blocked');
     };
     // This computer's problem reaches the learner as code-learn's words and a next step, not core's.
-    await expect(t.api.rebuild('react@1')).rejects.toThrow("Docker isn't running. Open Docker Desktop, then try again.");
+    await expect(t.api.rebuild('react@1')).rejects.toThrow("code-learn's sandbox couldn't run that. Check this computer under Settings, then try again.");
     expect(heard.map((p) => [p.kind, p.ended ?? false])).toEqual([['rebuild', false], ['rebuild', true]]);
     expect(await t.api.jobProgress()).toEqual([]);
   });
@@ -266,7 +235,7 @@ describe('live CodeLearnApi: setup consent and install (§4.1)', () => {
     const r = await researched(t);
     await t.api.approve(r.roadmap!.concepts);
     const { proposal } = await until(t.api, (c) => c.setup === 'consent');
-    t.c.install = async () => { throw Object.assign(new Error('Docker could not finish.'), { name: 'CodeLearnError', kind: 'offline' }); };
+    t.c.install = async () => { throw Object.assign(new Error('The download failed.'), { name: 'CodeLearnError', kind: 'offline' }); };
     await t.api.install(proposal!.digest);
     expect(await until(t.api, (c) => c.setup === 'failed')).toMatchObject({ setupProblem: 'offline', proposal: { digest: proposal!.digest } });
   });
@@ -278,26 +247,26 @@ describe('live CodeLearnApi: setup consent and install (§4.1)', () => {
     expect(t.jobs.ran.map((j) => j.kind)).toEqual(['research', 'review']);
   });
 
-  it('a Docker failure during setup keeps the proposal, and Docker stopping during a Check is not counted', async () => {
+  it('a sandbox failure during setup keeps the proposal, and the sandbox stopping during a Check is not counted', async () => {
     const t = live();
     const r = await researched(t);
     await t.api.approve(r.roadmap!.concepts);
     const { proposal } = await until(t.api, (c) => c.setup === 'consent');
     const install = t.c.install;
     t.c.install = async () => {
-      throw coreError("The container runtime isn't running. Start Docker Desktop, then retry.", 'docker', 'runtime-down');
+      throw coreError("The systemd user session isn't reachable. Log in to a desktop session, then retry.", 'sandbox', 'no-user-session');
     };
     await t.api.install(proposal!.digest);
-    expect(await until(t.api, (c) => c.setup === 'failed')).toMatchObject({ setupProblem: 'docker', proposal: { digest: proposal!.digest } });
-    // A Docker that is up but doesn't answer is busy, not stopped. The log gets the cause's label, never core's text.
+    expect(await until(t.api, (c) => c.setup === 'failed')).toMatchObject({ setupProblem: 'sandbox', proposal: { digest: proposal!.digest } });
+    // A sandbox that ran out of time is shown as the sandbox's problem too. The log gets the cause's label, never core's text.
     t.c.install = async () => {
-      throw coreError("The container runtime isn't answering. It may be busy (a large build): wait a minute, then retry.", 'docker', 'runtime-busy');
+      throw coreError('The install took longer than a large build should: wait a minute, then retry.', 'sandbox', 'check-timeout');
     };
     await t.api.install(proposal!.digest);
-    expect(await until(t.api, (c) => c.setupProblem === 'docker-busy')).toMatchObject({ setup: 'failed', proposal: { digest: proposal!.digest } });
+    await vi.waitFor(() => expect(readFileSync(t.logFile, 'utf8')).toMatch(/ setup-failed problem=sandbox-busy cause=check-timeout\n/));
+    expect(await t.api.course()).toMatchObject({ setup: 'failed', setupProblem: 'sandbox', proposal: { digest: proposal!.digest } });
     const logged = readFileSync(t.logFile, 'utf8');
-    expect(logged).toMatch(/ setup-failed problem=docker cause=runtime-down\n/);
-    expect(logged).toMatch(/ setup-failed problem=docker-busy cause=runtime-busy\n/);
+    expect(logged).toMatch(/ setup-failed problem=sandbox cause=no-user-session\n/);
     expect(logged).not.toMatch(/large build/);
     t.c.install = install;
     await t.api.install(proposal!.digest);
@@ -306,9 +275,9 @@ describe('live CodeLearnApi: setup consent and install (§4.1)', () => {
     const s = live();
     const activity = await practising(s);
     s.app.checkExercise = async () => {
-      throw coreError("The container runtime stopped during the run, so it wasn't counted. Start Docker Desktop.", 'docker');
+      throw coreError("The sandbox stopped during the run, so it wasn't counted.", 'sandbox', 'sandbox-failed');
     };
-    expect(await s.api.check(activity.id)).toEqual({ kind: 'not-counted', reason: "Docker isn't running." });
+    expect(await s.api.check(activity.id)).toEqual({ kind: 'not-counted', reason: "code-learn's sandbox couldn't run that." });
   });
 
   it("shows a setup's install as code-learn's own stage, and another proposal as a retry", async () => {
@@ -366,7 +335,7 @@ describe('live CodeLearnApi: setup consent and install (§4.1)', () => {
     const actedOn = new Promise<void>((r) => (acted = r));
     const t = live({
       setup: async () => {
-        t.c.proposals.push({ track: 'react@1', digest: 'a'.repeat(64), created: new Date().toISOString(), files: { Dockerfile: 'FROM x' } });
+        t.c.proposals.push({ track: 'react@1', digest: 'a'.repeat(64), created: new Date().toISOString(), files: { 'track.yaml': 'id: react' } });
         // The learner approves while the agent is still ending its turn, and the gates reject it.
         await actedOn;
         await new Promise((r) => setTimeout(r, 5));
@@ -402,18 +371,18 @@ describe('live CodeLearnApi: setup consent and install (§4.1)', () => {
   });
 });
 
-describe('Docker Desktop for the learner (§6.1)', () => {
-  it("installs and opens Docker through the installer, opens Windows Update, restarts Windows on the learner's click, and logs the install and the restart", async () => {
-    const calls: string[] = [];
-    const t = live({}, {
-      docker: { install: () => void calls.push('install'), open: async () => void calls.push('open'), windowsUpdate: async () => void calls.push('windows-update'), restartWindows: async () => void calls.push('restart') },
-    });
-    await t.api.installDocker();
-    await t.api.openDocker();
-    await t.api.openWindowsUpdate();
-    await t.api.restartWindows();
-    expect(calls).toEqual(['install', 'open', 'windows-update', 'restart']);
-    expect(readFileSync(t.logFile, 'utf8')).toMatch(/ docker-install\n/);
-    expect(readFileSync(t.logFile, 'utf8')).toMatch(/ restart\n/);
+describe('removing a track (§4.4)', () => {
+  it("removes an installed track through core, and logs it; core's refusal reaches the learner as core's words", async () => {
+    const t = live();
+    const removed: string[] = [];
+    t.app.removeTrack = async (ref) => (removed.push(ref), { removed: ref });
+    await t.api.removeTrack('react@1');
+    expect(removed).toEqual(['react@1']);
+    expect(readFileSync(t.logFile, 'utf8')).toMatch(/ track-remove\n/);
+
+    t.app.removeTrack = async (ref) => {
+      throw coreError(`${ref} is used by course "react", so it can't be removed while they need it.`);
+    };
+    await expect(t.api.removeTrack('react@1')).rejects.toThrow(`react@1 is used by course "react", so it can't be removed while they need it.`);
   });
 });

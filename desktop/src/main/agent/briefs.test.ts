@@ -104,7 +104,8 @@ describe('job briefs', () => {
 // JOBS is the one list of each job's code-learn tools (DESIGN §3.2); core's briefs must keep to it.
 describe('each job\'s tools and its brief', () => {
   const kinds = Object.keys(JOBS) as JobKind[];
-  const named = (brief: string) => new Set(brief.match(new RegExp(`(?<!-)\\b(${TOOL_NAMES.join('|')})\\b(?!-)`, 'g')));
+  // A tool is named in backticks: `check` is also the plain word in "runs every check in a sandbox".
+  const named = (brief: string) => new Set([...brief.matchAll(new RegExp(`\`(${TOOL_NAMES.join('|')})\``, 'g'))].map((m) => m[1]!));
 
   it('has a core brief for exactly the desktop\'s jobs, so the two JobKinds agree', () => {
     expect(Object.keys(JOB_BRIEFS).sort()).toEqual([...kinds].sort());

@@ -86,29 +86,21 @@ export interface CoreProgramRun {
 export interface CoreApp {
   /** core templates.ts: one brief per agent job, the same text the terminal uses. */
   JOB_BRIEFS: Record<'research' | 'review' | 'roadmap' | 'setup' | 'lesson' | 'author' | 'tutor', string>;
-  /** core doctor.ts: whether the sandbox is cut off from the host network (Check this computer's last row). */
-  networkIsolation(): Promise<{ name: string; ok: boolean; detail: string; kind?: 'offline' | 'disk' | 'docker' }>;
-  /** core sandbox.ts: the arguments that ask the engine for its version and kind of containers. */
-  RUNTIME_INFO: string[];
-  /**
-   * core sandbox.ts: asks that within a bound (null: no answer in time), once more for longer if the engine is silent,
-   * and reads the answer as missing, down, busy (never answered), Windows containers or ready.
-   */
-  runtimeState(ask: (timeoutMs: number) => Promise<{ exit: number; output: string } | null>): Promise<'missing' | 'down' | 'busy' | 'windows' | 'ready'>;
+  /** core sandbox.ts: why sandboxes can't run here (a code and a message), or undefined when they work. */
+  sandboxDown(): Promise<{ code: string; message: string; help: string } | undefined>;
+  /** core doctor.ts: the isolation self-test, run in the same sandbox a check gets. */
+  isolation(): Promise<{ name: string; ok: boolean; detail: string; kind?: 'offline' | 'disk' | 'sandbox' }>;
   readWorkspace(ws: string): { course?: string; current?: string };
   /** An exercise's solution, mutants, hidden tests and hidden expected outputs, for the reply filter only. */
   hiddenMaterial(course: string, slug: string): string[];
-  /**
-   * core toolchain.ts: the fetch a WASI track's toolchain downloads with (core §4.5). Redirects come back unfollowed,
-   * for core to check each hop. Optional until the core that has it is bundled.
-   */
-  setToolchainFetch?(fetcher?: (url: string, init: { redirect: 'manual'; signal: AbortSignal }) => Promise<Response>): void;
-  /** `track` is `id@version`; `engine` is what runs its code: Docker, or wasmtime for a WASI track (core §4.5). */
-  listTracks(): { track: string; styles: string[]; files: string[]; engine?: 'docker' | 'wasi' }[];
+  /** `track` is `id@version`. */
+  listTracks(): { track: string; styles: string[]; files: string[] }[];
+  /** Removes an installed track and its toolchain folder; core refuses while a course uses it. */
+  removeTrack(ref: string): Promise<{ removed: string }>;
   rebuildTrack(ref: string): Promise<unknown>;
   saveRoadmap(ws: string, course: string, yaml: string, bound?: string, activate?: boolean): Promise<{ course: string }>;
   progress(ws: string, bound?: string): CoreProgress;
-  /** Containers whose owning code-learn process is gone are removed (doctor --fix's rule). Added by scripts/core-entry.ts. */
+  /** Sandbox scopes whose owning code-learn process is gone are stopped (doctor --fix's rule). Added by scripts/core-entry.ts. */
   cleanupLeftovers(): Promise<void>;
   getExercise(ws: string, slug?: string, bound?: string): Promise<CoreExercise>;
   testExercise(ws: string, slug?: string, bound?: string, onProgress?: (p: CheckProgress) => void): Promise<CoreCheckView>;
@@ -116,13 +108,11 @@ export interface CoreApp {
   skip(ws: string, concept: string, bound?: string): Promise<void>;
   assertRuntime(): Promise<void>;
   getRoadmap(ws: string, bound?: string): CoreRoadmap;
-  /** `engine`: core reads it from the proposal's track.yaml (core §4.5); the desktop never works it out. */
-  listProposals(): { track: string; digest: string; created: string; files: Record<string, string>; engine?: 'docker' | 'wasi' }[];
+  listProposals(): { track: string; digest: string; created: string; files: Record<string, string> }[];
   /**
-   * `onProgress` hears each build step as counts, or a WASI track's toolchain downloading, then the probes: never the
-   * build's output (core §4.4, §4.5).
+   * `onProgress` hears each install step as counts, then the probes: never the installer's output (core §4.4, §4.6).
    */
-  installProposal(ref: string, digest: string, onProgress?: (p: { phase: 'building'; done: number; total: number } | { phase: 'downloading' } | { phase: 'checking' }) => void): Promise<unknown>;
+  installProposal(ref: string, digest: string, onProgress?: (p: { phase: 'building'; done: number; total: number } | { phase: 'checking' }) => void): Promise<unknown>;
   dropProposal(ref: string): Promise<void>;
   getLesson(ws: string, id: string, bound?: string): CoreLesson;
   /**

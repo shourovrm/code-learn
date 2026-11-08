@@ -1,6 +1,6 @@
 // Windows' PATH as installers leave it in the registry, merged into this process's own (DESIGN §3.1). A process
-// keeps the environment it started with, so without this an agent or Docker installed while code-learn is open stays
-// "Not installed" until code-learn restarts. Agent jobs and core's docker calls inherit process.env, so they see it too.
+// keeps the environment it started with, so without this an agent installed while code-learn is open stays
+// "Not installed" until code-learn restarts. Agent jobs inherit process.env, so they see it too.
 import { execFile } from 'node:child_process';
 import { win32 } from 'node:path';
 

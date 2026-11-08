@@ -12,9 +12,9 @@ const appFrame = { fromApp: true };
 
 describe('errors at the IPC boundary (D4)', () => {
   it("logs core's code for this computer's problem, never its text, and no code from anything else", () => {
-    const busy = Object.assign(new Error("The container runtime isn't answering. /h/secret"), { name: 'CodeLearnError', kind: 'docker', code: 'runtime-busy' });
-    expect(errorFields(busy)).toEqual({ kind: 'core', name: 'CodeLearnError', code: undefined, cause: 'runtime-busy' });
-    expect(errorFields(Object.assign(new Error('x'), { code: 'runtime-busy' }))).toMatchObject({ kind: 'internal', cause: undefined });
+    const busy = Object.assign(new Error("The check didn't finish in time. /h/secret"), { name: 'CodeLearnError', kind: 'sandbox', code: 'check-timeout' });
+    expect(errorFields(busy)).toEqual({ kind: 'core', name: 'CodeLearnError', code: undefined, cause: 'check-timeout' });
+    expect(errorFields(Object.assign(new Error('x'), { code: 'check-timeout' }))).toMatchObject({ kind: 'internal', cause: undefined });
     expect(errorFields(Object.assign(new Error('x'), { code: 'ENOSPC' }))).toMatchObject({ code: 'ENOSPC', cause: undefined });
   });
 

@@ -29,7 +29,7 @@ import { jobTracker, type JobTracker } from './agent/progress';
 import { briefsFrom, courseId } from './agent/briefs';
 import { runJob as realRunJob, type Job, type JobKind, type JobOutcome, type JobProblem } from './agent/jobs';
 import type { connector } from './connect';
-import { infraOf, kindOf } from './core/failures';
+import { infraOf, kindOf, type Infra } from './core/failures';
 import { errorFields, SafeError } from './errors';
 import type { CoreApp, CoreProgress, CoreRoadmap } from './core/types';
 import { courseView, currentConcept, otherReady, type Setup } from './courseView';
@@ -60,15 +60,8 @@ export interface LiveDeps {
   usage?: ReturnType<typeof usageStore>;
   /** Lifecycle and detection events only (log.ts). */
   log?: Log;
-  /** Resolves once Docker isn't starting any more (§6.1). */
-  dockerReady?: () => Promise<void>;
-  /** Brings PATH up to date, on Windows from the registry (livePath.ts, §3.1): agents, Docker and core's docker calls rely on it. */
+  /** Brings PATH up to date, on Windows from the registry (livePath.ts, §3.1): agents rely on it. */
   livePath?: () => Promise<void>;
-  /**
-   * Installs and opens Docker Desktop for the learner, Windows Update when Windows is too old for it, and Windows'
-   * restart when WSL needs one (dockerDesktop.ts, §6.1).
-   */
-  docker?: { install(): void; open(): Promise<void>; windowsUpdate(): Promise<void>; restartWindows(): Promise<void> };
 }
 
 export interface Live extends CodeLearnApi {
@@ -79,17 +72,25 @@ export interface Live extends CodeLearnApi {
 /** Setup proposals per setup before the learner gets Stop or Try again (§3.2). */
 const PROPOSAL_BOUND = 5;
 const problemError = (problem: JobProblem) =>
-  new Error({ 'plan-limit': PLAN_LIMIT, 'signed-out': SIGNED_OUT, offline: OFFLINE, failed: AGENT_FAILED, infra: AGENT_FAILED, rebuild: AGENT_FAILED, docker: AGENT_FAILED, 'docker-busy': AGENT_FAILED, 'docker-failed': AGENT_FAILED, 'docker-disk': AGENT_FAILED, disk: AGENT_FAILED, wasi: AGENT_FAILED, 'wasi-seal': AGENT_FAILED, unstoppable: UNSTOPPABLE }[problem]);
+  new Error({ 'plan-limit': PLAN_LIMIT, 'signed-out': SIGNED_OUT, offline: OFFLINE, failed: AGENT_FAILED, infra: AGENT_FAILED, rebuild: AGENT_FAILED, sandbox: AGENT_FAILED, 'sandbox-busy': AGENT_FAILED, disk: AGENT_FAILED, unstoppable: UNSTOPPABLE }[problem]);
 type Stall = NonNullable<CourseView['stalled']>;
-/** Stalls Docker caused, which end once Check this computer passes (§4.13). */
-const DOCKER_STALLS: Stall[] = ['docker', 'docker-busy', 'docker-failed'];
 /**
- * Stalls that end once a step running the course's code works: Docker's, its disk's, this computer's disk, the
- * track's image, and a WASI track's wasmtime or read-only files.
+ * Stalls that end once a step running the course's code works: the sandbox's, this computer's disk, and the track's
+ * toolchain.
  */
-const CONTAINER_STALLS: Stall[] = [...DOCKER_STALLS, 'docker-disk', 'disk', 'rebuild', 'wasi', 'wasi-seal'];
-/** Why background work stalled: Docker and the disk say so; another infrastructure failure is a plain one the learner retries. */
-const stallOf = (problem: JobProblem = 'failed'): Stall => (problem === 'infra' ? 'failed' : problem);
+const CONTAINER_STALLS: Stall[] = ['sandbox', 'disk', 'rebuild'];
+/** Stalls the sandbox caused, which end once Check this computer passes (§4.13). */
+const SANDBOX_STALLS: Stall[] = ['sandbox'];
+/**
+ * Why background work stalled: the sandbox, the disk and the network say so; another infrastructure failure is a plain
+ * one the learner retries. A busy sandbox is the sandbox's stall: the banner has no row for "too busy".
+ */
+const stallOf = (problem: JobProblem = 'failed'): Stall => {
+  if (problem === 'infra') return 'failed';
+  return problem === 'sandbox-busy' ? 'sandbox' : problem;
+};
+/** What a setup that failed on this computer shows (the setup card has no row for "too busy"). */
+const setupProblemOf = (infra: Infra): SetupProblem => (infra === 'sandbox-busy' ? 'sandbox' : infra);
 /** core store.ts's damaged-record errors: the learner repairs them; a retry can't (§5). */
 function repairable(e: unknown): unknown {
   if (kindOf(e) === 'damaged') (e as Error).message = `${REPAIR}\n${(e as Error).message}`;
@@ -133,14 +134,13 @@ export function createLive(d: LiveDeps): Live {
   const { core, ws } = d;
   const runJob = d.runJob ?? realRunJob;
   const log = d.log ?? noLog;
-  const dockerReady = d.dockerReady ?? (async () => {});
-  const livePath = d.livePath ?? (async () => {});
+    const livePath = d.livePath ?? (async () => {});
   const briefs = briefsFrom(core.JOB_BRIEFS);
   const running = new Map<string, Running>();
   const reviewing = new Set<string>();
   /**
    * One-at-a-time queues, by name (§3.2, §4.13): each course's foreground lane, background queue and tutor turns
-   * (`fg:`, `bg:`, `tutor:` and the course), and across courses, track builds and author jobs: Docker-heavy work.
+   * (`fg:`, `bg:`, `tutor:` and the course), and across courses, track builds and author jobs: sandbox-heavy work.
    */
   const queues = new Map<string, ReturnType<typeof turns>>();
   const queue = (name: string) => {
@@ -169,17 +169,17 @@ export function createLive(d: LiveDeps): Live {
     return run.finally(() => runs.delete(run));
   };
   /**
-   * Runs a track's operation once Docker isn't starting, tracked for quitting from the start: quitting waits for
-   * it, and an operation still waiting when quitting starts never runs. A trackless course or WASI track never waits for Docker.
+   * Runs an operation tracked for quitting from the start: quitting waits for it, and an operation that starts after
+   * quitting began never runs.
    */
-  const whenReady = <T>(track: string | undefined, operation: () => Promise<T>): Promise<T> =>
+  const whenReady = <T>(operation: () => Promise<T>): Promise<T> =>
     tracked(
-      (!track || onWasi(track) ? Promise.resolve() : dockerReady()).then(() => {
+      Promise.resolve().then(() => {
         if (stopping) throw new SafeError('code-learn is quitting.');
         return operation();
       }),
     );
-  // Containers left by an earlier run of the app, whose owner is gone (§5).
+  // Sandbox scopes left by an earlier run of the app, whose owner is gone (§5).
   void core.cleanupLeftovers().catch(() => undefined);
   /** Each track's setup (§4.1), shared by the courses on it (§4.13). */
   const setups = new Map<string, SetupRun>();
@@ -204,17 +204,6 @@ export function createLive(d: LiveDeps): Live {
     }
   };
   const installed = (ref: string) => core.listTracks().some((t) => t.track === ref);
-  /** Whether a track runs on the WASI engine (core §4.5), as core names it: the installed track, else its proposal. */
-  const onWasi = (ref: string | undefined): boolean => {
-    if (!ref) return false;
-    try {
-      const track = core.listTracks().find((t) => t.track === ref);
-      if (track) return track.engine === 'wasi';
-      return core.listProposals().find((p) => p.track === ref)?.engine === 'wasi';
-    } catch {
-      return false;
-    }
-  };
   /** A course's track (the active one's by default, as core's calls); none for a course whose roadmap can't be read. */
   const trackOf = (course?: string) => {
     try {
@@ -471,8 +460,8 @@ export function createLive(d: LiveDeps): Live {
     if (agents.some((a) => a.state === 'connected')) for (const [course, why] of [...stalls]) if (why === 'signed-out') resume(course);
   }
 
-  /** A Docker step of a course worked: a stall Docker, a disk or the track's image caused is over (§4.13). */
-  function dockerWorked(course: string | undefined) {
+  /** A sandboxed step of a course worked: a stall the sandbox, a disk or the track's toolchain caused is over (§4.13). */
+  function sandboxWorked(course: string | undefined) {
     const why = course ? stalls.get(course) : undefined;
     if (why && CONTAINER_STALLS.includes(why)) resume(course);
   }
@@ -602,8 +591,8 @@ export function createLive(d: LiveDeps): Live {
     }
   }
 
-  // Run's programs, by run id (§4.10): programs.ts. They run on the approved course's track, so wait for Docker only on a Docker track.
-  const programRuns = programs({ whenDockerReady: (operation) => whenReady(trackOf(approved()), operation), log });
+  // Run's programs, by run id (§4.10): programs.ts. 
+  const programRuns = programs({ whenReady, log });
 
   /** Research jobs that ended but whose sources aren't saved yet. */
   const finishing = new Set<string>();
@@ -658,26 +647,12 @@ export function createLive(d: LiveDeps): Live {
       log('model', { agent: id, model });
       return agent;
     },
-    async installDocker() {
-      log('docker-install', {});
-      d.docker?.install();
-    },
-    async openDocker() {
-      await d.docker?.open();
-    },
-    async openWindowsUpdate() {
-      await d.docker?.windowsUpdate();
-    },
-    async restartWindows() {
-      log('restart', {});
-      await d.docker?.restartWindows();
-    },
     async computer() {
       await livePath();
       const computer = await d.computer();
-      log('computer', { platform: computer.platform, ...Object.fromEntries(computer.checks.map((c) => [c.id, c.detail ?? c.state])) });
-      // Docker works again: every course it stalled starts again (§4.13).
-      if (computer.ready) for (const [course, why] of [...stalls]) if (DOCKER_STALLS.includes(why)) resume(course);
+      log('computer', Object.fromEntries(computer.checks.map((c) => [c.id, c.state])));
+      // The sandbox works again: every course it stalled starts again (§4.13).
+      if (computer.ready) for (const [course, why] of [...stalls]) if (SANDBOX_STALLS.includes(why)) resume(course);
       return computer;
     },
 
@@ -844,18 +819,17 @@ export function createLive(d: LiveDeps): Live {
       mine.installs++;
       let tracker: JobTracker | undefined;
       // Tracked and guarded like every container operation: quitting waits for it, its failure handling included, and
-      // one still waiting for its turn or for Docker when quitting starts never runs. Builds take turns across courses.
+      // one still waiting for its turn when quitting starts never runs. Builds take turns across courses.
       mine.installing = tracked(queue('builds')(() => {
         // code-learn builds and checks the approved files once its turn comes: the setup's later stages (§4.11).
         const t = (tracker = jobTracker('setup'));
         trackers.set(`install:${ref}`, { tracker: t, audience: { track: ref } });
         t.reach(1);
         tellJob(t.snapshot(), { track: ref });
-        return whenReady(ref, () =>
+        return whenReady(() =>
           core.installProposal(ref, digest, (p) => {
-            // Counts only: the build's steps or a WASI track's language downloading, then its checks.
+            // Counts only: the toolchain install's steps, then the checks.
             if (p.phase === 'building') t.reach(1, { done: p.done, total: p.total });
-            else if (p.phase === 'downloading') t.reach(1, undefined, 'Downloading the language');
             else t.reach(2);
             tellJob(t.snapshot(), { track: ref });
           }),
@@ -863,7 +837,7 @@ export function createLive(d: LiveDeps): Live {
       })
         .then(() => {
           mine.approved = undefined;
-          onTrack(ref, course).forEach(dockerWorked);
+          onTrack(ref, course).forEach(sandboxWorked);
         })
         .catch(async (e: Error) => {
           // Quitting isn't a failed setup: nothing is recorded and the proposal stays.
@@ -872,7 +846,7 @@ export function createLive(d: LiveDeps): Live {
           const failure = infraOf(e);
           log('setup-failed', { problem: failure?.infra ?? 'gates', cause: failure?.cause });
           if (failure) {
-            mine.problem = failure.infra;
+            mine.problem = setupProblemOf(failure.infra);
             return;
           }
           mine.approved = undefined;
@@ -908,7 +882,7 @@ export function createLive(d: LiveDeps): Live {
     async runExample(lessonId, index) {
       try {
         const course = approved();
-        return exampleRunView(await whenReady(trackOf(course), () => core.runExample(ws, lessonId, index, course)));
+        return exampleRunView(await whenReady(() => core.runExample(ws, lessonId, index, course)));
       } catch (e) {
         return asNotCounted(e, log, 'example', 'not-run');
       }
@@ -941,8 +915,8 @@ export function createLive(d: LiveDeps): Live {
     async tryIt(activityId, run) {
       try {
         const course = approved();
-        const view = tryView(await whenReady(trackOf(course), () => core.testExercise(ws, activityId, course, progressOf(run))));
-        dockerWorked(course);
+        const view = tryView(await whenReady(() => core.testExercise(ws, activityId, course, progressOf(run))));
+        sandboxWorked(course);
         return view;
       } catch (e) {
         return asNotCounted(e, log, 'try', 'not-counted');
@@ -958,11 +932,11 @@ export function createLive(d: LiveDeps): Live {
     async check(activityId, run) {
       try {
         const course = approved();
-        const view = await whenReady(trackOf(course), () => core.checkExercise(ws, activityId, course, progressOf(run)));
+        const view = await whenReady(() => core.checkExercise(ws, activityId, course, progressOf(run)));
         const concepts = core.listExercises(ws, course).find((e) => e.exercise === activityId)?.concepts ?? [];
         const progress = core.progress(ws, course);
         const state = progress.concepts.find((c) => concepts.includes(c.id));
-        dockerWorked(course);
+        sandboxWorked(course);
         // A graded check can move its course on: the next topic's lesson and activity.
         schedule(course);
         return checkView(view, { stuck: state?.stuck ?? false, mastered: state?.mastered ?? false, later: otherReady(progress, concepts) });
@@ -994,7 +968,7 @@ export function createLive(d: LiveDeps): Live {
       const course = approved();
       await core.skip(ws, concept, course);
       // Leaving an activity its agent couldn't write for later ends that stall: the next topic's lesson and activity
-      // start (core §7). Any other stall (Docker, the network, a plan limit) still waits for Try again.
+      // start (core §7). Any other stall (the network, a plan limit) still waits for Try again.
       if (course && stalls.get(course) === 'failed' && stalledWork.get(course) === 'author') resume(course);
       else schedule(course);
     },
@@ -1017,7 +991,7 @@ export function createLive(d: LiveDeps): Live {
           t.reach(0);
           trackers.set(`rebuild:${ref}`, { tracker: t, audience: {} });
           tellJob(t.snapshot(), {});
-          return whenReady(ref, () => core.rebuildTrack(ref));
+          return whenReady(() => core.rebuildTrack(ref));
         }),
       )
         .catch((e: unknown) => Promise.reject(rebuildFailure(e)))
@@ -1025,6 +999,12 @@ export function createLive(d: LiveDeps): Live {
           trackers.delete(`rebuild:${ref}`);
           if (tracker) tellJob({ ...tracker.snapshot(), ended: true }, {});
         });
+    },
+
+    async removeTrack(trackRef) {
+      log('track-remove', {});
+      // Core refuses while a course uses the track; its message is safe to show and says so.
+      await core.removeTrack(trackRef);
     },
 
     // The course on screen: the approved one, as course() shows, not a draft being researched.

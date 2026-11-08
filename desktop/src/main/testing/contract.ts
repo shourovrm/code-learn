@@ -5,8 +5,8 @@ import { CHANGED, type Activity, type CodeLearnApi, type CourseView, type Roadma
 
 export interface Subject {
   api: CodeLearnApi;
-  /** Docker stops: Try it and Check can't run. */
-  stopDocker(): void;
+  /** The sandbox stops: Try it and Check can't run. */
+  stopSandbox(): void;
 }
 
 const GOAL = { topic: 'React', known: '', depth: 'standard' as const, practice: 'code' as const };
@@ -101,10 +101,10 @@ export function codeLearnApiContract(name: string, make: () => Subject) {
       for (const t of hidden) expect(Object.keys(t).sort()).toEqual(['hidden', 'index', 'status']);
     });
 
-    it('says Try it and Check were not counted when Docker is down', async () => {
+    it('says Try it and Check were not counted when the sandbox is down', async () => {
       const subject = make();
       const activity = await practise(subject.api);
-      subject.stopDocker();
+      subject.stopSandbox();
       expect(await subject.api.tryIt(activity.id, 'contract-try')).toEqual({ kind: 'not-counted', reason: expect.any(String) });
       expect(await subject.api.check(activity.id, 'contract-check')).toEqual({ kind: 'not-counted', reason: expect.any(String) });
     });

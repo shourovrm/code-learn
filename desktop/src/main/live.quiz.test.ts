@@ -8,7 +8,7 @@ import { tempDir } from './testing/temp';
 
 afterEach(() => vi.unstubAllEnvs());
 
-it('checks a quiz through live core without Docker, then opens a new quiz and restores the style', async () => {
+it('checks a quiz through live core, then opens a new quiz and restores the style', async () => {
   vi.stubEnv('CODE_LEARN_HOME', tempDir());
   const ws = tempDir();
   await core.saveRoadmap(ws, 'quiz', quizRoadmap);
@@ -17,11 +17,10 @@ it('checks a quiz through live core without Docker, then opens a new quiz and re
   await core.saveExercise(ws, quizFiles());
   const state = desktopState(tempDir());
   state.update((s) => ({ ...s, approved: 'quiz', courses: ['quiz'] }));
-  const dockerReady = vi.fn(async () => { throw new Error('Quiz must not wait for Docker'); });
   const t = live({ author: async () => {
     await core.saveExercise(ws, quizFiles('second'));
     return {};
-  } }, { core: { ...fakeCore().app, ...core }, ws, state, dockerReady });
+  } }, { core: { ...fakeCore().app, ...core }, ws, state });
   await t.api.connect('claude');
   try {
     const activity = await t.api.activity('a');
@@ -32,7 +31,6 @@ it('checks a quiz through live core without Docker, then opens a new quiz and re
     expect(await t.api.check(activity.id)).toMatchObject({ kind: 'graded', passed: 0, total: 5, recorded: true });
     await until(t.api, (c) => c.topics[0].activity === 'open');
     expect((await t.api.activity('a')).id).toBe('second');
-    expect(dockerReady).not.toHaveBeenCalled();
     await t.api.setActivities(false);
     expect(core.getRoadmap(ws).style).toBe('none');
     await t.api.setActivities(true);
