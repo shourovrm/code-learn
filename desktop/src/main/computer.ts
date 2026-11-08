@@ -1,124 +1,70 @@
-// "Check this computer" (DESIGN §6.1): Docker is installed, it's running with
-// Linux containers, and the sandbox works. Only the first failing row is a
-// problem; the ones after it wait. Where code-learn installs Docker Desktop, a
-// docker command alone, with no engine answering, isn't installed yet. On
-// Windows, an engine that doesn't answer says what WSL needs, when that's why.
-import type { CheckId, Computer, ComputerCheck, DockerInstall, Platform } from '../shared/api';
-import type { Executable } from './agent/bridge';
-import { STARTING_MS } from './dockerDesktop';
+// "Check this computer" (DESIGN §6.1, core §4.6): the sandbox's requirements (bubblewrap and the systemd user
+// session), then core doctor's isolation self-test from inside a sandbox. Only the first failing row is a problem;
+// the one after it waits.
+import type { CheckId, Computer, ComputerCheck } from '../shared/api';
 import { noLog, type Log } from './log';
-import type { WslState } from './wsl';
 
 export interface Probe {
-  find(): Executable | null;
-  /** Whether the found engine is there, running, and running Linux containers (core sandbox.ts runtimeStateOf). */
-  state(docker: Executable): Promise<'missing' | 'down' | 'windows' | 'ready'>;
-  /** Core doctor's network-isolation check, with why it failed and, when known, the cause on this computer. */
-  sandbox(): Promise<{ ok: boolean; detail: string; kind?: 'offline' | 'disk' | 'docker' }>;
-  now(): number;
-  /** When code-learn last opened or installed Docker Desktop. Only then is a silent Docker "starting". */
-  startedAt?(): number | undefined;
-  /** code-learn can install Docker Desktop here, and the install it started. */
-  canInstall?: boolean;
-  /** Docker Desktop's own app is here (a docker command can come without it). */
-  desktopInstalled?(): boolean;
-  /** Docker Desktop's app is running, whether or not its engine answers yet. */
-  desktopRunning?(): Promise<boolean>;
-  install?(): DockerInstall | undefined;
-  /** On Windows, what WSL needs for Docker Desktop's engine, when that can be read (wsl.ts). */
-  wsl?(): Promise<WslState | undefined>;
-  /**
-   * Whether io practice can run here without Docker (core §4.5): no other container CLI (podman) is installed either,
-   * and wasmtime 50 runs. Asked only when no docker command is found.
-   */
-  wasi?(): Promise<boolean>;
+  /** Core's sandboxDown: undefined when sandboxes work here, otherwise core's code and message. */
+  sandbox(): Promise<{ code: string; message: string } | undefined>;
+  /** Core doctor's isolation self-test. */
+  isolation(): Promise<{ ok: boolean; detail: string }>;
+  /** The text of /etc/os-release, or undefined when it can't be read. */
+  osRelease(): string | undefined;
 }
 
-/** What WSL needs, as the running row says it: nothing when it's ready. */
-const WSL_DETAIL = { missing: 'wsl-missing', old: 'wsl-old', virtualization: 'virtualization', restart: 'restart' } as const;
-
-
-export const platformOf = (p: NodeJS.Platform): Platform => (p === 'darwin' ? 'mac' : p === 'win32' ? 'windows' : 'linux');
+/** The package managers whose bubblewrap package code-learn knows, by the distribution ids os-release names. */
+const INSTALL_COMMANDS: [ids: string[], command: string][] = [
+  [['arch', 'cachyos', 'manjaro', 'endeavouros'], 'sudo pacman -S bubblewrap'],
+  [['debian', 'ubuntu', 'linuxmint', 'pop'], 'sudo apt install bubblewrap'],
+  [['fedora', 'rhel', 'centos'], 'sudo dnf install bubblewrap'],
+  [['opensuse', 'suse', 'opensuse-tumbleweed', 'opensuse-leap'], 'sudo zypper install bubblewrap'],
+];
 
 /**
- * A re-checkable check: it remembers a sandbox that passed. A Docker that doesn't answer is "starting" only for
- * 3 minutes after code-learn opened or installed it, or after this check first saw Docker Desktop's app running (the
- * learner opened it); otherwise it's stopped, and the fix is to open it (§6.1). What WSL needs comes before either:
- * Docker's engine can't start without it.
- * A sandbox that fails within 3 minutes of Docker coming up is still being checked; after that, the fix is a restart.
+ * The command that installs bubblewrap on this distribution, from os-release's ID and then its ID_LIKE list, or
+ * undefined for a distribution code-learn doesn't know.
  */
-export function computerCheck(probe: Probe, platform: NodeJS.Platform = process.platform, log: Log = noLog): () => Promise<Computer> {
-  let sandboxOk = false;
-  let reason: ComputerCheck['reason'];
-  let down = false;
-  let upAt: number | undefined;
-  /** When this check first saw Docker Desktop's app running with its engine down. */
-  let openAt: number | undefined;
-  let lastReason: string | undefined;
-  /** Set once wasmtime ran: it stays while code-learn runs. */
-  let wasi = false;
-  /** Whether the last check found a docker command, running or not. */
-  let installed = false;
-  const recent = (at: number | undefined) => at !== undefined && probe.now() - at <= STARTING_MS;
+export function installCommand(osRelease: string | undefined): string | undefined {
+  if (!osRelease) return undefined;
+  const field = (name: string) => new RegExp(`^${name}=(.*)$`, 'm').exec(osRelease)?.[1]?.replace(/^["']|["']$/g, '').toLowerCase() ?? '';
+  const ids = [field('ID'), ...field('ID_LIKE').split(/\s+/)].filter(Boolean);
+  for (const id of ids) {
+    const known = INSTALL_COMMANDS.find(([names]) => names.includes(id));
+    if (known) return known[1];
+  }
+  return undefined;
+}
 
-  async function failing(): Promise<{ at: number; detail?: ComputerCheck['detail']; reason?: ComputerCheck['reason'] } | null> {
-    const docker = probe.find();
-    installed = docker !== null;
-    const state = docker ? await probe.state(docker) : 'missing';
-    if (state === 'missing' || state === 'down') down = true;
-    // Open Docker Desktop can't start an engine that isn't Docker Desktop's: install it instead.
-    if (state === 'missing' || (state === 'down' && probe.canInstall && probe.desktopInstalled?.() === false)) return { at: 0 };
-    if (state !== 'down') openAt = undefined;
-    else if (await probe.desktopRunning?.()) openAt ??= probe.now();
-    else openAt = undefined;
-    if (state === 'down') {
-      // Docker's installer or WSL's setup asked for a restart: nothing starts before it.
-      if (probe.install?.()?.problem === 'restart') return { at: 1, detail: 'restart' };
-      const wsl = await probe.wsl?.();
-      if (wsl && wsl !== 'ready') return { at: 1, detail: WSL_DETAIL[wsl] };
-      return { at: 1, ...(recent(probe.startedAt?.()) || recent(openAt) ? { detail: 'starting' as const } : {}) };
+/** A re-checkable check: it remembers a self-test that passed, since nothing a learner does can undo it. */
+export function computerCheck(probe: Probe, log: Log = noLog): () => Promise<Computer> {
+  let isolationOk = false;
+  let lastReason: string | undefined;
+
+  async function failing(): Promise<{ at: number; reason: string; installCommand?: string } | null> {
+    const down = await probe.sandbox();
+    if (down) {
+      const command = down.code === 'no-sandbox' ? installCommand(probe.osRelease()) : undefined;
+      return { at: 0, reason: down.message, ...(command ? { installCommand: command } : {}) };
     }
-    if (state === 'windows') return { at: 1, detail: 'windows-containers' };
-    if (down) [down, upAt] = [false, probe.now()];
-    if (!sandboxOk) {
-      const sandbox = await probe.sandbox();
-      sandboxOk = sandbox.ok;
-      // Logged when the reason changes, not on every re-check.
-      if (!sandbox.ok && sandbox.detail !== lastReason) log('sandbox', { reason: sandbox.detail, ...(sandbox.kind ? { kind: sandbox.kind } : {}) });
-      lastReason = sandbox.ok ? undefined : sandbox.detail;
-      const text = sandbox.detail.replace(/^inconclusive: /, '');
-      reason = !sandbox.ok && sandbox.kind ? { kind: sandbox.kind, text, ...(text !== sandbox.detail ? { inconclusive: true as const } : {}) } : undefined;
-    }
-    if (sandboxOk) return null;
-    // Offline or out of disk is no slow first container; anything else just after Docker came up is still being checked.
-    if (reason && reason.kind !== 'docker') return { at: 2, reason };
-    if (recent(upAt) || recent(probe.startedAt?.())) return { at: 2, detail: 'checking' };
-    return { at: 2, ...(reason ? { reason } : {}) };
+    if (isolationOk) return null;
+    const self = await probe.isolation();
+    isolationOk = self.ok;
+    if (self.ok) return null;
+    return { at: 1, reason: self.detail };
   }
 
   return async () => {
     const problem = await failing();
-    const ids: CheckId[] = ['docker-installed', 'docker-running', 'sandbox'];
+    // Logged when the reason changes, not on every re-check.
+    if (problem && problem.reason !== lastReason) log('computer', { reason: problem.reason });
+    lastReason = problem?.reason;
+    const ids: CheckId[] = ['sandbox', 'isolation'];
     const checks = ids.map((id, i): ComputerCheck => {
       if (!problem || i < problem.at) return { id, state: 'ok' };
       if (i > problem.at) return { id, state: 'waiting' };
-      return { id, state: 'problem', ...(problem.detail ? { detail: problem.detail } : {}), ...(problem.reason ? { reason: problem.reason } : {}) };
+      return { id, state: 'problem', reason: problem.reason, ...(problem.installCommand ? { installCommand: problem.installCommand } : {}) };
     });
-    const install = probe.install?.();
-    // Only with no Docker installed: a computer with Docker gets Docker tracks, and a stopped one is started (core §4.5).
-    const without = Boolean(problem) && !installed;
-    if (without && !wasi) wasi = (await probe.wasi?.()) ?? false;
-    return {
-      platform: platformOf(platform), checks, ready: !problem, ...(probe.canInstall ? { canInstall: true } : {}), ...(install ? { install } : {}),
-      ...(without && wasi ? { wasi: true as const } : {}),
-    };
+    return { checks, ready: !problem };
   };
-}
-
-/**
- * Waits while Docker is starting, which is only after code-learn opened or installed it: setup and checks started
- * then wait for the daemon, within the same 3-minute window Check this computer shows. A stopped Docker fails fast (§6.1).
- */
-export async function waitWhileStarting(computer: () => Promise<Computer>, nap: () => Promise<void>): Promise<void> {
-  while ((await computer()).checks.some((c) => c.id === 'docker-running' && c.detail === 'starting')) await nap();
 }

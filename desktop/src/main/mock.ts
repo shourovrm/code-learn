@@ -7,6 +7,7 @@ import { type CheckProgress, type JobKind, type JobProgress, type JobStep, type 
   AGENT_FAILED,
   CHANGED,
   NO_AGENT,
+  NOT_COUNTED,
   OFFLINE,
   PLAN_LIMIT,
   REBUILD,
@@ -15,42 +16,40 @@ import { type CheckProgress, type JobKind, type JobProgress, type JobStep, type 
   type Agent,
   type AgentId,
   type AgentInstall,
-  type ComputerCheck,
   type CheckResult,
   type CodeLearnApi,
   type Concept,
   type CourseView,
   type Lesson,
-  type Platform,
   type Roadmap,
   type SetupProblem,
   type TestView,
   type Track,
-  type DockerInstall,
 } from '../shared/api';
 import { modelChoices, modelFor } from '../shared/models';
 import { AGENT_INFO } from './connect';
 import { addTopic } from '../shared/roadmap';
 import { shownTopic } from '../shared/topic';
 
-/** Windows' WSL states are the running row's, as Docker Desktop's engine can't start without WSL. */
-type Wsl = 'wsl-missing' | 'wsl-old' | 'virtualization' | 'wsl-restart';
-type Docker = 'missing' | 'stopped' | 'starting' | 'windows-containers' | Wsl | 'no-sandbox' | 'sandbox-checking' | 'sandbox-offline' | 'sandbox-folder' | 'ready';
+/** The computer the mock pretends to be: only agent installs differ by platform now. */
+type Platform = 'mac' | 'windows' | 'linux';
+/**
+ * The sandbox's state (core §4.6): ready; bubblewrap missing, on a distribution code-learn knows (`no-bwrap`) or not
+ * (`no-bwrap-unknown`); no systemd user session; or the isolation self-test failing.
+ */
+type Sandbox = 'ready' | 'no-bwrap' | 'no-bwrap-unknown' | 'no-session' | 'isolation-failed';
 
 export interface MockOptions {
   /** Read on every call, so a test can change it while the app runs. */
-  docker?: Docker;
+  sandbox?: Sandbox;
+  /** Where agent installs are offered: never on Linux, as the real installer. */
   platform?: Platform;
   /** Agents that aren't installed, or whose sign-in check fails. Read on every look, as main's lookup is. */
   agents?: Partial<Record<AgentId, 'missing' | 'signed-out'>>;
-  /** The track's image is missing or changed: checks aren't counted until it's rebuilt. */
-  imageMissing?: boolean;
+  /** The track's toolchain folder is missing: checks aren't counted until it's rebuilt. */
+  toolchainMissing?: boolean;
   /** Read on every call: agent jobs fail with this until it's cleared. */
   agentProblem?: 'signed-out' | 'plan-limit' | 'offline' | 'failed';
-  /** wasmtime runs here, so io practice runs without Docker when Docker isn't installed (core §4.5). */
-  wasi?: boolean;
-  /** Docker installs but doesn't start: its start window ends with Docker stopped. */
-  dockerWontStart?: boolean;
   /** Installing an agent stops with this problem. */
   agentInstallProblem?: NonNullable<AgentInstall['problem']>;
   untested?: boolean;
@@ -83,23 +82,18 @@ export interface MockOptions {
 
 /** Named environment states (D13), for tests and for `CODE_LEARN_MOCK` in development. */
 export const SCENARIOS: Record<string, MockOptions> = {
-  'no-docker': { docker: 'missing' },
-  'no-docker-wasi': { docker: 'missing', wasi: true },
-  'docker-stopped': { docker: 'stopped' },
-  'docker-starting': { docker: 'starting' },
-  'sandbox-checking': { docker: 'sandbox-checking' },
-  'windows-containers': { docker: 'windows-containers', platform: 'windows' },
-  'wsl-missing': { docker: 'wsl-missing', platform: 'windows' },
-  'virtualization-off': { docker: 'virtualization', platform: 'windows' },
-  'docker-stops': { later: { after: 'check', set: { docker: 'stopped' } } },
-  'docker-stops-jobs': { later: { after: 'approve', set: { docker: 'stopped', stalled: 'docker' } } },
-  'docker-wont-start': { docker: 'missing', dockerWontStart: true },
+  'no-bwrap': { sandbox: 'no-bwrap' },
+  'no-bwrap-unknown': { sandbox: 'no-bwrap-unknown' },
+  'no-user-session': { sandbox: 'no-session' },
+  'isolation-failed': { sandbox: 'isolation-failed' },
+  'sandbox-stops': { later: { after: 'check', set: { sandbox: 'no-session' } } },
+  'sandbox-stops-jobs': { later: { after: 'approve', set: { sandbox: 'no-session', stalled: 'sandbox' } } },
   'offline-setup': { setupProblem: 'offline' },
   'low-disk': { setupProblem: 'disk' },
   'setup-gates': { setupProblem: 'gates' },
   'no-agent': { agents: { claude: 'missing', codex: 'missing', cursor: 'missing' } },
-  'nothing-installed': { docker: 'missing', agents: { claude: 'missing', codex: 'missing', cursor: 'missing' } },
-  'nothing-installed-offline': { docker: 'missing', agents: { claude: 'missing', codex: 'missing', cursor: 'missing' }, agentInstallProblem: 'offline' },
+  'nothing-installed': { sandbox: 'no-bwrap', agents: { claude: 'missing', codex: 'missing', cursor: 'missing' } },
+  'nothing-installed-offline': { sandbox: 'no-bwrap', agents: { claude: 'missing', codex: 'missing', cursor: 'missing' }, agentInstallProblem: 'offline' },
   'agent-install-offline': { agents: { claude: 'missing', codex: 'missing', cursor: 'missing' }, agentInstallProblem: 'offline' },
   'one-agent': { agents: { codex: 'missing', cursor: 'missing' } },
   // Installed in a terminal while code-learn is open: Welcome and Connect see it within seconds.
@@ -110,10 +104,10 @@ export const SCENARIOS: Record<string, MockOptions> = {
   'plan-limit': { later: { after: 'approve', set: { agentProblem: 'plan-limit' } } },
   'untested-version': { untested: true },
   'io-track': { style: 'io' },
-  'io-docker-stopped': { style: 'io', docker: 'stopped' },
-  'image-missing': { imageMissing: true },
+  'io-sandbox-down': { style: 'io', sandbox: 'no-session' },
+  'toolchain-missing': { toolchainMissing: true },
   'run-time-up': { style: 'io', runLimitMs: 3000 },
-  'update-available': { update: { kind: 'available', version: '1.0.1', url: 'https://github.com/iignaite/Codemm/releases/tag/v1.0.1' } },
+  'update-available': { update: { kind: 'available', version: '1.0.1', url: 'https://github.com/code-learn/code-learn/releases/tag/v1.0.1' } },
   'update-ready': { update: { kind: 'ready', version: '1.0.1' } },
   'slow-jobs': { slow: 4 },
   'quiet-jobs': { slow: 4, quiet: true },
@@ -149,31 +143,12 @@ export function scenario(name: string | undefined): MockOptions {
   return structuredClone(SCENARIOS[name]);
 }
 
-const DOCKER_DOWN: Record<Exclude<Docker, 'ready'>, string> = {
-  missing: "Docker isn't installed on this computer.",
-  stopped: "Docker isn't running.",
-  starting: 'Docker is still starting.',
-  'windows-containers': 'Docker Desktop is set to Windows containers.',
-  'wsl-missing': "Docker isn't running.",
-  'wsl-old': "Docker isn't running.",
-  virtualization: "Docker isn't running.",
-  'wsl-restart': "Docker isn't running.",
-  'no-sandbox': "code-learn couldn't confirm the sandbox.",
-  'sandbox-checking': "code-learn couldn't confirm the sandbox.",
-  'sandbox-offline': "code-learn couldn't confirm the sandbox.",
-  'sandbox-folder': "code-learn couldn't confirm the sandbox.",
-};
-
-/** The sandbox self-test's own words for a known cause, as core gives them (core §4.3). */
-const SANDBOX_REASON: Partial<Record<Docker, NonNullable<ComputerCheck['reason']>>> = {
-  'sandbox-offline': {
-    kind: 'offline',
-    text: "Docker couldn't reach the network to download the test image (dial tcp: lookup registry-1.docker.io: no such host). Connect to the internet, check any VPN, proxy or firewall, then try again.",
-  },
-  'sandbox-folder': {
-    kind: 'docker',
-    text: "Docker couldn't start a test container with code-learn's folder mounted (mounts denied). code-learn keeps what a check mounts in ~/.code-learn/runs. If the engine says it can't see that folder, share it with the engine (Colima and Rancher Desktop share only your home folder by default), then try again.",
-  },
+/** Core's own words for each sandbox problem (core sandbox.ts and doctor.ts), as Check this computer shows them. */
+const SANDBOX_REASON: Record<Exclude<Sandbox, 'ready'>, string> = {
+  'no-bwrap': "bubblewrap (bwrap) isn't installed. Install bubblewrap 0.9 or later from your distribution (the package is usually called bubblewrap), then retry.",
+  'no-bwrap-unknown': "bubblewrap (bwrap) isn't installed. Install bubblewrap 0.9 or later from your distribution (the package is usually called bubblewrap), then retry.",
+  'no-session': "The systemd user session isn't reachable. code-learn needs a systemd user session for its sandbox limits. Log in to a desktop session (not only su or sudo), then retry.",
+  'isolation-failed': "these rules didn't hold: no network but loopback",
 };
 
 /** The connect screen's agents, as the connector describes them; code-learn installs each of them. */
@@ -256,8 +231,7 @@ function quizTests(text: string): TestView[] {
 }
 
 const PROPOSAL_FILES = [
-  { path: 'Dockerfile', text: 'FROM node:22-alpine\nWORKDIR /work\nRUN npm install --global vitest@3\n' },
-  { path: 'track.yaml', text: 'id: react\nversion: 1\nstyles: [unit]\n' },
+  { path: 'track.yaml', text: 'id: react\nversion: 1\nstyles: [unit]\nfiles: [src/App.jsx]\ntest: sh /opt/track/run-tests.sh\ntoolchain:\n  packages: ["nodejs=22"]\n  setup: npm ci\n' },
 ];
 
 /** A stable 64-hex stand-in for core's SHA-256 digests. */
@@ -300,14 +274,9 @@ export function createMock(options: MockOptions = {}): CodeLearnApi {
   const kept = new Map<string, { course: CourseView; approved: Roadmap; lessons: typeof lessons; activities: typeof activities; deferred: typeof deferred; quiz: boolean }>();
   let current = '';
 
-  // Installing or opening Docker moves the mock's Docker along, one step per check (§6.1).
-  let dockerNow: Docker | undefined;
-  let install: DockerInstall | undefined;
-  const WSL_SETUP = new Set<Docker>(['wsl-missing', 'wsl-old']);
-  const INSTALL_STEPS: DockerInstall[] = [{ phase: 'downloading', progress: 0.6 }, { phase: 'checking' }, { phase: 'installing' }, { phase: 'starting' }];
-  const docker = () => dockerNow ?? options.docker ?? 'ready';
-  const notCounted = () => ({ kind: 'not-counted' as const, reason: options.imageMissing ? REBUILD : DOCKER_DOWN[docker() as Exclude<Docker, 'ready'>] });
-  const counts = () => docker() === 'ready' && !options.imageMissing;
+  const sandbox = () => options.sandbox ?? 'ready';
+  const notCounted = () => ({ kind: 'not-counted' as const, reason: options.toolchainMissing ? REBUILD : NOT_COUNTED.sandbox });
+  const counts = () => sandbox() === 'ready' && !options.toolchainMissing;
   const find = <T>(map: Map<string, T>, key: string): T => {
     const value = map.get(key);
     if (!value) throw new Error(`Unknown id: ${key}`);
@@ -509,7 +478,7 @@ export function createMock(options: MockOptions = {}): CodeLearnApi {
   const programs = new Map<string, { input(text: string): void; stop(): void }>();
   /** One Run, an activity's or a lesson example's: asks for a name, greets it, then ends; or stops, or runs out of time. */
   function greet(run: string): Promise<RunResult> {
-    if (docker() !== 'ready') return Promise.resolve({ kind: 'not-run', reason: DOCKER_DOWN[docker() as Exclude<Docker, 'ready'>] });
+    if (sandbox() !== 'ready') return Promise.resolve({ kind: 'not-run', reason: NOT_COUNTED.sandbox });
     const limitMs = options.runLimitMs ?? 120_000;
     tell({ run, started: 'run', limitMs });
     tell({ run, stream: 'stdout', text: "What's your name? " });
@@ -675,50 +644,29 @@ export function createMock(options: MockOptions = {}): CodeLearnApi {
       return { ...agent, untested: Boolean(options.untested) && agent.state !== 'missing' };
     },
 
-    async installDocker() {
-      // With Docker Desktop installed, Windows' Install is WSL's setup alone.
-      install = WSL_SETUP.has(docker()) ? { phase: 'wsl' } : { phase: 'downloading', progress: 0 };
-    },
-
-    async openDocker() {
-      if (docker() === 'stopped') dockerNow = 'starting';
-    },
-
-    async openWindowsUpdate() {},
-
-    async restartWindows() {},
-
     async computer() {
-      const platform = options.platform ?? hostPlatform();
-      const d = docker();
-      const reported = install;
-      // The next check sees Docker one step further along.
-      if (install?.phase === 'wsl') {
-        // A WSL just set up runs after a restart; one just updated, at once.
-        [install, dockerNow] = d === 'wsl-missing' ? [{ phase: 'failed', problem: 'restart' }, 'wsl-restart'] : [{ phase: 'starting' }, 'starting'];
-      } else if (install?.phase === 'starting') {
-        install = undefined;
-        dockerNow = options.dockerWontStart ? 'stopped' : 'ready';
-      } else if (install && install.phase !== 'failed') {
-        install = INSTALL_STEPS[INSTALL_STEPS.findIndex((s) => JSON.stringify(s) === JSON.stringify(install)) + 1];
-        if (install?.phase === 'starting') dockerNow = 'starting';
-      } else if (dockerNow === 'starting') dockerNow = 'ready';
-      const failing = { missing: 0, stopped: 1, starting: 1, 'windows-containers': 1, 'wsl-missing': 1, 'wsl-old': 1, virtualization: 1, 'wsl-restart': 1, 'no-sandbox': 2, 'sandbox-checking': 2, 'sandbox-offline': 2, 'sandbox-folder': 2, ready: Infinity }[d];
-      const checks = (['docker-installed', 'docker-running', 'sandbox'] as const).map((id, i) => ({
+      const state = sandbox();
+      const failing = { 'no-bwrap': 0, 'no-bwrap-unknown': 0, 'no-session': 0, 'isolation-failed': 1, ready: Infinity }[state];
+      const checks = (['sandbox', 'isolation'] as const).map((id, i) => ({
         id,
         state: i < failing ? ('ok' as const) : i === failing ? ('problem' as const) : ('waiting' as const),
-        ...(i === failing && (d === 'starting' || d === 'windows-containers' || d === 'wsl-missing' || d === 'wsl-old' || d === 'virtualization') ? { detail: d } : {}),
-        ...(i === failing && d === 'wsl-restart' ? { detail: 'restart' as const } : {}),
-        ...(i === failing && d === 'sandbox-checking' ? { detail: 'checking' as const } : {}),
-        ...(i === failing && SANDBOX_REASON[d] ? { reason: SANDBOX_REASON[d] } : {}),
+        ...(i === failing && state !== 'ready' ? { reason: SANDBOX_REASON[state] } : {}),
+        ...(i === failing && state === 'no-bwrap' ? { installCommand: 'sudo pacman -S bubblewrap' } : {}),
       }));
-      const canInstall = platform !== 'linux';
-      const ready = checks.every((c) => c.state === 'ok');
-      return { platform, checks, ready, ...(canInstall ? { canInstall } : {}), ...(reported ? { install: reported } : {}), ...(d === 'missing' && options.wasi ? { wasi: true as const } : {}) };
+      return { checks, ready: state === 'ready' };
     },
 
     async tracks() {
       return tracks.map((t) => ({ ...t }));
+    },
+
+    async removeTrack(trackRef) {
+      // Core refuses a track a course uses (core removeTrack); the mock's open course uses its track.
+      const using = [...kept.entries()].filter(([, k]) => k.course.track === trackRef).map(([id]) => `"${id}"`);
+      if (using.length > 0) throw new Error(`${trackRef} is used by ${using.length === 1 ? 'course' : 'courses'} ${using.join(', ')}, so it can't be removed while they need it.`);
+      const at = tracks.findIndex((t) => t.ref === trackRef);
+      if (at < 0) throw new Error(`Track ${trackRef} is not installed. Install it first (save_track).`);
+      tracks.splice(at, 1);
     },
 
     async research(goal) {
@@ -877,7 +825,7 @@ export function createMock(options: MockOptions = {}): CodeLearnApi {
     },
 
     async runExample(lessonId, index) {
-      if (docker() !== 'ready') return { kind: 'not-run', reason: DOCKER_DOWN[docker() as Exclude<Docker, 'ready'>] };
+      if (sandbox() !== 'ready') return { kind: 'not-run', reason: NOT_COUNTED.sandbox };
       const example = find(lessons, lessonId).examples[index - 1];
       if (!example) throw new Error('No such example.');
       return { kind: 'ran', exit: 0, output: `${example.files.map((f) => f.path).join('\n')}\n`, errors: '' };

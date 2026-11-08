@@ -21,35 +21,22 @@ export const AGENT_FAILED = 'code-learn:agent-failed';
 export const REPAIR = 'code-learn:repair';
 /** A cancel the agent's process group survived: "code-learn couldn't stop your agent" (§3.1). */
 export const UNSTOPPABLE = 'code-learn:unstoppable';
-/** Why a check wasn't counted when a track's image is missing or changed: the fix is under Tracks, not this computer (§5). */
+/** Why a check wasn't counted when a track's toolchain is missing: the fix is under Tracks, not this computer (§5). */
 export const REBUILD = 'This environment needs a rebuild. Rebuild it under Tracks.';
 /** Why a run wasn't counted, or didn't run, when this computer caused it (notCounted.ts). */
 export const NOT_COUNTED = {
-  docker: "Docker isn't running.",
-  'docker-busy': 'Docker is busy or not answering.',
-  'docker-failed': "Docker couldn't run that.",
-  'docker-disk': 'Docker ran out of disk space.',
+  sandbox: "code-learn's sandbox couldn't run that.",
+  // The check's own deadline (core check-timeout): every case had its limit, so only a busy computer gets here.
+  'sandbox-busy': 'This computer was too busy to finish in time.',
   disk: 'This computer is out of disk space.',
-  offline: "Docker couldn't reach the network.",
-  // A WASI track's wasmtime didn't start (core §4.5): it comes with code-learn, so reinstalling brings it back.
-  wasi: "code-learn couldn't start the part that runs your code.",
-  // A drive without file permissions (FAT, exFAT): code-learn can't keep the learner's program from writing (core §4.5).
-  'wasi-seal': "code-learn couldn't make its files read-only on this drive.",
-  // A container Docker refused for a reason core named: what to change, since trying again won't help.
-  'docker-cpus': "Docker has fewer than the 2 CPUs a check uses. Give it more in Docker Desktop's settings.",
-  'docker-log-driver': "Docker's logging driver refused code-learn's log options. Set it to json-file or local in Docker's settings.",
-  'docker-file-sharing': "Docker can't share code-learn's run folders. Allow them in Docker Desktop's file sharing settings.",
+  offline: "code-learn couldn't reach the network.",
 } as const;
 /** Run and lesson examples have no recovery screen, so their line says what to do next (§4.10). */
 export const RUN_AGAIN: Record<string, string> = {
-  [NOT_COUNTED.docker]: 'Open Docker Desktop, then run again.',
-  [NOT_COUNTED['docker-busy']]: 'Wait a moment, then run again.',
-  [NOT_COUNTED['docker-failed']]: 'Run again, and restart Docker if it happens again.',
-  [NOT_COUNTED['docker-disk']]: 'Remove unused images in Docker Desktop, then run again.',
+  [NOT_COUNTED.sandbox]: 'Check this computer under Settings, then run again.',
+  [NOT_COUNTED['sandbox-busy']]: 'Wait a moment, then run again.',
   [NOT_COUNTED.disk]: 'Free some space, then run again.',
   [NOT_COUNTED.offline]: 'Connect to the internet, then run again.',
-  [NOT_COUNTED.wasi]: 'Reinstall code-learn, then run again.',
-  [NOT_COUNTED['wasi-seal']]: "Keep code-learn's folder on this computer's own drive, then run again.",
 };
 /** A run that didn't run: why, then what to do next. */
 export const notRunLine = (reason: string) => (RUN_AGAIN[reason] ? `${reason} ${RUN_AGAIN[reason]}` : reason);
@@ -101,58 +88,27 @@ export interface AgentInstall {
   problem?: 'offline' | 'disk' | 'unverified' | 'failed';
 }
 
-// ---------- check this computer (§6.1) ----------
+// ---------- check this computer (§6.1, core §4.6) ----------
 
-export type Platform = 'mac' | 'windows' | 'linux';
-export type CheckId = 'docker-installed' | 'docker-running' | 'sandbox';
+/** `sandbox`: bubblewrap and the systemd user session; `isolation`: core doctor's self-test from inside a sandbox. */
+export type CheckId = 'sandbox' | 'isolation';
 
 export interface ComputerCheck {
   id: CheckId;
   /** `waiting`: an earlier check has to pass first. */
   state: 'ok' | 'problem' | 'waiting';
+  /** For a problem: core's own words, which end with what to do. */
+  reason?: string;
   /**
-   * For a running problem: Docker is still starting or set to Windows containers; or, on Windows, what WSL needs
-   * first (set up, an update, virtualization turned on in the firmware, or a restart); or, just after Docker came up,
-   * the sandbox is still being checked.
+   * For a missing bubblewrap: the command that installs it on this distribution, for the learner to run in a terminal.
+   * code-learn runs nothing as root.
    */
-  detail?: 'starting' | 'windows-containers' | 'wsl-missing' | 'wsl-old' | 'virtualization' | 'restart' | 'checking';
-  /**
-   * For the sandbox: the self-test's own words, when it knows the cause on this computer (core §4.3): offline, out of
-   * disk, or Docker's (a folder to share, its sign-in helper). `inconclusive`: what it saw, not a known cause.
-   */
-  reason?: { kind: 'offline' | 'disk' | 'docker'; text: string; inconclusive?: true };
-}
-
-/**
- * code-learn installing Docker Desktop for the learner (§6.1). `wsl`: on Windows, WSL's own setup, which Windows asks
- * permission for; `admin`: Docker's installer as administrator, when Windows says it needs one; `starting`: installed and opened; Docker's own window asks the learner to accept its terms.
- * Problems: `offline` and `disk` are this computer's; `macos-version`,
- * `windows-version` and `windows-server`: Docker Desktop doesn't run on this macOS or Windows, so nothing downloaded
- * (an older Windows updates in Windows Update; Windows Server never runs it); `unverified`: the
- * download wasn't signed by Docker, so it was deleted; `manual`: drag Docker to Applications in the window that
- * opened; `declined`: the learner said no to Windows' permission prompt; `wsl-failed`: WSL's setup didn't
- * finish; `restart`: Windows needs a restart; `failed`: Docker's installer didn't finish.
- */
-export interface DockerInstall {
-  phase: 'wsl' | 'downloading' | 'checking' | 'installing' | 'admin' | 'starting' | 'failed';
-  /** 0 to 1 while downloading. */
-  progress?: number;
-  problem?: 'offline' | 'disk' | 'macos-version' | 'windows-version' | 'windows-server' | 'unverified' | 'manual' | 'declined' | 'wsl-failed' | 'restart' | 'failed';
+  installCommand?: string;
 }
 
 export interface Computer {
-  platform: Platform;
   checks: ComputerCheck[];
   ready: boolean;
-  /** code-learn can install and open Docker Desktop here (macOS and Windows). */
-  canInstall?: boolean;
-  /** An install code-learn started, while it runs and after it fails. */
-  install?: DockerInstall;
-  /**
-   * Docker isn't ready, but code-learn's WASI engine runs here (core §4.5): practice with programs that read input and
-   * print output runs without Docker, so the learner can go on. Docker stays an option for everything else.
-   */
-  wasi?: true;
 }
 
 // ---------- roadmap (§4.2) ----------
@@ -214,10 +170,10 @@ export interface RoadmapChange {
  */
 export type SetupState = 'proposing' | 'consent' | 'installing' | 'ready' | 'failed';
 /**
- * Why setup failed. `gates` means the proposals didn't pass; the rest are this computer's problems: Docker stopped,
- * busy and not answering, or answering but failing, Docker's disk or this computer's, or the network.
+ * Why setup failed. `gates` means the proposals didn't pass; the rest are this computer's problems: the sandbox, the
+ * disk or the network.
  */
-export type SetupProblem = 'offline' | 'disk' | 'docker' | 'docker-busy' | 'docker-failed' | 'docker-disk' | 'wasi' | 'wasi-seal' | 'gates';
+export type SetupProblem = 'offline' | 'disk' | 'sandbox' | 'gates';
 
 /** What the learner approves before setup: exactly the files code-learn will build (§4.1). */
 export interface Proposal {
@@ -261,7 +217,7 @@ export interface CourseView {
   topics: TopicView[];
   done: boolean;
   /** Background work (setup, lessons, activities) stopped after its retry, and why (§5). Nothing was recorded. */
-  stalled?: 'plan-limit' | 'signed-out' | 'offline' | 'docker' | 'docker-busy' | 'docker-failed' | 'docker-disk' | 'disk' | 'wasi' | 'wasi-seal' | 'rebuild' | 'lesson' | 'failed' | 'unstoppable';
+  stalled?: 'plan-limit' | 'signed-out' | 'offline' | 'sandbox' | 'disk' | 'rebuild' | 'lesson' | 'failed' | 'unstoppable';
   /** The background work that stalled, so its banner can name it. */
   stalledWork?: 'setup' | 'lesson' | 'author';
   /**
@@ -295,7 +251,7 @@ export interface Lesson {
   style?: 'io' | 'unit';
 }
 
-/** One run of a lesson example (output capped by core), or why it didn't run (Docker, §6.1). */
+/** One run of a lesson example (output capped by core), or why it didn't run (this computer, §6.1). */
 export type ExampleRun = { kind: 'ran'; exit: number; output: string; errors: string } | { kind: 'not-run'; reason: string };
 
 // ---------- activity (§4.5, D11) ----------
@@ -448,18 +404,9 @@ export interface CodeLearnApi {
   /** Hears what Run's programs print; returns a function that stops listening. An event, not a call. */
   onRunOutput(listener: (output: RunOutput) => void): () => void;
   computer(): Promise<Computer>;
-  /**
-   * Downloads Docker Desktop from Docker, checks Docker signed it, installs and opens it; on Windows, sets up WSL first
-   * when it needs it. Follow it with computer().
-   */
-  installDocker(): Promise<void>;
-  /** Opens Docker Desktop. */
-  openDocker(): Promise<void>;
-  /** Opens Windows Update, for a Windows too old for Docker Desktop. Does nothing elsewhere. */
-  openWindowsUpdate(): Promise<void>;
-  /** Restarts Windows, when WSL or Docker's installer needs it. Does nothing elsewhere. */
-  restartWindows(): Promise<void>;
   tracks(): Promise<Track[]>;
+  /** Removes an installed track and its toolchain folder (core removeTrack); refused while a course uses it. */
+  removeTrack(trackRef: string): Promise<void>;
 
   /** Starts the research job on the first call; call again to follow it. */
   research(goal: Goal): Promise<Research>;

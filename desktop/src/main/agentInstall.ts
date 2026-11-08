@@ -10,12 +10,12 @@ import { join, posix, win32 } from 'node:path';
 import type { AgentId, AgentInstall } from '../shared/api';
 import { AGENT_CLIS } from './agent/agents';
 import type { Executable } from './agent/bridge';
-import { nodeDesktopDeps, type DesktopDeps, type Network } from './dockerDesktop';
+import { type HostDeps, type Network, nodeHostDeps } from './host';
 import { OfflineError } from './download';
 import { POWERSHELL } from './windows';
 
-/** Docker's downloader and processes, without what only Docker's install uses. */
-export interface AgentInstallDeps extends Omit<DesktopDeps, 'list' | 'modifiedAt' | 'tempRoot'> {
+/** This computer's downloader and processes, plus the file checks an agent install needs. */
+export interface AgentInstallDeps extends HostDeps {
   readText(file: string): string;
   sha256(file: string): Promise<string>;
   makeExecutable(file: string): void;
@@ -236,10 +236,10 @@ export function agentInstaller(d: AgentInstallDeps) {
   };
 }
 
-/** The real computer: Docker's downloader and processes, plus file checks. */
+/** The real computer: its downloader and processes, plus file checks. */
 export function nodeAgentDeps(find: (bin: string) => Executable | null, network: Network): AgentInstallDeps {
   return {
-    ...nodeDesktopDeps(network),
+    ...nodeHostDeps(network),
     tempDir: () => mkdtempSync(join(tmpdir(), 'code-learn-agent-')),
     readText: (file) => readFileSync(file, 'utf8').slice(0, 1_000_000),
     sha256: (file) =>
