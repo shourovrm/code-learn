@@ -3,11 +3,12 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { readFileMap } from "../src/files.js";
 import { TOOL_NAMES } from "../src/mcp.js";
-import { dockerUp } from "./docker/helpers.js";
+import { fakeMicromamba } from "./fake-micromamba.js";
 import { npm } from "./npm.js";
+import { sandboxReady } from "./sandbox-ready.js";
 import { tempDir } from "./temp.js";
 
 const root = join(import.meta.dirname, "..");
@@ -35,6 +36,8 @@ const run = (args: string[], opts: { cwd?: string; input?: string; env?: NodeJS.
   spawnSync(codeLearn.command, [...codeLearn.args, ...args], { encoding: "utf8", ...opts, env: { ...process.env, ...opts.env } });
 
 describe("packed artifact", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
   it("ships only the CLI: no tracks, toolchains, tests or v1 code", () => {
     expect(files.every((f) => f.startsWith("dist/") || ["README.md", "LICENSE", "package.json"].includes(f))).toBe(true);
     expect(files).toContain("dist/cli.js");
@@ -64,9 +67,11 @@ describe("packed artifact", () => {
     expect(hook.stderr).toMatch(/practice mode/);
   });
 
-  it.runIf(dockerUp)("runs a full author-and-learner round trip through the core tools over real stdio", async () => {
+  it.runIf(sandboxReady())("runs a full author-and-learner round trip through the core tools over real stdio", async () => {
     const ws = tempDir("code-learn-mcp-");
     const home = tempDir("code-learn-home-");
+    // The server inherits this micromamba, which installs an offline environment through the real install sandbox.
+    fakeMicromamba();
     const client = new Client({ name: "code-learn-test", version: "1.0.0" });
     await client.connect(new StdioClientTransport({ command: codeLearn.command, args: [...codeLearn.args, "mcp", "--workspace", ws], env: { ...process.env, CODE_LEARN_HOME: home } as Record<string, string> }));
     const call = async (name: string, args: Record<string, unknown> = {}) => {
@@ -77,11 +82,9 @@ describe("packed artifact", () => {
     };
     const fixtures = join(root, "test", "fixtures");
     try {
-      // A label keeps this image distinct so other test files can't remove it.
       const track = readFileMap(join(fixtures, "tracks", "shell-io"));
-      track.Dockerfile += "LABEL code-learn.test=package\n";
       expect(await call("save_track", { files: track })).toEqual({ installed: "shell-io@1" });
-      expect(await call("list_tracks")).toEqual([{ track: "shell-io@1", styles: ["io"], files: ["main.sh"], engine: "docker" }]);
+      expect(await call("list_tracks")).toEqual([{ track: "shell-io@1", styles: ["io"], files: ["main.sh"] }]);
       await call("save_roadmap", { course: "shell", roadmap: readFileSync(join(fixtures, "roadmaps", "shell-io.yaml"), "utf8").replace("sh.loops", "sh.more").replace("Loops", "More") });
       expect(await call("next_step")).toMatchObject({ kind: "author", concept: "sh.basics" });
       const ex = readFileMap(join(fixtures, "exercises", "io-max"));

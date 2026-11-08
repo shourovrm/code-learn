@@ -1,10 +1,15 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { type FileMap, readFileMap, subMap } from "../../src/files.js";
 import { verifyExercise, verifyTrack } from "../../src/gates.js";
 import { type CourseRecord, parseRoadmapYaml, type TrackRecord } from "../../src/schemas.js";
-import { dockerUp, FIXTURES, fixtureTrack } from "./helpers.js";
+import { envDir, envsDir } from "../../src/store.js";
+import { commitToolchain } from "../../src/toolchain.js";
+import { fakeMicromamba } from "../fake-micromamba.js";
+import { installFixtureTrack } from "../installed-track.js";
+import { sandboxReady } from "../sandbox-ready.js";
+import { FIXTURES, fixtureTrackFiles } from "./helpers.js";
 
 const course = (name: string): CourseRecord => ({
   format_version: 1,
@@ -12,34 +17,34 @@ const course = (name: string): CourseRecord => ({
   ...parseRoadmapYaml(readFileSync(join(FIXTURES, "roadmaps", `${name}.yaml`), "utf8")),
 });
 const exercise = (name: string): FileMap => readFileMap(join(FIXTURES, "exercises", name));
-/** A Docker track's record, which the judge can run by its image. */
-type DockerTrack = Extract<TrackRecord, { imageId: string }>;
-function record(verified: Awaited<ReturnType<typeof verifyTrack>>): DockerTrack {
-  if (!("imageId" in verified)) throw new Error("expected a Docker track");
-  const { wasi: _none, ...spec } = verified.spec;
-  return { format_version: 1, ...spec, image: verified.image, imageId: verified.imageId, installedAt: "now" };
-}
+describe.runIf(sandboxReady())("gates (native sandbox)", () => {
+  let ioTrack: TrackRecord;
+  let unitTrack: TrackRecord;
 
-describe.runIf(dockerUp)("gates (Docker)", () => {
-  let ioTrack: DockerTrack;
-  let unitTrack: DockerTrack;
+  afterEach(() => vi.unstubAllEnvs());
 
   describe("track gates", () => {
-    it("install-ready tracks pass in both styles", async () => {
-      ioTrack = record(await verifyTrack(fixtureTrack("shell-io").files));
-      unitTrack = record(await verifyTrack(fixtureTrack("shell-unit").files));
-      expect(ioTrack.imageId).toMatch(/^sha256:/);
-      expect(unitTrack.styles).toEqual(["unit"]);
+    it("install-ready tracks pass in both styles, and a passed toolchain commits under its id and version", async () => {
+      fakeMicromamba();
+      const io = await verifyTrack(fixtureTrackFiles("shell-io"));
+      const unit = await verifyTrack(fixtureTrackFiles("shell-unit"));
+      expect(unit.spec.styles).toEqual(["unit"]);
+      expect(io.staged.resolved).toEqual(["coreutils-1.0-0"]);
+      commitToolchain(io.staged, "shell-io@1");
+      expect(existsSync(join(envDir("shell-io@1"), "track", "probe", "io", "pass", "main.sh"))).toBe(true);
+      unit.staged.remove();
     });
 
     it("passes a track with an unfamiliar learner file and its own unit runner", async () => {
-      const custom = await verifyTrack(fixtureTrack("custom-unit").files, "code-learn-test-custom-unit:1");
+      fakeMicromamba();
+      const custom = await verifyTrack(fixtureTrackFiles("custom-unit"));
       expect(custom.spec.files).toEqual(["src/calc.funcs"]);
+      custom.staged.remove();
     });
 
     it.each([
-      ["a failing build", (f: FileMap) => ({ ...f, Dockerfile: `${f.Dockerfile}RUN exit 3\n` }), /build/],
-      ["a declared volume", (f: FileMap) => ({ ...f, Dockerfile: `${f.Dockerfile}VOLUME /data\n` }), /volume/i],
+      ["a failing setup", (f: FileMap) => ({ ...f, "track.yaml": f["track.yaml"]!.replace(/^toolchain:.*$/m, 'toolchain: { packages: ["coreutils"], setup: "echo broken >&2; exit 3" }') }), /setup command failed \(exit 3\)[\s\S]*broken/],
+      ["a Dockerfile", (f: FileMap) => ({ ...f, Dockerfile: "FROM scratch\n" }), /toolchain/],
       ["a fail probe that passes", (f: FileMap) => ({ ...f, "probe/io/fail/main.sh": f["probe/io/pass/main.sh"]! }), /probe fail/],
       ["a pass probe that fails", (f: FileMap) => ({ ...f, "probe/io/pass/main.sh": "read a b\necho 0\n" }), /probe pass/],
       // time_ms is 2000: the probe fits a third of it (666 ms) but not a sixth (333 ms), which leaves every reference
@@ -52,14 +57,17 @@ describe.runIf(dockerUp)("gates (Docker)", () => {
       ],
       ["a missing probe", (f: FileMap) => Object.fromEntries(Object.entries(f).filter(([p]) => !p.startsWith("probe/io/fail"))), /probe/],
     ])("rejects %s", async (_label, mutate, error) => {
-      // Its own tag: moving the shared tag would let the runtime garbage-collect the verified image.
-      await expect(verifyTrack(mutate(fixtureTrack("shell-io").files), "code-learn-test-rejected:1")).rejects.toThrow(error);
+      fakeMicromamba();
+      await expect(verifyTrack(mutate(fixtureTrackFiles("shell-io")))).rejects.toThrow(error);
+      // A rejected track leaves no staging folder behind.
+      const left = existsSync(envsDir()) ? readdirSync(envsDir()) : [];
+      expect(left.filter((name) => name.startsWith(".staging-"))).toEqual([]);
     });
   });
 
   describe("exercise gates (io)", () => {
     beforeAll(async () => {
-      ioTrack ??= record(await verifyTrack(fixtureTrack("shell-io").files));
+      ioTrack = installFixtureTrack("shell-io");
     });
     const verify = (files: FileMap) => verifyExercise(ioTrack, course("shell-io"), files, new Set());
 
@@ -112,7 +120,7 @@ describe.runIf(dockerUp)("gates (Docker)", () => {
 
   describe("exercise gates (unit)", () => {
     beforeAll(async () => {
-      unitTrack ??= record(await verifyTrack(fixtureTrack("shell-unit").files));
+      unitTrack = installFixtureTrack("shell-unit");
     });
 
     it("accepts a good exercise and records the test inventory", async () => {
