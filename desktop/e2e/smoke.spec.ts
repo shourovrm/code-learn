@@ -58,47 +58,59 @@ test('connect, computer check, goal, course, lesson and practice', async ({ laun
 });
 
 // Learners who lack a prerequisite get a specific next step, acted out by the mock.
-test('no agent installed: Install, or get it by hand, on the connect screen', async ({ launch }) => {
+test('no agent installed: each one links to its own install page on the connect screen', async ({ launch }) => {
   const { app, page } = await launch('no-agent');
-  // macOS and Windows: Welcome offers to install what's missing, and connecting by hand stays possible.
-  await expect(page.getByRole('button', { name: "Install what's missing", exact: true })).toBeVisible();
+  // On Linux code-learn installs no agent itself: Welcome's way in is connecting one, installed by hand.
+  await expect(page.getByRole('button', { name: "Install what's missing", exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Connect an agent', exact: true }).click();
   const claude = page.getByRole('listitem', { name: 'Claude Code' });
   await expect(claude.getByText('Not installed')).toBeVisible();
-  await expect(claude.getByRole('button', { name: 'Install', exact: true })).toBeVisible();
-  await expect(claude.getByRole('link', { name: 'Get it myself' })).toHaveAttribute('href', 'https://code.claude.com/docs/en/setup');
-  await expect(page.getByRole('listitem', { name: 'Cursor' }).getByRole('button', { name: 'Install', exact: true })).toBeVisible();
+  await expect(claude.getByRole('button', { name: 'Install', exact: true })).toHaveCount(0);
+  await expect(claude.getByRole('link', { name: 'Get Claude Code' })).toHaveAttribute('href', 'https://code.claude.com/docs/en/setup');
+  await expect(page.getByRole('listitem', { name: 'pi' }).getByRole('link', { name: 'Get pi' })).toHaveAttribute('href', 'https://pi.dev');
   await expect(page.getByRole('button', { name: 'Continue', exact: true })).toBeDisabled();
   await app.close();
 });
 
-test('no Docker: Install Docker, a link to do it by hand, and a re-check', async ({ launch }) => {
-  const { app, page } = await launch('no-docker');
+test('no bubblewrap: the command that installs it, a re-check, and Later', async ({ launch }) => {
+  const { app, page } = await launch('no-bwrap');
   await page.getByRole('button', { name: 'Connect an agent', exact: true }).click();
   await page.getByRole('listitem', { name: 'Claude Code' }).getByRole('button', { name: 'Connect' }).click();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  const installed = page.getByRole('listitem', { name: 'Docker is installed' });
-  await expect(installed.getByText('Needs a step')).toBeVisible();
-  // macOS and Windows: code-learn installs Docker, and doing it by hand stays possible.
-  await expect(installed.getByRole('button', { name: 'Install Docker', exact: true })).toBeVisible();
-  await expect(installed.getByRole('link', { name: 'Install it myself' })).toBeVisible();
-  await expect(page.getByRole('status')).toHaveText("Docker isn't installed yet. Checking again every few seconds.");
+  const sandbox = page.getByRole('listitem', { name: 'Sandbox' });
+  await expect(sandbox.getByText('Needs a step')).toBeVisible();
+  // code-learn runs nothing as root: it shows the distribution's command for the learner to run.
+  await expect(sandbox.getByText('sudo pacman -S bubblewrap')).toBeVisible();
+  await expect(sandbox.getByRole('button', { name: 'Copy', exact: true })).toBeVisible();
+  await expect(page.getByRole('listitem', { name: 'Isolation' }).getByText('Waiting')).toBeVisible();
+  await expect(page.getByRole('status')).toHaveText("The sandbox isn't ready yet. Checking again every few seconds.");
   await page.getByRole('button', { name: 'Later', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'What do you want to learn?' })).toBeVisible();
   await app.close();
 });
 
-test('no Docker, but wasmtime runs: practice goes on without it, and installing Docker stays an option (core §4.5)', async ({ launch }) => {
-  const { app, page } = await launch('no-docker-wasi');
-  // Docker isn't something missing here: Welcome's way in is connecting an agent.
-  await expect(page.getByRole('button', { name: "Install what's missing", exact: true })).toHaveCount(0);
+test('the theme follows the desktop, and the sidebar switch overrides it', async ({ launch }) => {
+  const { app, page } = await launch();
+  const theme = () => page.evaluate(() => document.documentElement.dataset.theme);
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await expect.poll(theme).toBe('dark');
+  await page.emulateMedia({ colorScheme: 'light' });
+  await expect.poll(theme).toBe('light');
   await page.getByRole('button', { name: 'Connect an agent', exact: true }).click();
   await page.getByRole('listitem', { name: 'Claude Code' }).getByRole('button', { name: 'Connect' }).click();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await expect(page.getByText('code-learn can run practice on this computer without Docker, for programs that read input and print output. For everything else, install Docker.')).toBeVisible();
-  await expect(page.getByRole('listitem', { name: 'Docker is installed' }).getByRole('button', { name: 'Install Docker', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'What do you want to learn?' })).toBeVisible();
+  // The wide sidebar has the three choices; a narrow window's slim one has a single button that moves to the next.
+  const choices = page.getByRole('radiogroup', { name: 'Theme' });
+  if (await choices.isVisible()) await choices.getByRole('radio', { name: 'Dark' }).click();
+  else {
+    await page.getByRole('button', { name: 'Theme: System. Switch to Light' }).click();
+    await page.getByRole('button', { name: 'Theme: Light. Switch to Dark' }).click();
+  }
+  await expect.poll(theme).toBe('dark');
+  // Kept after a reload, and the desktop's change no longer moves it.
+  await page.reload();
+  await page.emulateMedia({ colorScheme: 'light' });
+  await expect.poll(theme).toBe('dark');
   await app.close();
 });
 

@@ -1,7 +1,6 @@
 import { extractFile, listPackage } from '@electron/asar';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 
@@ -27,30 +26,10 @@ test('the packaged app carries no mock or demo curriculum', () => {
   expect([...scripts, ...core].filter(([, text]) => DEMO.test(text)).map(([f]) => f)).toEqual([]);
 });
 
-// The WASI engine's wasmtime (core DESIGN §4.5): this installer's own, with its license, signed with the app so it runs.
-const HELLO = `(module
-  (import "wasi_snapshot_preview1" "fd_write" (func $w (param i32 i32 i32 i32) (result i32)))
-  (memory (export "memory") 1)
-  (data (i32.const 16) "hi\\n")
-  (func (export "_start")
-    (i32.store (i32.const 0) (i32.const 16)) (i32.store (i32.const 4) (i32.const 3))
-    (drop (call $w (i32.const 1) (i32.const 0) (i32.const 1) (i32.const 8)))))`;
-
-test('the packaged app carries a wasmtime that runs', () => {
+// The micromamba that installs each track's toolchain (core DESIGN §4.6): this installer's own, with its notice, and runnable.
+test('the packaged app carries a micromamba that runs', () => {
   test.skip(!resources, 'needs CODE_LEARN_RESOURCES');
-  const exe = process.platform === 'win32' ? 'wasmtime.exe' : 'wasmtime';
-  expect(readdirSync(join(resources!, 'wasmtime')).sort()).toEqual(['LICENSE', exe]);
-  const wasmtime = join(resources!, 'wasmtime', exe);
-  expect(execFileSync(wasmtime, ['--version'], { encoding: 'utf8' })).toMatch(/^wasmtime 50\.0\.0 /);
-  const dir = mkdtempSync(join(tmpdir(), 'code-learn-wasm-'));
-  try {
-    writeFileSync(join(dir, 'hello.wat'), HELLO);
-    // Compiling and running the module needs executable memory, which a hardened runtime without the entitlement refuses.
-    expect(execFileSync(wasmtime, ['run', '-C', 'cache=n', join(dir, 'hello.wat')], { encoding: 'utf8' })).toBe('hi\n');
-    // As core runs a toolchain (core §4.5): compiled once at install, then run precompiled, under a time limit.
-    execFileSync(wasmtime, ['compile', '-W', 'epoch-interruption=y', join(dir, 'hello.wat'), '-o', join(dir, 'hello.cwasm')]);
-    expect(execFileSync(wasmtime, ['run', '--allow-precompiled', '-C', 'cache=n', '-W', 'timeout=2s', join(dir, 'hello.cwasm')], { encoding: 'utf8' })).toBe('hi\n');
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
+  expect(readdirSync(join(resources!, 'micromamba')).sort()).toEqual(['NOTICE', 'micromamba']);
+  expect(readFileSync(join(resources!, 'micromamba', 'NOTICE'), 'utf8')).toContain('BSD-3-Clause');
+  expect(execFileSync(join(resources!, 'micromamba', 'micromamba'), ['--version'], { encoding: 'utf8' }).trim()).toMatch(/^2\.\d+\.\d+$/);
 });

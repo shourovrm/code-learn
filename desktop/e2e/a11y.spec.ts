@@ -77,81 +77,85 @@ async function toRoadmap(page: Page) {
   await expect(button(page, 'Approve')).toBeVisible({ timeout: 15_000 });
 }
 
-test('every screen of the journey passes WCAG AA checks', async ({ launch }) => {
-  const { app, page } = await launch();
-  await audit(page, 'welcome');
-  await button(page, 'Connect an agent').click();
-  await audit(page, 'connect');
-  await page.getByRole('listitem', { name: 'Claude Code' }).getByRole('button', { name: 'Connect' }).click();
-  await expect(page.getByRole('combobox', { name: 'Model' })).toHaveValue('sonnet');
-  await audit(page, 'connect, connected, with the model choice');
-  // A computer that is ready at the first check passes by itself; its screens with a step are audited below.
-  await button(page, 'Continue').click();
-  await expect(heading(page, 'What do you want to learn?')).toBeVisible();
-  await audit(page, 'goal');
-  await page.getByRole('textbox', { name: 'What do you want to learn?' }).fill('React');
-  await button(page, 'Start').click();
-  await expect(heading(page, 'Researching React')).toBeVisible();
-  await audit(page, 'research');
-  await expect(button(page, 'Approve')).toBeVisible({ timeout: 15_000 });
-  await audit(page, 'roadmap');
-  await button(page, 'Approve').click();
-  const consent = page.getByRole('dialog', { name: 'Set up React on this computer?' });
-  await audit(page, 'setup consent');
-  await consent.getByText('Show the files').click();
-  await audit(page, 'setup consent, details');
-  // Not now: a lesson offers setup without blocking the reading.
-  await consent.getByRole('button', { name: 'Not now', exact: true }).click();
-  await button(page, 'Read What javascript basics is').click();
-  await expect(button(page, 'Set up React')).toBeVisible();
-  await audit(page, 'lesson, setup waiting');
-  await button(page, 'Set up React').click();
-  await consent.getByRole('button', { name: 'Set up', exact: true }).click();
-  await expect(consent).toBeHidden({ timeout: 15_000 });
-  await button(page, 'Previous').click();
-  await expect(button(page, 'Read useState')).toBeVisible({ timeout: 15_000 });
-  await audit(page, 'topic');
-  await button(page, 'Read What javascript basics is').click();
-  await audit(page, 'lesson');
-  await button(page, 'Next').click();
-  await button(page, 'Next').click();
-  await expect(heading(page, 'Click Counter')).toBeVisible();
-  await audit(page, 'activity');
-  const results = page.getByRole('region', { name: 'Results' });
-  await button(page, 'Check').click();
-  await expect(results.getByRole('heading', { name: '2 of 4 passed' })).toBeVisible();
-  await audit(page, 'results, not yet');
-  await page.getByRole('textbox', { name: 'Counter.jsx' }).fill('// my answer');
-  await button(page, 'Check').click();
-  await expect(results.getByRole('heading', { name: '4 of 4 passed' })).toBeVisible();
-  await audit(page, 'results, passed');
-  // Continue goes straight on to the next topic.
-  await button(page, 'Continue').click();
-  await expect(heading(page, 'JSX')).toBeVisible();
-  await button(page, 'Learn').click();
-  await expect(page.getByRole('list', { name: 'Topics' })).toBeVisible();
-  await audit(page, 'course');
-  await button(page, 'Tracks').click();
-  await expect(heading(page, 'Tracks')).toBeVisible();
-  await audit(page, 'tracks');
-  await masterEverything(page);
-  await button(page, 'Learn').click();
-  await expect(heading(page, 'React complete')).toBeVisible();
-  await audit(page, 'course complete');
-  // A new goal's roadmap is a draft: the course stays, and the goal screen offers the draft again.
-  await button(page, 'Learn something new').click();
-  await page.getByRole('textbox', { name: 'What do you want to learn?' }).fill('Vue');
-  await button(page, 'Start').click();
-  await expect(button(page, 'Approve')).toBeVisible({ timeout: 15_000 });
-  await button(page, 'Learn').click();
-  await expect(heading(page, 'React complete')).toBeVisible();
-  await button(page, 'Learn something new').click();
-  await expect(button(page, 'Resume roadmap')).toBeVisible();
-  await audit(page, 'goal, with a roadmap to resume');
-  await button(page, 'Resume roadmap').click();
-  await expect(heading(page, 'Vue')).toBeVisible();
-  await app.close();
-});
+// Both themes: the dark one has its own colors, which axe checks against the same contrast rules.
+for (const scheme of ['light', 'dark'] as const) {
+  test(`every screen of the journey passes WCAG AA checks (${scheme} theme)`, async ({ launch }) => {
+    const { app, page } = await launch();
+    await page.emulateMedia({ colorScheme: scheme });
+    await audit(page, 'welcome');
+    await button(page, 'Connect an agent').click();
+    await audit(page, 'connect');
+    await page.getByRole('listitem', { name: 'Claude Code' }).getByRole('button', { name: 'Connect' }).click();
+    await expect(page.getByRole('combobox', { name: 'Model' })).toHaveValue('sonnet');
+    await audit(page, 'connect, connected, with the model choice');
+    // A computer that is ready at the first check passes by itself; its screens with a step are audited below.
+    await button(page, 'Continue').click();
+    await expect(heading(page, 'What do you want to learn?')).toBeVisible();
+    await audit(page, 'goal');
+    await page.getByRole('textbox', { name: 'What do you want to learn?' }).fill('React');
+    await button(page, 'Start').click();
+    await expect(heading(page, 'Researching React')).toBeVisible();
+    await audit(page, 'research');
+    await expect(button(page, 'Approve')).toBeVisible({ timeout: 15_000 });
+    await audit(page, 'roadmap');
+    await button(page, 'Approve').click();
+    const consent = page.getByRole('dialog', { name: 'Set up React on this computer?' });
+    await audit(page, 'setup consent');
+    await consent.getByText('Show the files').click();
+    await audit(page, 'setup consent, details');
+    // Not now: a lesson offers setup without blocking the reading.
+    await consent.getByRole('button', { name: 'Not now', exact: true }).click();
+    await button(page, 'Read What javascript basics is').click();
+    await expect(button(page, 'Set up React')).toBeVisible();
+    await audit(page, 'lesson, setup waiting');
+    await button(page, 'Set up React').click();
+    await consent.getByRole('button', { name: 'Set up', exact: true }).click();
+    await expect(consent).toBeHidden({ timeout: 15_000 });
+    await button(page, 'Previous').click();
+    await expect(button(page, 'Read useState')).toBeVisible({ timeout: 15_000 });
+    await audit(page, 'topic');
+    await button(page, 'Read What javascript basics is').click();
+    await audit(page, 'lesson');
+    await button(page, 'Next').click();
+    await button(page, 'Next').click();
+    await expect(heading(page, 'Click Counter')).toBeVisible();
+    await audit(page, 'activity');
+    const results = page.getByRole('region', { name: 'Results' });
+    await button(page, 'Check').click();
+    await expect(results.getByRole('heading', { name: '2 of 4 passed' })).toBeVisible();
+    await audit(page, 'results, not yet');
+    await page.getByRole('textbox', { name: 'Counter.jsx' }).fill('// my answer');
+    await button(page, 'Check').click();
+    await expect(results.getByRole('heading', { name: '4 of 4 passed' })).toBeVisible();
+    await audit(page, 'results, passed');
+    // Continue goes straight on to the next topic.
+    await button(page, 'Continue').click();
+    await expect(heading(page, 'JSX')).toBeVisible();
+    await button(page, 'Learn').click();
+    await expect(page.getByRole('list', { name: 'Topics' })).toBeVisible();
+    await audit(page, 'course');
+    await button(page, 'Tracks').click();
+    await expect(heading(page, 'Tracks')).toBeVisible();
+    await audit(page, 'tracks');
+    await masterEverything(page);
+    await button(page, 'Learn').click();
+    await expect(heading(page, 'React complete')).toBeVisible();
+    await audit(page, 'course complete');
+    // A new goal's roadmap is a draft: the course stays, and the goal screen offers the draft again.
+    await button(page, 'Learn something new').click();
+    await page.getByRole('textbox', { name: 'What do you want to learn?' }).fill('Vue');
+    await button(page, 'Start').click();
+    await expect(button(page, 'Approve')).toBeVisible({ timeout: 15_000 });
+    await button(page, 'Learn').click();
+    await expect(heading(page, 'React complete')).toBeVisible();
+    await button(page, 'Learn something new').click();
+    await expect(button(page, 'Resume roadmap')).toBeVisible();
+    await audit(page, 'goal, with a roadmap to resume');
+    await button(page, 'Resume roadmap').click();
+    await expect(heading(page, 'Vue')).toBeVisible();
+    await app.close();
+  });
+}
 
 test('the quiz journey passes WCAG AA checks', async ({ launch }) => {
   const { app, page } = await launch();
@@ -200,25 +204,11 @@ test('failure and environment screens pass WCAG AA checks', async ({ launch }) =
     await app.close();
   }
   {
-    // Install what's missing: before, during, and the agent's sign-in after Docker.
+    // Nothing installed: code-learn can't install agents on Linux, so Connect links to each one's install page.
     const { app, page } = await launch('nothing-installed');
-    await button(page, "Install what's missing").click();
-    await expect(page.getByRole('listitem', { name: 'Docker Desktop' })).toBeVisible();
-    await audit(page, 'setup, before installing');
-    await button(page, "Install what's missing").click();
-    await expect(page.getByRole('progressbar').first()).toBeVisible();
-    await audit(page, 'setup, installing');
-    await expect(button(page, 'Sign in')).toBeVisible();
-    await audit(page, 'setup, sign in');
-    await app.close();
-  }
-  {
-    const { app, page } = await launch('agent-install-offline');
     await button(page, 'Connect an agent').click();
-    const claude = page.getByRole('listitem', { name: 'Claude Code' });
-    await claude.getByRole('button', { name: 'Install', exact: true }).click();
-    await expect(claude.getByRole('alert')).toHaveText("You're offline. Connect to the internet, then try again.");
-    await audit(page, 'connect, agent install failed');
+    await expect(page.getByRole('listitem', { name: 'Claude Code' }).getByText('Not installed')).toBeVisible();
+    await audit(page, 'connect, nothing installed');
     await app.close();
   }
   {
@@ -230,7 +220,7 @@ test('failure and environment screens pass WCAG AA checks', async ({ launch }) =
     await audit(page, 'connect, signed out');
     await app.close();
   }
-  for (const scenario of ['no-docker', 'no-docker-wasi', 'docker-stopped', 'docker-starting', 'windows-containers']) {
+  for (const scenario of ['no-bwrap', 'no-bwrap-unknown', 'no-user-session', 'isolation-failed']) {
     const { app, page } = await launch(scenario);
     await connect(page);
     await expect(heading(page, 'Check this computer')).toBeVisible();
@@ -250,7 +240,7 @@ test('failure and environment screens pass WCAG AA checks', async ({ launch }) =
     await app.close();
   }
   {
-    const { app, page } = await launch('docker-stops');
+    const { app, page } = await launch('sandbox-stops');
     await toActivity(page);
     const results = page.getByRole('region', { name: 'Results' });
     await button(page, 'Check').click();

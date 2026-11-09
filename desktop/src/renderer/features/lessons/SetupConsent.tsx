@@ -13,6 +13,8 @@ import { Banner } from '../../ui/Banner';
 type Props = { track: string; proposal: Proposal; error?: string; busy?: boolean; onClose: () => void; onSetUp: () => void };
 
 export function SetupConsent({ track, proposal, error, busy = false, onClose, onSetUp }: Props) {
+  // The files render only while Show the files is open, so their focusable listings never sit in the tab order unseen.
+  const [filesOpen, setFilesOpen] = useState(false);
   return (
     <Dialog
       title={proposal.retry ? `code-learn has another way to set up ${track}.` : `Set up ${track} on this computer?`}
@@ -21,13 +23,14 @@ export function SetupConsent({ track, proposal, error, busy = false, onClose, on
       body={
         <>
         {error && <p className="alert" role="alert">{error}</p>}
-        <details className="details">
+        <details className="details" onToggle={(e) => setFilesOpen(e.currentTarget.open)}>
           <summary>Show the files</summary>
           <p className="quiet-text">Installing stops after 10 minutes and can use up to 4 GB of memory.</p>
-          {proposal.files.map((f) => (
+          {filesOpen && proposal.files.map((f) => (
             <section key={f.path} aria-label={f.path}>
               <b>{f.path}</b>
-              <pre className="pre">{f.text}</pre>
+              {/* Focusable: a long line scrolls sideways, and the keyboard must reach it too (WCAG 2.1.1). */}
+              <pre className="pre" tabIndex={0}>{f.text}</pre>
             </section>
           ))}
         </details>
