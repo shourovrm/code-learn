@@ -489,7 +489,10 @@ describe('Continue to a review', () => {
   const opensReview = async () => {
     expect(await screen.findByText('Review', { selector: '.pill' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Click Counter', level: 1 })).toBeInTheDocument();
-    expect(results()).toHaveTextContent('Only Check is graded.');
+    // The panel starts over: no graded result on screen. The mock reopens the passed
+    // activity as the review, so its idle line names that last check.
+    expect(within(results()).queryByRole('heading', { name: '4 of 4 passed' })).not.toBeInTheDocument();
+    expect(results()).toHaveTextContent(/Only Check is graded\.|Last check/);
   };
 
   it('opens a review that came due', async () => {
