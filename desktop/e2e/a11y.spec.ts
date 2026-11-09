@@ -134,8 +134,8 @@ for (const scheme of ['light', 'dark'] as const) {
     await button(page, 'Learn').click();
     await expect(page.getByRole('list', { name: 'Topics' })).toBeVisible();
     await audit(page, 'course');
-    await button(page, 'Tracks').click();
-    await expect(heading(page, 'Tracks')).toBeVisible();
+    await button(page, 'Toolchains').click();
+    await expect(heading(page, 'Toolchains')).toBeVisible();
     await audit(page, 'tracks');
     await masterEverything(page);
     await button(page, 'Learn').click();
@@ -162,7 +162,9 @@ test('the quiz journey passes WCAG AA checks', async ({ launch }) => {
   await connect(page);
   await expect(heading(page, 'What do you want to learn?')).toBeVisible();
   await page.getByRole('textbox', { name: 'What do you want to learn?' }).fill('React');
-  await page.getByRole('radio', { name: 'Quiz', exact: true }).check();
+  // Quiz only: turn Quiz on and the default Code off.
+  await page.getByRole('button', { name: 'Quiz', exact: true }).click();
+  await page.getByRole('button', { name: 'Code', exact: true }).click();
   await button(page, 'Start').click();
   await expect(heading(page, 'Researching React')).toBeVisible();
   await expect(button(page, 'Approve')).toBeVisible({ timeout: 15_000 });
@@ -412,8 +414,8 @@ test('every screen reflows in the smallest window and at 200% and 400% zoom: not
   await button(page, 'Learn').click();
   await expect(page.getByRole('region', { name: 'Usage' })).toBeVisible({ timeout: 15_000 });
   await reflows(app, page, 'course map');
-  await button(page, 'Tracks').click();
-  await expect(heading(page, 'Tracks')).toBeVisible();
+  await button(page, 'Toolchains').click();
+  await expect(heading(page, 'Toolchains')).toBeVisible();
   await reflows(app, page, 'tracks');
   await masterEverything(page);
   await button(page, 'Learn').click();
