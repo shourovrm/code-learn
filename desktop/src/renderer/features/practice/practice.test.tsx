@@ -818,25 +818,38 @@ describe('the solution and the solved state', () => {
   });
 });
 
-describe('moving between exercises', () => {
-  it('goes to the previous and next exercise in roadmap order, and the ends have no step past them', async () => {
+describe('moving between topics', () => {
+  it('steps through every topic in roadmap order: to its exercise when open, else to its topic page', async () => {
     const { api, course } = await mockWithCourse({ read: true });
-    // The mock opens one topic's activity at a time, so three are shown as open here; each has its own activity.
+    const total = course.topics.length;
+    // The mock opens one topic's activity at a time, so the first two and the last are shown as open here.
     const real = api.course;
     api.course = async () => {
       const current = (await real())!;
-      return { ...current, topics: current.topics.map((t, i) => (i < 3 ? { ...t, activity: 'open' as const } : t)) };
+      return { ...current, topics: current.topics.map((t, i) => (i < 2 || i === total - 1 ? { ...t, activity: 'open' as const } : t)) };
     };
     renderApp({ to: 'practice', concept: course.topics[0].id }, api);
     await screen.findByRole('heading', { name: 'Click Counter' });
     expect(screen.getByRole('button', { name: '‹ Previous' })).toBeDisabled();
-    expect(screen.getByText('1 of 3')).toBeInTheDocument();
+    expect(screen.getByText(`Topic 1 of ${total}`)).toBeInTheDocument();
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: 'Next ›' }));
-    expect(await screen.findByText('2 of 3')).toBeInTheDocument();
+    expect(await screen.findByText(`Topic 2 of ${total}`)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '‹ Previous' })).toBeEnabled();
     await user.click(screen.getByRole('button', { name: 'Next ›' }));
-    expect(await screen.findByText('3 of 3')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: course.topics[2].title, level: 1 })).toBeInTheDocument();
+  });
+
+  it('has no step past the last topic', async () => {
+    const { api, course } = await mockWithCourse({ read: true });
+    const last = course.topics.at(-1)!;
+    const real = api.course;
+    api.course = async () => {
+      const current = (await real())!;
+      return { ...current, topics: current.topics.map((t) => (t.id === last.id ? { ...t, activity: 'open' as const } : t)) };
+    };
+    renderApp({ to: 'practice', concept: last.id }, api);
+    expect(await screen.findByText(`Topic ${course.topics.length} of ${course.topics.length}`)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Next ›' })).toBeDisabled();
   });
 });
