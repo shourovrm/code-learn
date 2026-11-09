@@ -11,3 +11,4 @@ dist/
 
 # Agent worktrees made during development
 .claude/worktrees/
+.design-mockups/
