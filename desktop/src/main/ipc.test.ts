@@ -47,7 +47,7 @@ const GOOD: Record<Exclude<keyof CodeLearnApi, 'onCheckProgress' | 'onJobProgres
   ask: [{ activityId: 'values-easy-1' }, 'Why?'],
   skip: ['values'],
   easier: ['values'],
-  rebuildTopics: [['values'], true],
+  rebuildTopics: [['values'], true, 'Use Linux examples'],
   rebuild: ['react@1'],
   removeTrack: ['react@1'],
   usage: [],
@@ -104,6 +104,13 @@ describe('dispatch', () => {
     expect(() => dispatch(echo, 'rebuildTopics', [['../values'], true])).toThrow('Bad input');
     expect(() => dispatch(echo, 'rebuildTopics', [['values'], 'yes'])).toThrow('Bad input');
     expect(() => dispatch(echo, 'rebuildTopics', [['values']])).toThrow('Bad input');
+  });
+
+  it('takes rebuild instructions up to their limit, or none', () => {
+    expect(() => dispatch(echo, 'rebuildTopics', [['values'], true, 'x'.repeat(500)])).not.toThrow();
+    expect(() => dispatch(echo, 'rebuildTopics', [['values'], true, ''])).not.toThrow();
+    expect(() => dispatch(echo, 'rebuildTopics', [['values'], true, 'x'.repeat(501)])).toThrow('Bad input');
+    expect(() => dispatch(echo, 'rebuildTopics', [['values'], true, 7])).toThrow('Bad input');
   });
 
   it('rejects goals and roadmaps with the wrong shape', () => {

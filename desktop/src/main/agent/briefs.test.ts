@@ -50,6 +50,13 @@ describe('job briefs', () => {
     expect(briefs.review()).toBe(JOB_BRIEFS.review);
   });
 
+  it("adds a rebuilt topic's instructions to its lesson and exercise briefs, only when there are some", () => {
+    expect(briefs.lesson('values', 'Values', 'Use Linux examples')).toContain("The learner's instructions for this topic: Use Linux examples");
+    expect(briefs.author('Use Linux examples')).toContain("The learner's instructions for this topic: Use Linux examples");
+    expect(briefs.lesson('values', 'Values', '')).not.toContain('instructions for this topic');
+    expect(briefs.author('')).toBe(JOB_BRIEFS.author);
+  });
+
   it("gives the tutor the learner's own code and question", () => {
     const tutor = briefs.tutor('the activity "count-1"', 'Why?', { 'main.c': 'int main() {}' });
     expect(tutor.startsWith(JOB_BRIEFS.tutor)).toBe(true);

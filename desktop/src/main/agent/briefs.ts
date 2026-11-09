@@ -61,8 +61,10 @@ export function briefsFrom(base: Record<JobKind, string>, platform: NodeJS.Platf
         problem && `The last proposal failed its checks: ${problem.slice(0, room.problem)}`,
       );
     },
-    lesson: (concept: string, title: string) => brief('lesson', `Concept: ${concept} (${title})`),
-    author: () => brief('author'),
+    /** `instructions`: what the learner asked for when rebuilding this topic, if anything. */
+    lesson: (concept: string, title: string, instructions = '') =>
+      brief('lesson', `Concept: ${concept} (${title})`, instructions && `The learner's instructions for this topic: ${instructions}`),
+    author: (instructions = '') => brief('author', instructions && `The learner's instructions for this topic: ${instructions}`),
     tutor: (place: string, question: string, files?: Record<string, string>) => {
       const code = files && Object.entries(files).map(([path, text]) => `${path}:\n\`\`\`\n${text}\n\`\`\``).join('\n\n').slice(0, room.code);
       return brief('tutor', `The learner is on ${place}.`, code && `Their code:\n\n${code}`, `They ask: ${question}`);

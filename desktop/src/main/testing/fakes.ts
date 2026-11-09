@@ -337,7 +337,7 @@ export function live(over: Partial<Record<Job['kind'], Act>> = {}, deps: Partial
     log: createLog(dir),
     ...deps,
   });
-  return { api, c, app, jobs, connect, dir, logFile: join(dir, 'code-learn.log') };
+  return { api, c, app, jobs, connect, state, dir, logFile: join(dir, 'code-learn.log') };
 }
 
 /** Reads until `done` holds, for up to 2 s, then fails. A read that throws fails at once. */

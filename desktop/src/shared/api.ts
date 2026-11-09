@@ -494,9 +494,10 @@ export interface CodeLearnApi {
   easier(concept: string): Promise<void>;
   /**
    * Rebuilds the chosen topics of the open course: their lessons and exercises are written again. `replace` removes the
-   * old ones and resets their progress; without it the new ones sit beside the old (core §5, desktop §4.3).
+   * old ones and resets their progress; without it the new ones sit beside the old (core §5, desktop §4.3). `instructions`
+   * reach the topics' lesson and exercise jobs; without any, earlier ones for those topics are dropped.
    */
-  rebuildTopics(concepts: string[], replace: boolean): Promise<void>;
+  rebuildTopics(concepts: string[], replace: boolean, instructions?: string): Promise<void>;
 
   rebuild(trackRef: string): Promise<void>;
 

@@ -229,6 +229,8 @@ export function createLive(d: LiveDeps): Live {
   });
   /** A course's name: the words typed for a course from before titles (W-5), kept as it was, else the agent's title, else its goal. */
   const nameOf = (r: CoreRoadmap) => d.state.read().names?.[r.course] ?? r.title ?? r.goal;
+  /** What the learner asked for when this topic was last rebuilt, if anything. */
+  const rebuildNote = (course: string, concept: string) => d.state.read().rebuildNotes?.[`${course}|${concept}`] ?? '';
   /** A roadmap as shown. Its sources are agent text too, so one that quotes hidden material, or can't be checked, is dropped. */
   const roadmapShown = (r: CoreRoadmap): Roadmap => {
     const view = roadmapView(r, Boolean(r.track && installed(r.track)), nameOf(r));
@@ -535,7 +537,7 @@ export function createLive(d: LiveDeps): Live {
     if (progress.next.kind === 'learn' ? progress.next.lesson === null : lessons() === 0) {
       // The course's first lesson runs in the foreground, beside setup (§3.2).
       const lane = core.listLessons(ws, course).length === 0 ? 'fg' : 'bg';
-      background(`lesson:${course}:${concept.id}`, 'lesson', briefs.lesson(concept.id, concept.title), course, () => lessons() > 0, { lane, concept: concept.id });
+      background(`lesson:${course}:${concept.id}`, 'lesson', briefs.lesson(concept.id, concept.title, rebuildNote(course, concept.id)), course, () => lessons() > 0, { lane, concept: concept.id });
     }
     if (ready && progress.next.kind === 'author') {
       // Done only by a new exercise for this concept at the requested difficulty (§3.2).
@@ -543,7 +545,7 @@ export function createLive(d: LiveDeps): Live {
       const { difficulty } = progress.next;
       const before = new Set(core.listExercises(ws, course).map((e) => e.exercise));
       const made = () => core.listExercises(ws, course).some((e) => !before.has(e.exercise) && e.concepts.includes(concept.id) && e.difficulty === difficulty);
-      background(`author:${course}:${concept.id}:${difficulty}`, 'author', briefs.author(), course, made, { concept: concept.id });
+      background(`author:${course}:${concept.id}:${difficulty}`, 'author', briefs.author(rebuildNote(course, concept.id)), course, made, { concept: concept.id });
     }
   }
 
@@ -1007,15 +1009,23 @@ export function createLive(d: LiveDeps): Live {
       schedule(course);
     },
 
-    async rebuildTopics(concepts, replace) {
+    async rebuildTopics(concepts, replace, instructions = '') {
       const course = core.getRoadmap(ws, approved()).course;
+      d.state.update((st) => {
+        const notes = { ...st.rebuildNotes };
+        for (const concept of concepts) {
+          if (instructions) notes[`${course}|${concept}`] = instructions;
+          else delete notes[`${course}|${concept}`];
+        }
+        return { ...st, rebuildNotes: notes };
+      });
       // A job still writing a chosen topic would save its old content back, so it stops first.
       await cancel((key) => concepts.some((c) => key === `lesson:${course}:${c}` || key.startsWith(`author:${course}:${c}:`)));
       await core.rebuildTopics(ws, course, concepts, { replace });
       const lessonsOf = (concept: string) => core.listLessons(ws, course).filter((l) => l.concept === concept).length;
       for (const concept of core.getRoadmap(ws, course).concepts.filter((c) => concepts.includes(c.id))) {
         const saved = lessonsOf(concept.id);
-        background(`lesson:${course}:${concept.id}`, 'lesson', briefs.lesson(concept.id, concept.title), course, () => lessonsOf(concept.id) > saved, { concept: concept.id });
+        background(`lesson:${course}:${concept.id}`, 'lesson', briefs.lesson(concept.id, concept.title, instructions), course, () => lessonsOf(concept.id) > saved, { concept: concept.id });
       }
       schedule(course);
     },

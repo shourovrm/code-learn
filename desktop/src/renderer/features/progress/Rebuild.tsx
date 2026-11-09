@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { TopicView } from '../../../shared/api';
 import { Button } from '../../ui/Button';
 import { Dialog } from '../../ui/Dialog';
+import { Limit } from '../../ui/Limit';
+import { LIMITS } from '../../../shared/limits';
 
 /** How many topic titles the confirmation names before it counts the rest. */
 const NAMED = 3;
@@ -38,16 +40,17 @@ export function RebuildBar({ topics, chosen, onSelectAll, onCancel, onRebuild }:
 }
 
 /**
- * Asks before rebuilding: names the chosen topics, and offers to replace the old lessons and exercises (ticked by
- * default). `everything` is true when every topic of the course is chosen.
+ * Asks before rebuilding: names the chosen topics, offers to replace the old lessons and exercises (ticked by default),
+ * and takes optional instructions for the agent. `everything` is true when every topic of the course is chosen.
  */
 export function RebuildDialog({ topics, everything, onClose, onConfirm }: {
   topics: TopicView[];
   everything: boolean;
   onClose: () => void;
-  onConfirm: (replace: boolean) => void;
+  onConfirm: (replace: boolean, instructions: string) => void;
 }) {
   const [replace, setReplace] = useState(true);
+  const [instructions, setInstructions] = useState('');
   const count = topics.length;
   const title = everything ? `Rebuild all ${count} ${topicWord(count)}?` : `Rebuild ${count} ${topicWord(count)}?`;
   return (
@@ -66,11 +69,13 @@ export function RebuildDialog({ topics, everything, onClose, onConfirm }: {
             Replace the existing lessons and exercises. Their attempts and mastery reset.
           </label>
           <p className="quiet-text">Untick to keep them and add the new ones beside them.</p>
+          <textarea className="field" aria-label="Instructions" placeholder="Optional: how to write them this time, e.g. Linux examples, shorter lessons" rows={2} value={instructions} maxLength={LIMITS.instructions} onChange={(e) => setInstructions(e.target.value)} />
+          <Limit value={instructions} max={LIMITS.instructions} />
         </>
       )}
     >
       <Button variant="ghost" onClick={onClose}>Cancel</Button>
-      <Button onClick={() => onConfirm(replace)}>{`Rebuild ${count} ${topicWord(count)}`}</Button>
+      <Button onClick={() => onConfirm(replace, instructions.trim())}>{`Rebuild ${count} ${topicWord(count)}`}</Button>
     </Dialog>
   );
 }

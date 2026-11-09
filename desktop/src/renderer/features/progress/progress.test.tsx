@@ -447,7 +447,7 @@ describe('rebuilding topics', () => {
     expect(within(dialog).getByText(topics[1].title)).toBeInTheDocument();
     expect(within(dialog).getByRole('checkbox', { name: /Replace the existing lessons and exercises/ })).toBeChecked();
     await user.click(within(dialog).getByRole('button', { name: 'Rebuild 1 topic' }));
-    await waitFor(() => expect(calls).toEqual([[[topics[1].id], true]]));
+    await waitFor(() => expect(calls).toEqual([[[topics[1].id], true, '']]));
     expect(screen.queryByRole('checkbox', { name: topics[1].title })).not.toBeInTheDocument();
   });
 
@@ -465,7 +465,22 @@ describe('rebuilding topics', () => {
     expect(within(dialog).getByRole('heading', { name: `Rebuild all ${topics.length} topics?` })).toBeInTheDocument();
     await user.click(within(dialog).getByRole('checkbox', { name: /Replace the existing lessons and exercises/ }));
     await user.click(within(dialog).getByRole('button', { name: `Rebuild ${topics.length} topics` }));
-    await waitFor(() => expect(calls).toEqual([[topics.map((t) => t.id), false]]));
+    await waitFor(() => expect(calls).toEqual([[topics.map((t) => t.id), false, '']]));
+  });
+
+  it("sends the dialog's instructions with the rebuild", async () => {
+    const user = userEvent.setup();
+    const { api } = await mockWithCourse();
+    const calls = await recordRebuilds(api);
+    const topics = (await api.course())!.topics;
+    renderApp({ to: 'learn' }, api);
+    await user.click(await screen.findByRole('button', { name: 'Rebuild…' }));
+    await user.click(screen.getByRole('checkbox', { name: topics[1].title }));
+    await user.click(screen.getByRole('button', { name: 'Rebuild selected' }));
+    const dialog = await screen.findByRole('dialog');
+    await user.type(within(dialog).getByRole('textbox', { name: 'Instructions' }), '  Use Linux examples  ');
+    await user.click(within(dialog).getByRole('button', { name: 'Rebuild 1 topic' }));
+    await waitFor(() => expect(calls).toEqual([[[topics[1].id], true, 'Use Linux examples']]));
   });
 
   it('cancels the dialog, then select mode, without calling core', async () => {

@@ -22,6 +22,8 @@ export interface DesktopState {
   activityStyles?: Record<string, string>;
   /** The learner's model choice per agent (O6). Absent: the recommended one. */
   models?: Partial<Record<AgentId, string>>;
+  /** The instructions given when a topic was last rebuilt, keyed `course|concept`, for its lesson and exercise jobs. */
+  rebuildNotes?: Record<string, string>;
 }
 
 export const workspaceOf = (state: DesktopState, home: string) => state.workspace ?? join(home, 'code-learn');
@@ -42,6 +44,7 @@ export function withoutCourse(state: DesktopState, course: string): DesktopState
     sessions: Object.fromEntries(Object.entries(state.sessions).filter(([key]) => !key.startsWith(`${course}|`))),
     names: omitKey(state.names, course),
     activityStyles: omitKey(state.activityStyles, course),
+    rebuildNotes: state.rebuildNotes && Object.fromEntries(Object.entries(state.rebuildNotes).filter(([key]) => !key.startsWith(`${course}|`))),
   };
 }
 

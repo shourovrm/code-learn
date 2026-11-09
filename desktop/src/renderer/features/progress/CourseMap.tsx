@@ -46,12 +46,12 @@ export function CourseMap() {
     setChosen(new Set());
   };
   // Leaves select mode first, then asks core; the map is read again either way, so it shows what core did.
-  async function rebuild(replace: boolean) {
+  async function rebuild(replace: boolean, instructions: string) {
     const ids = [...chosen];
     setConfirming(false);
     endPicking();
     try {
-      await api.rebuildTopics(ids, replace);
+      await api.rebuildTopics(ids, replace, instructions);
     } catch (e) {
       fail(e);
     }
