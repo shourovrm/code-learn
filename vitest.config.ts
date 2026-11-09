@@ -6,7 +6,7 @@ export default defineConfig({
     setupFiles: ["test/setup.ts"],
     testTimeout: 180_000,
     hookTimeout: 900_000,
-    // Docker tests count the containers code-learn owns, so files must not overlap.
+    // Sandbox tests count the scopes code-learn owns, so files must not overlap.
     fileParallelism: false,
   },
 });

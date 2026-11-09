@@ -6,7 +6,7 @@ code-learn is a harness: the learner's coding agent writes tracks, roadmaps and 
 
 - **code-learn ships no languages.** No code may dispatch on a language, runtime or framework name, and no track or toolchain may ship in the package.
 - **code-learn never calls a model** and never reads or stores credentials.
-- **Untrusted code runs only in a sandbox:** containers through `src/sandbox.ts` (every judge container gets the full flag set, DESIGN §4.3), or the WASI engine through `src/wasi.ts` (DESIGN §4.5). Never add a path that runs agent or learner code on the host.
+- **Untrusted code runs only in a sandbox:** bubblewrap inside a systemd user scope, through `src/sandbox.ts` (every sandbox gets the full flag set, DESIGN §4.6), and installs only through `src/toolchain.ts`'s install sandbox. Never add a path that runs agent or learner code on the host.
 - **Hidden data never leaves code-learn through code-learn's own outputs (tools, CLI, IPC and diagnostics).** An agent with file access can read code-learn's files; code-learn removes that access where the agent allows. Hidden inputs, expected outputs, test names, messages and output must not appear in tool output, CLI output, IPC or gate diagnostics. Hidden results show an index and a status only.
 - **Infrastructure failures record nothing.** Learner-caused outcomes (build errors, timeouts, crashes, output floods) are graded as `error` and recorded.
 - **Persistence:**
@@ -25,11 +25,10 @@ code-learn is a harness: the learner's coding agent writes tracks, roadmaps and 
   | Module | Job |
   |---|---|
   | `files` | input validation |
-  | `toolchain` | a WASI track's toolchain: download, verify, store |
+  | `toolchain` | a track's toolchain: install with micromamba, commit, remove |
   | `schemas` | formats |
   | `grading` | pure grading |
-  | `sandbox` | containers |
-  | `wasi` | the WASI engine (wasmtime) |
+  | `sandbox` | the bubblewrap sandbox and its requirements |
   | `judge` | running test sets |
   | `program` | Run: the learner's program, interactively |
   | `gates` | verification |

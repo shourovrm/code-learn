@@ -22,7 +22,7 @@ const appWindows = new Set<WebContents>();
 
 // The real core and the learner's agent. In development only, CODE_LEARN_MOCK=<scenario>
 // runs the in-memory mock instead, to click through environment states (mock.ts).
-// ~/Library/Logs/code-learn on macOS, %APPDATA%\code-learn\logs on Windows (HANDOFF.md).
+// ~/.config/code-learn/logs on Linux.
 // A separate profile (--user-data-dir) keeps its own log, so runs with one never write to the learner's.
 if (app.commandLine.hasSwitch('user-data-dir')) app.setAppLogsPath(join(app.getPath('userData'), 'logs'));
 const log = createLog(app.getPath('logs'));
