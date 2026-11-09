@@ -37,6 +37,14 @@ async function checkUntilStuck(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe('practice', () => {
+  it("lists the topic's lessons and this exercise beside the task, and a lesson opens from there", async () => {
+    const { user } = await open();
+    const steps = screen.getByRole('navigation', { name: 'This topic' });
+    expect(within(steps).getByText('Click Counter')).toHaveAttribute('aria-current', 'step');
+    await user.click(within(steps).getByRole('button', { name: 'useState' }));
+    expect(await screen.findByRole('heading', { name: 'useState' })).toBeInTheDocument();
+  });
+
   it('opens the activity with its statement, and only Check is graded', async () => {
     await open();
     expect(screen.getByRole('region', { name: 'Click Counter' })).toHaveTextContent('Make the count go up by one on each click.');

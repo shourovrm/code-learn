@@ -45,6 +45,13 @@
 .stmt .md { font: var(--type-body-large); }
 .stmt .md a { color: inherit; }
 .stmt .md :not(pre) > code { background: var(--stmt-code); }
+.topic-steps { display: flex; flex-direction: column; gap: var(--space-100); }
+.topic-steps-head { margin: 0; font: var(--type-heading-xxsmall); color: var(--stmt-muted); }
+.topic-steps ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.topic-steps li { min-height: var(--control-h); display: flex; align-items: center; gap: var(--space-150); color: var(--stmt-text); }
+.topic-steps li[aria-current="step"] { font-weight: 700; }
+.topic-steps .link { padding: 0; border: none; background: transparent; color: inherit; font: inherit; text-align: left; text-decoration: underline; text-decoration-color: var(--stmt-line); text-underline-offset: var(--space-050); cursor: pointer; }
+.topic-steps .link:hover { text-decoration-color: currentColor; }
 .stmt .md pre { background: var(--stmt-code); color: var(--stmt-text); }
 .stmt:not(.quiz-form) .md pre [class*="hljs-"] { color: inherit; }
 /* A small label cut like a plant stake: a pointed left end, marigold, dark green text. */

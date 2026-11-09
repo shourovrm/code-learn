@@ -21,6 +21,7 @@ import { useLearnerFiles } from './useLearnerFiles';
 import { RunButton } from '../../ui/RunButton';
 import { Writing } from '../lessons/Writing';
 import { ExerciseNav } from './ExerciseNav';
+import { TopicSteps } from './TopicSteps';
 import { SolutionButton } from './SolutionButton';
 import { Solved } from './Solved';
 import { useExerciseStatus } from './useExerciseStatus';
@@ -157,6 +158,7 @@ function Workspace({ activity, course, focus }: { activity: Activity; course: Co
         {topic?.review === 'due' && <span className="pill" style={{ alignSelf: 'flex-start' }}>Review</span>}
         <h1 className="h2" id="activity-title" ref={title} tabIndex={-1}>{activity.title}</h1>
         <Markdown text={activity.statement} />
+        {topic && <TopicSteps topic={topic} title={activity.title} />}
         <ExerciseNav topics={course.topics} concept={activity.concept} />
       </section>}
       <div className="mid">
