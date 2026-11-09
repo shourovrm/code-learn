@@ -120,8 +120,8 @@ function Aside({ course, usage, children }: { course: CourseView; usage: Usage |
           <>
             <p className="tally"><b>{mastered}</b> of {course.topics.length} {course.topics.length === 1 ? 'topic' : 'topics'}</p>
             {started.map((t, i) => (
-              <div key={t.id} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <span style={{ fontSize: 14, fontWeight: 500 }}>{t.title}</span>
+              <div key={t.id} className="mastery-row">
+                <span>{t.title}</span>
                 <div className="bar" role="img" aria-label={`${t.title}: ${t.state === 'mastered' ? 'mastered' : 'in progress'}`}>
                   <i style={{ width: `${Math.round(t.mastery * 100)}%`, ...stagger(0, 500 + i * 100) }} />
                 </div>

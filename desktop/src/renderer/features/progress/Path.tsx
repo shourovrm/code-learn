@@ -3,6 +3,7 @@ import type { CourseView, TopicView } from '../../../shared/api';
 import { useRouter } from '../../app/router';
 import { Button } from '../../ui/Button';
 import { Sprig } from '../../ui/Sprig';
+import { Growth } from '../../ui/Growth';
 import { Icon } from '../../ui/Icon';
 import { continueRoute, offeredTopic, reviewText } from '../../app/course';
 import { Writing } from '../lessons/Writing';
@@ -61,7 +62,7 @@ function Stop({ topic, index, current, track, up, down, last, picking }: StopPro
         {index > 0 && <i className={`seg up${up ? ' on' : ''}`} />}
         {!last && <i className={`seg down${down ? ' on' : ''}`} />}
       </span>
-      <Leaf state={topic.state} reading={topic.activity === 'none'} flip={index % 2 === 1} />
+      <Leaf state={topic.state} current={current} />
       {current ? (
         <Current topic={topic} track={track} />
       ) : topic.state === 'mastered' || topic.state === 'covered' ? (
@@ -79,16 +80,12 @@ function Stop({ topic, index, current, track, up, down, last, picking }: StopPro
   );
 }
 
-/** A topic's state as a leaf on the branch: filled with a check when mastered, outlined while it waits. */
-function Leaf({ state, flip, reading }: { state: TopicView['state']; flip: boolean; reading: boolean }) {
+/** A topic's mark on the stem: a sprout when done, a shoot for the topic under way, a seed while it waits. */
+function Leaf({ state, current }: { state: TopicView['state']; current: boolean }) {
+  const stage = current || state === 'now' ? 'shoot' : state === 'later' ? 'seed' : 'sprout';
   return (
-    <span className={`leaf ${state}${flip ? ' flip' : ''}`} role="img" aria-label={STATE_LABEL[state]}>
-      <svg className="blade-art" viewBox="0 0 36 36" width="36" height="36" aria-hidden="true">
-        <path className="blade" d="M5 31 C 5 15, 15 5, 31 5 C 31 21, 21 31, 5 31 Z" />
-      </svg>
-      {(state === 'mastered' || state === 'covered') && <Icon name="check" color="#fff" size={15} />}
-      {state === 'now' && <Icon name={reading ? 'book' : 'code'} color="var(--green-ink)" size={15} />}
-      {state === 'later' && <Icon name="lock" color="var(--faint)" size={13} />}
+    <span className={`leaf ${state}`} role="img" aria-label={STATE_LABEL[state]}>
+      <Growth stage={stage} />
     </span>
   );
 }
