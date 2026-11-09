@@ -79,9 +79,9 @@ export function Connect({ then = { to: 'goal' } }: { then?: Route }) {
 
   return (
     <main className="center">
-      <div className="stack" style={{ width: 580, gap: 22 }}>
+      <div className="stack setup-col">
         <h1 className="h1 a-up">Connect an agent</h1>
-        <ul className="stack" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+        <ul className="stack plain">
           {list.map((a, i) => {
             const recommended = a.models.find((m) => m.recommended);
             return (
@@ -125,7 +125,7 @@ export function Connect({ then = { to: 'goal' } }: { then?: Route }) {
             );
           })}
         </ul>
-        <div className="a-up" style={{ ...stagger(4), display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+        <div className="a-up connect-foot" style={stagger(4)}>
           <span className="quiet-text">code-learn uses your agent and your account.</span>
           <Button size="lg" disabled={!list.some((a) => a.state === 'connected')} onClick={() => go(next)}>Continue</Button>
         </div>
