@@ -17,6 +17,8 @@ const PATHS = {
   sun: { w: 2.2, d: <><circle cx="12" cy="12" r="4" /><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4" /></> },
   moon: { w: 2.2, d: <path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z" /> },
   plug: { w: 2.2, d: <><path d="M9 3v5M15 3v5" /><path d="M6 8h12v3a6 6 0 0 1-12 0z" /><path d="M12 17v4" /></> },
+  chat: { w: 2.2, d: <path d="M4 5h16v11H9l-5 4z" /> },
+  fold: { w: 2.4, d: <path d="M9 6l6 6-6 6" /> },
 } satisfies Record<string, { w: number; d: ReactNode }>;
 
 export type IconName = keyof typeof PATHS;

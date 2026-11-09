@@ -2,12 +2,24 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'rea
 import type { Message } from '../../shared/api';
 import type { HeardJob } from '../app/useJob';
 import { Button } from './Button';
+import { Icon } from './Icon';
 import { Sprig } from './Sprig';
 import { Field } from './Field';
 import { JobBar } from './JobBar';
 import { Markdown } from './Markdown';
 import { Limit } from './Limit';
 import { LIMITS } from '../../shared/limits';
+
+const FOLDED = 'code-learn.tutor-folded';
+
+function storedFold(): boolean {
+  try {
+    return window.localStorage.getItem(FOLDED) === 'yes';
+  } catch {
+    // Storage that can't be read (a locked-down profile) leaves the tutor open.
+    return false;
+  }
+}
 
 function Entry({ m }: { m: Message }) {
   if (m.from === 'you') return <p className="you a-up"><b>You:</b> {m.text}</p>;
@@ -22,6 +34,16 @@ export function Rail({ messages, onAsk, busy = false, answering, name, children 
   messages: Message[]; onAsk: (text: string) => unknown; busy?: boolean; answering?: HeardJob; name?: string; children?: ReactNode;
 }) {
   const [text, setText] = useState('');
+  // Folded to a strip beside the work, remembered across screens, so a learner who rarely asks keeps the room.
+  const [folded, setFolded] = useState(storedFold);
+  const fold = (next: boolean) => {
+    try {
+      window.localStorage.setItem(FOLDED, next ? 'yes' : 'no');
+    } catch {
+      // Storage that can't be written (a locked-down profile): the choice still holds until the app closes.
+    }
+    setFolded(next);
+  };
   // The log scrolls inside the rail and follows the newest message. Its own scrollTop only: scrollIntoView would scroll the page too.
   const log = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -34,9 +56,18 @@ export function Rail({ messages, onAsk, busy = false, answering, name, children 
     setText('');
     if ((await onAsk(q)) === false) setText((now) => now || q);
   }
+  if (folded) {
+    return (
+      <aside className="coach folded" aria-label="code-learn">
+        <button type="button" className="ibtn" aria-label="Show the tutor" onClick={() => fold(false)}><Icon name="chat" /></button>
+      </aside>
+    );
+  }
   return (
     <aside className="coach" aria-label="code-learn">
-      <div className="chead"><Sprig width={40} name={name} />code-learn</div>
+      <div className="chead"><Sprig width={40} name={name} />code-learn
+        <button type="button" className="ibtn fold" aria-label="Hide the tutor" onClick={() => fold(true)}><Icon name="fold" /></button>
+      </div>
       <div className="cbody" role="log" aria-busy={busy} ref={log}>
         {messages.map((m, i) => <Entry key={i} m={m} />)}
         {busy && (

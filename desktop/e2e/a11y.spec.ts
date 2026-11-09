@@ -579,8 +579,10 @@ test('the terminal pane passes WCAG AA checks and works with the keyboard alone'
   // Try it shows its results in Results alone; the pane keeps the Run.
   await press(page, 'Try it');
   await expect(page.getByRole('region', { name: 'Results' }).getByRole('heading', { name: '0 of 2 visible tests passed' })).toBeVisible();
+  await audit(page, 'Results after Try it');
+  await page.getByRole('tab', { name: 'Terminal' }).click();
   await expect(log).not.toContainText('(test 02)');
-  await audit(page, 'terminal and Results, Try it');
+  await audit(page, 'terminal after Try it');
   await app.close();
 });
 

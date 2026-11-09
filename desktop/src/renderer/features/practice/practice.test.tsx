@@ -547,6 +547,33 @@ describe('Run', () => {
   const terminal = () => screen.getByRole('region', { name: 'Terminal for Greet by name' });
   const mirror = () => screen.getByRole('log', { name: 'Terminal for Greet by name, as text' });
 
+  it('keeps Run output and results in one panel under the code: Run shows Terminal, Check shows Results, and it folds away', async () => {
+    const { user } = await openIo();
+    const tab = (name: string) => screen.getByRole('tab', { name: new RegExp(`^${name}`) });
+    expect(tab('Results')).toHaveAttribute('aria-selected', 'true');
+    await user.click(screen.getByRole('button', { name: 'Run' }));
+    await vi.waitFor(() => expect(tab('Terminal')).toHaveAttribute('aria-selected', 'true'));
+    expect(terminal()).toBeVisible();
+    act(() => xterm.type('Ada\r'));
+    await vi.waitFor(() => expect(mirror()).toHaveTextContent('The program ended.'));
+    await user.click(screen.getByRole('button', { name: 'Check' }));
+    await vi.waitFor(() => expect(tab('Results')).toHaveAttribute('aria-selected', 'true'));
+    expect(screen.getByRole('region', { name: 'Terminal for Greet by name', hidden: true })).not.toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Hide output' }));
+    expect(screen.getByRole('button', { name: 'Show output' })).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByRole('region', { name: 'Results', hidden: true })).not.toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Show output' }));
+    expect(results()).toBeVisible();
+  });
+
+  it('folds the tutor into a strip beside the code, and opens it again', async () => {
+    const { user } = await openIo();
+    await user.click(screen.getByRole('button', { name: 'Hide the tutor' }));
+    expect(screen.queryByRole('textbox', { name: 'Ask code-learn' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Show the tutor' }));
+    expect(screen.getByRole('textbox', { name: 'Ask code-learn' })).toBeVisible();
+  });
+
   it('runs the program in the terminal: the command, its output and typed input, then how it ended, recording nothing', async () => {
     const { api, user } = await openIo();
     const tools = screen.getAllByRole('button').map((b) => b.textContent).filter((t) => ['Run', 'Try it', 'Check'].includes(t ?? ''));
@@ -682,6 +709,7 @@ describe('Run', () => {
     await user.click(screen.getByRole('button', { name: 'Check' }));
     // Whatever the check says, it says it in Results.
     expect(await within(results()).findByRole('heading', { name: /passed|another way/ })).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: 'Terminal' }));
     expect(mirror().textContent).toBe(ran);
   });
 
@@ -702,8 +730,10 @@ describe('Run', () => {
     api.tryIt = async (id) => (tries.push(id), { kind: 'ran', passed: 0, total: 0, tests: [] });
     await user.click(screen.getByRole('button', { name: 'Run' }));
     await vi.waitFor(() => expect(mirror().textContent).toContain("What's your name? "));
+    await user.click(screen.getByRole('tab', { name: 'Results' }));
     await user.click(within(results()).getByRole('button', { name: /try again/i }));
     expect(tries).toEqual([]);
+    await user.click(screen.getByRole('tab', { name: 'Terminal' }));
     expect(mirror().textContent).toContain("What's your name? ");
   });
 
@@ -713,6 +743,7 @@ describe('Run', () => {
     await vi.waitFor(() => expect(terminal()).toHaveTextContent("Time's up"));
     await user.click(screen.getByRole('button', { name: 'Try it' }));
     expect(await within(results()).findByRole('heading', { name: '0 of 2 visible tests passed' })).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: 'Terminal' }));
     expect(terminal()).toHaveTextContent("Time's up");
   });
 

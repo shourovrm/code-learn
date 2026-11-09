@@ -1,8 +1,6 @@
 /* The workspace: lessons, the exercise screen, the editor, results, the terminal and diagrams (docs/design-system.md). */
 :root {
   --topic-page-w: 620px;
-  --term-h: 200px;
-  --results-h: 280px;
   --stacked-mid-h: 560px;
   --stacked-coach-h: 420px;
   --diagram-wait-h: 120px;
@@ -16,15 +14,17 @@
 .topic-page .card { padding: var(--space-050) var(--space-300); }
 .topic-page .card.panel { width: auto; padding: var(--space-400); }
 /* One row as tall as the window: a column that outgrows it (a long chat) scrolls inside itself, never the page. */
-.ws { flex: 1; min-height: 0; min-width: 0; display: grid; grid-template-columns: var(--column-w) minmax(0, 1fr) var(--tutor-w); grid-template-rows: minmax(0, 1fr); }
-.ws.quiz { grid-template-columns: minmax(0, 1fr) var(--tutor-w); }
+.ws { flex: 1; min-height: 0; min-width: 0; display: grid; grid-template-columns: var(--task-w) minmax(0, 1fr) auto; grid-template-rows: minmax(0, 1fr); }
+/* With the tutor folded to its strip, the task takes some of the room. */
+.ws:has(> .coach.folded) { grid-template-columns: var(--task-wide-w) minmax(0, 1fr) auto; }
+.ws.quiz, .ws.quiz:has(> .coach.folded) { grid-template-columns: minmax(0, 1fr) auto; }
 .ws.quiz .mid { overflow: auto; }
 .quiz-form { overflow: visible; flex-shrink: 0; border-right: 0; }
 .quiz-questions fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .quiz-questions legend { margin-bottom: var(--space-200); }
 .quiz-questions .opt { white-space: normal; }
 .quiz-results { padding: var(--space-300); }
-.ws.lesson { grid-template-columns: var(--column-w) minmax(0, 1fr) var(--tutor-w); }
+.ws.lesson, .ws.lesson:has(> .coach.folded) { grid-template-columns: var(--column-w) minmax(0, 1fr) auto; }
 
 /* The statement column is the seed packet's field: garden green, light text, outlined buttons. The quiz form is the
    same column on paper, so it names the same colours from the paper. */
@@ -89,8 +89,10 @@
 .reader .actions { margin-top: auto; }
 
 /* ---------- code-learn tutor rail ---------- */
-.coach { min-width: 0; display: flex; flex-direction: column; background: var(--ground); border-left: var(--border) solid var(--line); }
+.coach { width: var(--tutor-w); min-width: 0; display: flex; flex-direction: column; background: var(--ground); border-left: var(--border) solid var(--line); }
 .chead { height: var(--space-600); flex-shrink: 0; display: flex; align-items: center; gap: var(--space-100); padding: 0 var(--space-200); border-bottom: var(--border) solid var(--line); font: var(--type-heading-small); letter-spacing: var(--heading-track); }
+.coach.folded { width: var(--strip-w); align-items: center; padding-top: var(--space-100); }
+.chead .fold { margin-left: auto; }
 .cbody { flex: 1; min-height: 0; padding: var(--space-200); display: flex; flex-direction: column; gap: var(--space-150); overflow: auto; }
 .you { min-width: 0; margin: 0; font: var(--type-body); color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; }
 .you b { color: var(--ink); font-weight: 600; }
@@ -128,15 +130,29 @@
 @media (forced-colors: active) { .code .hl { display: none; } }
 .code:focus-within { box-shadow: inset 0 0 0 var(--space-050) var(--focus); }
 /* The terminal pane (§4.9): dark and monospace, between the editor and the results. */
-.term { flex-shrink: 0; height: var(--term-h); display: flex; flex-direction: column; background: var(--garden-3); border-top: var(--border) solid var(--garden-line); }
+.term { display: flex; flex-direction: column; background: var(--garden-3); border-top: var(--border) solid var(--garden-line); }
 .term-head { height: var(--control-h); flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 var(--space-200); border-bottom: var(--border) solid var(--garden-line); color: var(--garden-text); font: var(--type-code-small); font-variant-ligatures: none; font-weight: 600; }
 .term-status { color: var(--garden-muted); font: var(--type-code-small); font-variant-ligatures: none; font-variant-numeric: tabular-nums; }
 .term-hint { margin: 0; padding: var(--space-075) var(--space-150) var(--space-100); background: var(--garden); color: var(--garden-text); font: var(--type-body-small); }
 .term-screen { flex: 1; min-height: 0; padding: var(--space-100) var(--space-050) var(--space-100) var(--space-200); }
 .term-screen:focus-within { outline: var(--space-050) solid var(--focus-on-garden); outline-offset: calc(-1 * var(--space-050)); }
 .sr-only { position: absolute; width: var(--border); height: var(--border); margin: calc(-1 * var(--border)); padding: 0; overflow: hidden; clip-path: inset(50%); white-space: pre-wrap; border: 0; }
-/* Results sit under the code on a 2px ink rule, and rise from it when they appear. */
-.res { flex-shrink: 0; height: var(--results-h); display: flex; flex-direction: column; gap: var(--space-150); padding: var(--space-200) var(--space-300); border-top: var(--border-bold) solid var(--ink); background: var(--card); overflow: auto; }
+/* Run output and results share one panel under the code (OutputDock.tsx): a third of the column until dragged, or
+   folded to its tabs. */
+.dock { flex: 0 0 auto; min-height: 0; display: flex; flex-direction: column; border-top: var(--border-bold) solid var(--ink); background: var(--card); }
+.dock.folded { flex: none; }
+.dock-grip { height: var(--space-100); flex-shrink: 0; display: grid; place-items: center; background: var(--surface-2); cursor: row-resize; touch-action: none; }
+.dock-grip::after { content: ''; width: var(--space-400); height: var(--space-025); border-radius: var(--radius-round); background: var(--ctl); }
+.dock-grip:focus-visible { outline-offset: calc(-1 * var(--space-025)); }
+.dock-bar { height: var(--space-500); flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 var(--space-100); border-bottom: var(--border) solid var(--line); }
+.dock-tabs { height: 100%; display: flex; gap: var(--space-050); }
+.dock-tabs [role="tab"] { padding: 0 var(--space-150); border: 0; background: transparent; color: var(--muted); font: var(--type-body); font-weight: 600; cursor: pointer; }
+.dock-tabs [aria-selected="true"] { color: var(--ink); box-shadow: inset 0 calc(-1 * var(--border-bold)) 0 var(--primary-edge); }
+.dock-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.dock-panel[hidden] { display: none; }
+.dock .term, .dock .res { flex: 1; height: auto; min-height: 0; border-top: 0; }
+/* Results rise from the panel's rule when they appear. */
+.res { display: flex; flex-direction: column; gap: var(--space-150); padding: var(--space-200) var(--space-300); border-top: var(--border-bold) solid var(--ink); background: var(--card); overflow: auto; }
 .res.nok { background: var(--res-nok); }
 .res.ok { background: var(--res-ok); }
 .res.off { background: var(--res-off); }
@@ -168,7 +184,8 @@
 .way:first-of-type { border: var(--border-bold) solid var(--green-ink); }
 
 @media (max-width: 1440px) {
-  .ws, .ws.lesson { grid-template-columns: var(--column-narrow-w) minmax(0, 1fr) var(--column-narrow-w); }
+  .ws, .ws.lesson { grid-template-columns: var(--column-narrow-w) minmax(0, 1fr) auto; }
+  .coach:not(.folded) { width: var(--column-narrow-w); }
 }
 
 @media (max-width: 1024px) {
@@ -176,7 +193,8 @@
   .stmt, .reader { overflow: visible; border-right: none; border-bottom: var(--border) solid var(--line); }
   .stmt:not(.quiz-form) { border-bottom-color: var(--packet-line); }
   .mid { min-height: var(--stacked-mid-h); }
-  .coach { min-height: var(--stacked-coach-h); border-left: none; border-top: var(--border) solid var(--line); }
+  .coach, .coach:not(.folded) { width: auto; min-height: var(--stacked-coach-h); border-left: none; border-top: var(--border) solid var(--line); }
+  .coach.folded { width: auto; min-height: 0; padding: var(--space-100); }
 }
 
 .example { margin: var(--space-200) 0; padding: var(--space-200); display: flex; flex-direction: column; gap: var(--space-100); }

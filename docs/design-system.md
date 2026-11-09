@@ -74,9 +74,10 @@ job fill as today. All motion stops under prefers-reduced-motion.
 
 ## Layout of the exercise screen
 
-Rail (`--rail-w` 56px, garden) | statement (`--column-w` 320px, packet field: title, stake label, task, the
-topic's steps, Previous and Next) | editor (rest: file tabs and Solution, Try it, Check in a 48px bar; code; results
-under the code) | tutor (`--tutor-w` 304px, ground). Below 1440px the side columns narrow; below 1024px they stack.
+Rail (`--rail-w` 56px) | task (`--task-w` 400px, packet field; `--task-wide-w` 440px while the tutor is folded) |
+editor (rest: file tabs, then Run, Solution, Try it and Check last, in a 48px bar; code; under it one panel with
+Terminal and Results tabs, a third of the column, dragged 15–75% or folded to its tabs) | tutor (`--tutor-w` 288px,
+folds to a `--strip-w` 48px strip). Below 1440px the side columns narrow; below 1024px they stack.
 
 ## Layout of the Learn screen
 

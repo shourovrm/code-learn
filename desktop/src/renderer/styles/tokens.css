@@ -54,7 +54,11 @@
   --sidebar-w: 240px;
   --column-w: 320px;
   --column-narrow-w: 280px;
-  --tutor-w: 304px;
+  --tutor-w: 288px;
+  /* The exercise's task column, and how wide it gets while the tutor is folded to its strip. */
+  --task-w: 400px;
+  --task-wide-w: 440px;
+  --strip-w: 48px;
   --side-w: 288px;
   --measure: 72ch;
   --page-max: 1296px;

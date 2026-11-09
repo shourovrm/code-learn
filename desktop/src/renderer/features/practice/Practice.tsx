@@ -22,6 +22,7 @@ import { RunButton } from '../../ui/RunButton';
 import { Writing } from '../lessons/Writing';
 import { ExerciseNav } from './ExerciseNav';
 import { TopicSteps } from './TopicSteps';
+import { OutputDock, type OutputTab } from './OutputDock';
 import { SolutionButton } from './SolutionButton';
 import { Solved } from './Solved';
 import { useExerciseStatus } from './useExerciseStatus';
@@ -98,6 +99,7 @@ function Workspace({ activity, course, focus }: { activity: Activity; course: Co
   const program = useRun({ begin: (run) => api.runProgram(activity.id, run), command: activity.run, terminal, save, fail });
   // The pane is Run's alone: it appears with the first Run, and stays. Test results show in Results only.
   const [ran, setRan] = useState(false);
+  const [output, setOutput] = useState<OutputTab>('results');
 
   // While a program runs, Results' Try again doesn't start an attempt either.
   const { shown, setShown, attempt } = useAttempt({ save, fail, blocked: () => program.running });
@@ -111,13 +113,13 @@ function Workspace({ activity, course, focus }: { activity: Activity; course: Co
   const ask = (text: string) => chat.ask(text, save);
 
   const check = () =>
-    attempt('Checking', async (run) => {
+    (setOutput('results'), attempt('Checking', async (run) => {
       const result = await api.check(activity.id, run);
       if (result.kind === 'not-counted') chat.add({ from: 'code-learn', text: 'Your code is saved. Nothing was recorded.' });
       return { kind: 'check', result, keepTrying: false };
-    });
+    }));
 
-  const tryIt = () => attempt('Running', async (run) => ({ kind: 'try', result: await api.tryIt(activity.id, run) }));
+  const tryIt = () => (setOutput('results'), attempt('Running', async (run) => ({ kind: 'try', result: await api.tryIt(activity.id, run) })));
 
   async function act(work: () => Promise<void>, then: Parameters<typeof go>[0]) {
     try {
@@ -181,15 +183,19 @@ function Workspace({ activity, course, focus }: { activity: Activity; course: Co
           onChange={(text) => edit(open, text)}
           readOnly={solution !== undefined}
           tools={<>
-            {activity.run && <RunButton running={program.running} disabled={busy} onStop={program.stop} onRun={() => (setRan(true), void program.start())} />}
+            {activity.run && <RunButton running={program.running} disabled={busy} onStop={program.stop} onRun={() => (setRan(true), setOutput('terminal'), void program.start())} />}
             {status && <SolutionButton status={status} showing={solution !== undefined} disabled={busy} onShow={showSolution} onHide={() => setSolution(undefined)} />}
             <Button variant="ghost" disabled={busy} onClick={tryIt}>Try it</Button>
             <Button disabled={busy} onClick={check}>Check</Button>
           </>}
         />
-        {activity.run && ran && <Terminal ref={terminal} label={`Terminal for ${activity.title}`} status={program.status} onInput={program.input} onEnd={program.end} />}
         </>}
-        <Results quiz={activity.style === 'quiz'} shown={shown} name={course.track} topic={topic?.title ?? ''} visibleTests={activity.visibleTests} ways={ways} last={status?.last} />
+        <OutputDock
+          tab={output}
+          onTab={setOutput}
+          terminal={activity.run && ran ? <Terminal ref={terminal} label={`Terminal for ${activity.title}`} status={program.status} onInput={program.input} onEnd={program.end} /> : undefined}
+          results={<Results quiz={activity.style === 'quiz'} shown={shown} name={course.track} topic={topic?.title ?? ''} visibleTests={activity.visibleTests} ways={ways} last={status?.last} />}
+        />
       </div>
       <Rail messages={chat.messages} onAsk={ask} busy={chat.busy} answering={chat.answering} name={course.track}>
         <div className="actions">
