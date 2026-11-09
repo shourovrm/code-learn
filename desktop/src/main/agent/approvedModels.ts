@@ -42,7 +42,7 @@ function settingsOf(text: string): Record<string, unknown> {
   }
 }
 
-/** pi's `enabledModels` as written, then its `defaultModel`, prefixed with `defaultProvider` when it names no provider. */
+/** pi's `enabledModels` as written, then its `defaultModel` under its `defaultProvider`. */
 function piIds(home: string): string[] {
   const text = readText(join(home, '.pi', 'agent', 'settings.json'));
   if (text === null) return [];
@@ -53,9 +53,10 @@ function piIds(home: string): string[] {
   const model = typeof settings.defaultModel === 'string' ? settings.defaultModel : '';
   const provider = typeof settings.defaultProvider === 'string' ? settings.defaultProvider : '';
   if (model === '') return enabled;
-  // A model id with a `/` already names its provider, as pi writes `openrouter/...` ids.
-  const qualified = model.includes('/') || provider === '' ? model : `${provider}/${model}`;
-  return [...enabled, qualified];
+  // pi stores the default model's id within its provider, and those ids can hold a `/`
+  // themselves (openrouter's `z-ai/glm-5.3-flash`), so the provider is always prepended.
+  const qualified = provider === '' || model.startsWith(`${provider}/`) ? model : `${provider}/${model}`;
+  return [...new Set([...enabled, qualified])];
 }
 
 /** Codex's top-level `model` in config.toml, then in each *.config.toml beside it, by file name. */

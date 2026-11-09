@@ -22,14 +22,14 @@ describe("approvedIds: the models an agent's own settings approve (DESIGN §3.3)
     expect(approvedIds('pi', home)).toEqual(['openrouter/anthropic/claude-haiku-5.5', 'minimax/MiniMax-M3', 'openai/gpt-6-luna']);
   });
 
-  it('keeps a default model that already names its provider as written, and drops the repeat', () => {
+  it('puts the default model under its provider even when its id holds a slash, and drops the repeat', () => {
     const home = tempDir();
     write(home, '.pi/agent/settings.json', JSON.stringify({
-      enabledModels: ['openai/gpt-6-luna'],
+      enabledModels: ['openrouter/z-ai/glm-5.3-flash', 'minimax/MiniMax-M3'],
       defaultProvider: 'openrouter',
-      defaultModel: 'openai/gpt-6-luna',
+      defaultModel: 'z-ai/glm-5.3-flash',
     }));
-    expect(approvedIds('pi', home)).toEqual(['openai/gpt-6-luna']);
+    expect(approvedIds('pi', home)).toEqual(['openrouter/z-ai/glm-5.3-flash', 'minimax/MiniMax-M3']);
   });
 
   it('keeps a default model with no provider as written when no provider is set', () => {
