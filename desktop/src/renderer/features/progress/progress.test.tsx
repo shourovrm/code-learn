@@ -186,6 +186,17 @@ describe('course path', () => {
     expect(first).not.toHaveTextContent(/of \d/);
   });
 
+  it('opens the current topic from its title, so a lesson already read can be read again', async () => {
+    const user = userEvent.setup();
+    const { api, course } = await mockWithCourse({ read: true });
+    const [first] = course.topics[0].lessons;
+    renderApp({ to: 'learn' }, api);
+    const [current] = await items();
+    await user.click(within(current).getByRole('button', { name: course.topics[0].title }));
+    await user.click(await screen.findByRole('button', { name: `Read ${first.title}` }));
+    expect(await screen.findByRole('heading', { name: first.title, level: 1 })).toBeInTheDocument();
+  });
+
   it('keeps a skipped topic on the path as Later, and moves Now to the next topic ready', async () => {
     const { api, course } = await mockWithCourse();
     await api.skip(course.topics[0].id);
@@ -219,7 +230,8 @@ describe('course path', () => {
     const [first] = await items();
     expect(first).toHaveAttribute('aria-current', 'step');
     expect(within(first).getByText('Writing the review')).toBeInTheDocument();
-    expect(within(first).queryByRole('button')).not.toBeInTheDocument();
+    // The topic's title still opens its page; there is no Continue or Review yet.
+    expect(within(first).queryByRole('button', { name: /Continue|Review/ })).not.toBeInTheDocument();
   });
 
   it('shows setup progress while the track sets up, and the path stays usable', async () => {
@@ -290,11 +302,11 @@ describe('course path', () => {
     renderApp({ to: 'learn' }, api);
     const map = await screen.findByRole('list', { name: 'Topics' });
     const order: string[] = [];
-    for (let i = 0; i < 20 && order.length < 3; i++) {
+    for (let i = 0; i < 20 && order.length < 4; i++) {
       await user.tab();
       if (map.contains(document.activeElement)) order.push(document.activeElement!.textContent!);
     }
-    expect(order).toEqual(['JavaScript basics', 'JSX', 'Continue']);
+    expect(order).toEqual(['JavaScript basics', 'JSX', 'Components', 'Continue']);
     await user.keyboard('{Enter}');
     expect(await screen.findByRole('heading', { name: 'Components', level: 1 })).toBeInTheDocument();
   });

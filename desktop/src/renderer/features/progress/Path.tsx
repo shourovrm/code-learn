@@ -99,7 +99,8 @@ function Current({ topic, track }: { topic: TopicView; track: string }) {
         <Emm mood={mood} width={84} name={track} />
       </span>
       <div className="stop-main">
-        <b className="stop-title">{topic.title}</b>
+        {/* The topic page lists its lessons, so one already read opens again from here. */}
+        <button type="button" className="stop-title link" onClick={() => go({ to: 'topic', topicId: topic.id })}>{topic.title}</button>
         {topic.review === 'writing' ? (
           <Writing kind="author" concept={topic.id} label="Writing the review" compact waiting="Writing the review" />
         ) : (
