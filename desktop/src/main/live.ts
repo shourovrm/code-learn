@@ -684,7 +684,7 @@ export function createLive(d: LiveDeps): Live {
         };
         // Research counts as running until its sources save and its review ends, so a poll starts no second agent.
         finishing.add(key);
-        start(key, 'fg', 'research', briefs.research(course, goal.topic, goal.known, goal.depth, goal.practice), course, () => roadmapOrNull()?.course === course, { onSource })
+        start(key, 'fg', 'research', briefs.research(course, goal.topic, goal.known, goal.depth, goal.practice, goal.instructions), course, () => roadmapOrNull()?.course === course, { onSource })
           .then(async (o) => {
             if (o.ok) {
               // Quitting waits for this save, like any other run (stop()).

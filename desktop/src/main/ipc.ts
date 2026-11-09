@@ -12,6 +12,7 @@ const MAX_FILE_BYTES = 1024 * 1024;
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const text = (max: number, min = 0): Valid => (v) => typeof v === 'string' && v.length >= min && v.length <= max;
 const oneOf = (...options: string[]): Valid => (v) => typeof v === 'string' && options.includes(v);
+const optional = (valid: Valid): Valid => (v) => v === undefined || valid(v);
 /** Core's ids: lowercase, at most 64 characters (docs/DESIGN.md §3). */
 const id: Valid = (v) => typeof v === 'string' && /^[a-z0-9][a-z0-9._-]{0,63}$/.test(v) && !v.includes('..');
 /** A track `id@version`, as core's ids. */
@@ -35,7 +36,7 @@ const path: Valid = (v) => typeof v === 'string' && v.length <= 512 && v.split('
 /** The renderer's id for one Try it, Check or Run, echoed in its events. */
 const runId: Valid = (v) => typeof v === 'string' && /^[a-z0-9-]{1,64}$/.test(v);
 const digest: Valid = (v) => typeof v === 'string' && /^[a-f0-9]{64}$/.test(v);
-const goal = shape({ topic: text(LIMITS.topic, 1), known: text(LIMITS.known), depth: oneOf('overview', 'standard', 'in-depth'), practice: oneOf('code', 'quiz', 'none') });
+const goal = shape({ topic: text(LIMITS.topic, 1), known: text(LIMITS.known), instructions: optional(text(LIMITS.instructions)), depth: oneOf('overview', 'standard', 'in-depth'), practice: oneOf('code', 'quiz', 'both', 'none') });
 const concept = shape({ id, title: text(LIMITS.title, 1), requires: list(id, 200) });
 const concepts = list(concept, 200, 1);
 const place: Valid = (v) => shape({ lessonId: id })(v) || shape({ activityId: id })(v);

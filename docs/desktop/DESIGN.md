@@ -25,7 +25,7 @@ Status: trimmed to the owner-approved 1.0 scope (the scope ledger, 17 Oct 2026),
 - **Connect:** Claude Code and Codex, with a sign-in check. code-learn installs any of the three agents, and Docker, when they're missing (§3.1, §6.1). Cursor is experimental.
 - **Check this computer:** the environment matrix in §6.1.
 - **Learn:**
-  1. Pick a goal and how to practise: Code or Lessons only. The agent researches and writes a roadmap.
+  1. Pick a goal and how to practise: Code, Quiz, both, or Lessons only. The agent researches and writes a roadmap.
   2. Approve the roadmap, ask for changes, or edit it: rename, reorder, add or remove topics.
   3. Give one consent before setup.
   4. Read lessons, which are static text, and take notes.
@@ -296,7 +296,7 @@ Each addition lands in its own module (`schemas`, `store`, `learner`, `app`, `mc
 
 ### 4.2 Roadmap draft and edits
 
-The goal form offers Code (the default), Quiz and Lessons only. The choice travels with the goal. For Quiz the research brief adds "Save style: quiz and no track." For Lessons only it adds "Save style: none and no track."
+The goal form has two chips, Code (on by default) and Quiz, which may both be on. Both on saves core style `both` (a mixed course, which needs a track); Code alone saves `code`; Quiz alone saves `quiz`; neither saves `none` (lessons only). The "isn't set up yet" notice shows while Code is on. The choice travels with the goal. For Quiz the research brief adds "Save style: quiz and no track." For Lessons only it adds "Save style: none and no track." For both it adds "Save style: both and a track." The form also takes optional Instructions (at most 500 characters): how the course should be made, in the learner's words. The research brief adds them as "The learner's instructions for the course", and only when they are given.
 
 The course map has an **Activities** switch, On or Off. Off re-saves `style: none`, keeping the track and all history, and stops this course's author jobs and any setup job it alone needs. On restores the previous activity style, including quiz, remembered in `desktop.json`. Code styles must still be offered by the track. With neither a track nor a remembered quiz style, On runs the existing roadmap job with "Turn on graded coding activities: choose a track and a style for this course." Setup then follows the ordinary flow for code. Quiz has no setup job or Docker wait.
 

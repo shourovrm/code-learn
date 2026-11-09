@@ -18,7 +18,7 @@ describe('how deep the roadmap goes', () => {
     expect(within(depth).getByRole('radio', { name: 'Standard' })).toBeChecked();
     await user.click(within(depth).getByRole('radio', { name: 'In depth' }));
     await user.type(screen.getByRole('textbox', { name: 'What do you want to learn?' }), 'React{Enter}');
-    await waitFor(() => expect(asked[0]).toEqual({ topic: 'React', known: '', depth: 'in-depth', practice: 'code' }));
+    await waitFor(() => expect(asked[0]).toEqual({ topic: 'React', known: '', instructions: '', depth: 'in-depth', practice: 'code' }));
   });
 });
 
@@ -172,7 +172,7 @@ describe('resuming a roadmap', () => {
   });
 });
 
-it('sends Lessons only with the goal', async () => {
+it('sends Lessons only with the goal when neither practice chip is on', async () => {
   const user = userEvent.setup();
   const api = createMock();
   await api.connect('claude');
@@ -180,20 +180,50 @@ it('sends Lessons only with the goal', async () => {
   const research = api.research;
   api.research = (goal) => (asked.push(goal), research(goal));
   renderApp({ to: 'goal' }, api);
-  await user.click(await screen.findByRole('radio', { name: 'Lessons only' }));
+  await user.click(await screen.findByRole('button', { name: 'Code' }));
   await user.type(screen.getByRole('textbox', { name: 'What do you want to learn?' }), 'History{Enter}');
-  await waitFor(() => expect(asked[0]).toEqual({ topic: 'History', known: '', depth: 'standard', practice: 'none' }));
+  await waitFor(() => expect(asked[0]).toEqual({ topic: 'History', known: '', instructions: '', depth: 'standard', practice: 'none' }));
 });
 
-it('offers Quiz and carries the choice to research', async () => {
+it('offers Quiz alone and carries the choice to research without the set-up notice', async () => {
   const asked: unknown[] = [];
   const { api } = await mockWithCourse();
   api.research = async (goal) => { asked.push(goal); return { state: 'running' }; };
   renderApp({ to: 'goal' }, api);
   const user = userEvent.setup();
   await user.type(screen.getByRole('textbox', { name: 'What do you want to learn?' }), 'Judgment');
-  await user.click(screen.getByRole('radio', { name: 'Quiz' }));
+  await user.click(screen.getByRole('button', { name: 'Code' }));
+  await user.click(screen.getByRole('button', { name: 'Quiz' }));
   await user.click(screen.getByRole('button', { name: 'Start' }));
   await waitFor(() => expect(asked[0]).toMatchObject({ practice: 'quiz' }));
+  expect(screen.queryByText(/isn't set up yet/)).not.toBeInTheDocument();
+});
+
+it('keeps Code and Quiz on together as a mixed course, with the instructions, and asks for a track', async () => {
+  const asked: unknown[] = [];
+  const { api } = await mockWithCourse();
+  api.research = async (goal) => { asked.push(goal); return { state: 'running' }; };
+  renderApp({ to: 'goal' }, api);
+  const user = userEvent.setup();
+  const code = screen.getByRole('button', { name: 'Code' });
+  const quiz = screen.getByRole('button', { name: 'Quiz' });
+  expect(code).toHaveAttribute('aria-pressed', 'true');
+  expect(quiz).toHaveAttribute('aria-pressed', 'false');
+  expect(screen.getByText('Pick any, or none to read lessons only.')).toBeInTheDocument();
+  await user.click(quiz);
+  expect(quiz).toHaveAttribute('aria-pressed', 'true');
+  await user.type(screen.getByRole('textbox', { name: 'What do you want to learn?' }), 'Judgment');
+  await user.type(screen.getByRole('textbox', { name: 'Instructions' }), '  Linux examples  ');
+  await user.click(screen.getByRole('button', { name: 'Start' }));
+  await waitFor(() => expect(asked[0]).toEqual({ topic: 'Judgment', known: '', instructions: 'Linux examples', depth: 'standard', practice: 'both' }));
+});
+
+it('shows the set-up notice while Code is on', async () => {
+  const { api } = await mockWithCourse();
+  renderApp({ to: 'goal' }, api);
+  const user = userEvent.setup();
+  await user.type(screen.getByRole('textbox', { name: 'What do you want to learn?' }), 'Judgment');
+  expect(await screen.findByText(/isn't set up yet/)).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Code' }));
   expect(screen.queryByText(/isn't set up yet/)).not.toBeInTheDocument();
 });

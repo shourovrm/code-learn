@@ -132,3 +132,15 @@ it('carries the lessons-only choice as a research detail', () => {
 it('carries quiz practice to the research brief without a track', () => {
   expect(briefs.research('judgment', 'Judgment', '', 'standard', 'quiz')).toContain('Save style: quiz and no track.');
 });
+
+it('carries code and quiz practice to the research brief as a mixed course that needs a track', () => {
+  expect(briefs.research('mixed', 'Mixed', '', 'standard', 'both')).toContain('Save style: both and a track.');
+  expect(briefs.research('mixed', 'Mixed', '', 'standard', 'both')).not.toContain('Save style: both and no track.');
+});
+
+it('adds the learner instructions to the research brief only when they are given', () => {
+  const instructed = briefs.research('course', 'Shell', '', 'standard', 'code', 'Linux examples, short lessons');
+  expect(instructed).toContain('The learner\'s instructions for the course: Linux examples, short lessons');
+  expect(briefs.research('course', 'Shell', '', 'standard', 'code', '')).not.toContain('instructions');
+  expect(briefs.research('course', 'Shell', '', 'standard')).not.toContain('instructions');
+});

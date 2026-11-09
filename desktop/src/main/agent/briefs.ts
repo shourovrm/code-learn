@@ -26,12 +26,28 @@ const DEPTH: Record<Depth, string> = {
 export const CHANGE_APPROACH =
   "Your last attempt didn't save an exercise that passed code-learn's checks. Change your approach rather than repeating it: write a smaller task, a different task of the kind the concept needs, or simpler, deterministic tests.";
 
+/** What the research brief says about the practice choice: quiz and lessons only have no track, and both needs one. */
+const STYLE: Record<Practice, string | false> = {
+  code: false,
+  quiz: 'Save style: quiz and no track.',
+  none: 'Save style: none and no track.',
+  both: 'Save style: both and a track.',
+};
+
 export function briefsFrom(base: Record<JobKind, string>, platform: NodeJS.Platform = process.platform) {
   const room = platform === 'win32' ? WINDOWS_ROOM : ROOM;
   const brief = (kind: JobKind, ...details: (string | false | undefined)[]) => [base[kind], ...details.filter(Boolean)].join('\n\n');
   return {
-    research: (course: string, topic: string, known: string, depth: Depth, practice: Practice = 'code') =>
-      brief('research', `Course id: ${course}`, `The learner wants to learn: ${topic}`, known ? `They already know: ${known}` : 'They know nothing about it yet.', `Depth: ${DEPTH[depth]}. Each topic is one skill.`, practice !== 'code' && `Save style: ${practice} and no track.`),
+    research: (course: string, topic: string, known: string, depth: Depth, practice: Practice = 'code', instructions = '') =>
+      brief(
+        'research',
+        `Course id: ${course}`,
+        `The learner wants to learn: ${topic}`,
+        known ? `They already know: ${known}` : 'They know nothing about it yet.',
+        `Depth: ${DEPTH[depth]}. Each topic is one skill.`,
+        STYLE[practice],
+        instructions && `The learner's instructions for the course: ${instructions}`,
+      ),
     review: () => brief('review'),
     roadmap: (request: string) => brief('roadmap', `The learner asks: ${request}`),
     easier: (concept: string, title: string) => brief('roadmap', `Make "${title}" (${concept}) easier: add one smaller topic that it requires.`),

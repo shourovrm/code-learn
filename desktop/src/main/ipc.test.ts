@@ -90,6 +90,12 @@ describe('dispatch', () => {
     expect(() => dispatch(echo, 'runExampleLive', ['values-1', 1, 'Run 1'])).toThrow('Bad input');
   });
 
+  it('takes each practice choice, and instructions up to their limit, or none', () => {
+    for (const practice of ['code', 'quiz', 'both', 'none']) expect(() => dispatch(echo, 'research', [{ topic: 'React', known: '', depth: 'standard', practice }])).not.toThrow();
+    expect(() => dispatch(echo, 'research', [{ topic: 'React', known: '', instructions: 'x'.repeat(500), depth: 'standard', practice: 'code' }])).not.toThrow();
+    expect(() => dispatch(echo, 'research', [{ topic: 'React', known: '', instructions: 'x'.repeat(501), depth: 'standard', practice: 'code' }])).toThrow('Bad input');
+  });
+
   it('rejects goals and roadmaps with the wrong shape', () => {
     expect(() => dispatch(echo, 'research', [{ topic: '', known: '', depth: 'standard', practice: 'code' }])).toThrow('Bad input');
     // How deep the roadmap goes: one of three presets, always given.
@@ -119,6 +125,7 @@ describe('dispatch', () => {
 it('validates the practice choice and the Activities switch', async () => {
   expect(await dispatch(echo, 'research', [{ topic: 'History', known: '', depth: 'standard', practice: 'none' }])).toMatchObject({ method: 'research' });
   expect(await dispatch(echo, 'research', [{ topic: 'History', known: '', depth: 'standard', practice: 'quiz' }])).toMatchObject({ method: 'research' });
-  expect(() => dispatch(echo, 'research', [{ topic: 'History', known: '', depth: 'standard', practice: 'both' }])).toThrow('Bad input');
+  expect(await dispatch(echo, 'research', [{ topic: 'History', known: '', depth: 'standard', practice: 'both' }])).toMatchObject({ method: 'research' });
+  expect(() => dispatch(echo, 'research', [{ topic: 'History', known: '', depth: 'standard', practice: 'mixed' }])).toThrow('Bad input');
   expect(() => dispatch(echo, 'setActivities', ['off'])).toThrow('Bad input');
 });

@@ -114,8 +114,8 @@ export interface Computer {
 
 // ---------- roadmap (§4.2) ----------
 
-/** How the learner practises: graded code or quizzes, or lessons only (core style `none`). */
-export type Practice = 'code' | 'quiz' | 'none';
+/** How the learner practises: graded code, quizzes, both (core style `both`), or lessons only (core style `none`). */
+export type Practice = 'code' | 'quiz' | 'both' | 'none';
 
 /** How deep the roadmap goes, as the learner chose: about 8, 15 or 25 to 30 single-skill topics. */
 export type Depth = 'overview' | 'standard' | 'in-depth';
@@ -124,6 +124,8 @@ export interface Goal {
   topic: string;
   /** What the learner says they already know, in their words. */
   known: string;
+  /** How the learner wants the course made, in their words. Optional: a goal from the tracks screen has none. */
+  instructions?: string;
   depth: Depth;
   practice: Practice;
 }

@@ -21,6 +21,12 @@ const DEPTHS: [Depth, string][] = [
   ['in-depth', 'In depth'],
 ];
 
+/** Code and quiz are chips: both on is a mixed course, and neither on is lessons only. */
+function practiceOf(code: boolean, quiz: boolean): Practice {
+  if (code) return quiz ? 'both' : 'code';
+  return quiz ? 'quiz' : 'none';
+}
+
 /** Any language or framework. code-learn asks what the learner already knows, and how deep to go. */
 export function Goal() {
   const { go } = useRouter();
@@ -30,8 +36,11 @@ export function Goal() {
   const { data: draft } = useLoad(() => api.draft(), []);
   const [topic, setTopic] = useState('');
   const [known, setKnown] = useState('');
+  const [instructions, setInstructions] = useState('');
   const [depth, setDepth] = useState<Depth>('standard');
-  const [practice, setPractice] = useState<Practice>('code');
+  const [code, setCode] = useState(true);
+  const [quiz, setQuiz] = useState(false);
+  const practice = practiceOf(code, quiz);
   const goal = topic.trim();
   const [settled, setSettled] = useState('');
   useEffect(() => {
@@ -43,7 +52,7 @@ export function Goal() {
 
   function start(e: FormEvent) {
     e.preventDefault();
-    if (goal) go({ to: 'research', goal: { topic: goal, known: known.trim(), depth, practice } });
+    if (goal) go({ to: 'research', goal: { topic: goal, known: known.trim(), instructions: instructions.trim(), depth, practice } });
   }
 
   return (
@@ -57,7 +66,9 @@ export function Goal() {
         <Limit value={topic} max={LIMITS.topic} />
         <Field className="a-up" style={stagger(2)} aria-label="What you already know (optional)" placeholder="What you already know (optional)" value={known} maxLength={LIMITS.known} onChange={(e) => setKnown(e.target.value)} />
         <Limit value={known} max={LIMITS.known} />
-        <div className="depth a-up" style={stagger(3)} role="radiogroup" aria-labelledby="depth-q">
+        <textarea className="field a-up" style={stagger(3)} aria-label="Instructions" placeholder="Optional: how the course should be made, e.g. Linux examples, short lessons, focus on pointers" rows={2} value={instructions} maxLength={LIMITS.instructions} onChange={(e) => setInstructions(e.target.value)} />
+        <Limit value={instructions} max={LIMITS.instructions} />
+        <div className="depth a-up" style={stagger(4)} role="radiogroup" aria-labelledby="depth-q">
           <span className="depth-q" id="depth-q">How deep</span>
           {DEPTHS.map(([id, label]) => (
             <label key={id} className={`opt${depth === id ? ' on' : ''}`}>
@@ -66,21 +77,18 @@ export function Goal() {
             </label>
           ))}
         </div>
-        <div className="depth a-up" style={stagger(4)} role="radiogroup" aria-labelledby="practice-q">
+        <div className="depth a-up" style={stagger(5)} role="group" aria-labelledby="practice-q">
           <span className="depth-q" id="practice-q">How to practise</span>
-          {([['code', 'Code'], ['quiz', 'Quiz'], ['none', 'Lessons only']] as const).map(([id, label]) => (
-            <label key={id} className={`opt${practice === id ? ' on' : ''}`}>
-              <input type="radio" name="practice" value={id} checked={practice === id} onChange={() => setPractice(id)} />
-              {label}
-            </label>
-          ))}
+          <button type="button" className={`opt${code ? ' on' : ''}`} aria-pressed={code} onClick={() => setCode(!code)}>Code</button>
+          <button type="button" className={`opt${quiz ? ' on' : ''}`} aria-pressed={quiz} onClick={() => setQuiz(!quiz)}>Quiz</button>
         </div>
+        <p className="quiet-text a-up" style={stagger(5)}>Pick any, or none to read lessons only.</p>
         {draft && (
-          <Banner style={stagger(4)} action={<Button variant="ghost" onClick={() => go({ to: 'course', roadmap: draft })}>Resume roadmap</Button>}>
+          <Banner style={stagger(5)} action={<Button variant="ghost" onClick={() => go({ to: 'course', roadmap: draft })}>Resume roadmap</Button>}>
             <b>{draft.title}</b>
           </Banner>
         )}
-        {isNew && practice === 'code' && (
+        {isNew && code && (
           <Banner art={<Sprig mood="look" width={56} />}><b>{shown} isn't set up yet.</b> code-learn will set it up.</Banner>
         )}
       </form>
