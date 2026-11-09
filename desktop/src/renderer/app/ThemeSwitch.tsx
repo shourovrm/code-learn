@@ -13,7 +13,7 @@ export function ThemeSwitch({ slim = false }: { slim?: boolean }) {
     const name = `Theme: ${LABEL[choice]}. Switch to ${LABEL[next]}`;
     return (
       <button type="button" className="nav theme-cycle" aria-label={name} onClick={() => chooseTheme(next)}>
-        <Icon name={ICON[choice]} color="var(--navy-text)" />
+        <Icon name={ICON[choice]} color="var(--garden-text)" />
       </button>
     );
   }

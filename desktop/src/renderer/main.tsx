@@ -1,6 +1,9 @@
 import './styles/fonts.css';
 import './styles/tokens.css';
-import './styles/app.css';
+import './styles/foundation.css';
+import './styles/workspace.css';
+import './styles/progress.css';
+import './styles/setup.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { Bridge } from '../shared/api';

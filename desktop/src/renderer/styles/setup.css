@@ -1,0 +1,124 @@
+/* Setting up: welcome and connect, the goal and research, the course editor, checking this computer, Toolchains
+   and Courses. */
+
+/* ---------- Welcome and connect ---------- */
+.welcome { flex: 1; min-width: 0; display: flex; gap: 64px; padding: 56px 72px; }
+.welcome-text { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 30px; max-width: 540px; }
+.welcome-text .brand { align-self: flex-start; }
+.welcome-text .h1 { font-size: 60px; line-height: 1.05; }
+.welcome-art { flex: 1; border-radius: 28px; background: var(--garden); position: relative; display: grid; place-items: center; overflow: hidden; }
+.welcome-art .bg { position: absolute; right: -60px; bottom: -80px; opacity: .07; }
+.welcome-art .connected { position: absolute; left: 48px; top: 72px; padding: 14px 18px; display: flex; align-items: center; gap: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, .2); }
+.agent { padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.agent b { font-size: 16px; }
+.agent .state { display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--green-ink); }
+.agent .model { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: 14px; font-weight: 500; }
+.agent .model .field { width: auto; height: 36px; padding: 0 10px; }
+.bw { filter: grayscale(1); }
+.colorin { animation: colorin .7s ease-out backwards; }
+
+/* ---------- Goal and research ---------- */
+.goal-box { display: flex; align-items: center; height: 64px; padding: 0 10px 0 18px; border-radius: 12px; border: 2px solid var(--green-ink); background: var(--card); }
+.depth { display: flex; align-items: center; gap: 8px; }
+.depth-q { margin-right: 6px; font-size: 14px; font-weight: 600; color: var(--muted); }
+.depth .opt, .quiz-questions .opt { position: relative; padding: 9px 16px; border-radius: 10px; border: 1px solid var(--ctl); background: var(--card); font-size: 14px; font-weight: 500; color: var(--ink); cursor: pointer; }
+.depth .opt.on, .quiz-questions .opt.on { border-color: var(--green-ink); box-shadow: inset 0 0 0 1px var(--green-ink); color: var(--green-ink); }
+.depth .opt:focus-within, .quiz-questions .opt:focus-within { outline: 2px solid var(--focus); outline-offset: 2px; }
+.depth input, .quiz-questions input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+.goal-box input { flex: 1; min-width: 0; height: 100%; border: none; background: transparent; font-size: 22px; outline: none; }
+.goal-box:focus-within { outline: 3px solid var(--focus); outline-offset: 2px; }
+.info { padding: 14px 18px; display: flex; align-items: center; gap: 14px; font-size: 15px; }
+.info.resume { justify-content: space-between; }
+.research { max-width: 720px; padding: 8px 22px; }
+.research .h3 { padding: 12px 0 4px; }
+.row .pill { margin-left: auto; }
+
+/* ---------- Course editor ---------- */
+/* The topics scroll above a footer of their own, so asking, code-learn's reply and Approve stay in view, uncovered. */
+.main.editor { overflow: hidden; }
+.editor-body { flex: 1; min-height: 0; overflow-y: auto; padding: 40px 20px 24px; display: flex; flex-direction: column; align-items: center; }
+.editor-col { width: 720px; max-width: 100%; }
+.editor-foot { flex: none; max-height: 50%; overflow-y: auto; padding: 14px 20px 18px; display: flex; justify-content: center; background: var(--card); border-top: 1px solid var(--line); }
+.editor-foot [role="status"] { margin: 0; }
+.editor-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; }
+.editor-actions .composer { flex: 1 1 320px; }
+.editor-actions > .btn { margin-left: auto; }
+/* Sources sit under the heading as one quiet line, so a long roadmap doesn't hide them. */
+.editor .sources { margin: 0 0 4px; flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; font-size: 13.5px; color: var(--muted); }
+.editor .sources h2 { margin: 0; font: 600 13.5px var(--sans); }
+.editor .sources ul { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13.5px; }
+.deeper { height: 32px; flex-shrink: 0; padding: 0 10px; border: none; border-radius: 8px; background: transparent; display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font: 600 13px var(--sans); cursor: pointer; }
+.deeper:hover:not(:disabled) { background: var(--soft); color: var(--ink); }
+.deeper:disabled { opacity: .45; cursor: default; }
+.topics { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.topic { position: relative; min-height: 54px; padding: 0 8px 0 6px; display: flex; align-items: center; gap: 8px; }
+.topic .num { width: 22px; font: 600 13px var(--sans); color: var(--blue); }
+.topic .name { flex: 1; min-width: 0; font-size: 15px; font-weight: 500; overflow-wrap: anywhere; }
+.topic input.name { height: 38px; padding: 0 10px; border: 1px solid var(--ctl); border-radius: 8px; }
+.menu { position: absolute; left: 8px; top: 48px; z-index: 3; padding: 6px; display: flex; flex-direction: column; box-shadow: 0 12px 30px var(--shadow-strong); transform-origin: top left; }
+.menu .btn { justify-content: flex-start; }
+.add { height: 52px; border: 2px dashed var(--ctl); border-radius: 14px; background: transparent; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; cursor: pointer; }
+.add:disabled { opacity: .55; cursor: default; }
+
+/* ---------- Tracks ---------- */
+.track-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); gap: 16px; max-width: 1040px; }
+.track { padding: 24px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.track b { font: 600 20px var(--display); }
+.new { padding: 24px; max-width: 1040px; display: flex; flex-direction: column; gap: 14px; }
+
+/* ---------- Courses ---------- */
+.course-list { display: flex; flex-direction: column; gap: 10px; max-width: 900px; }
+.course { padding: 14px 18px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
+.course.current { border: 2px solid var(--green-ink); }
+.course .t { flex: 1; min-width: 0; }
+.course .t b { font: 600 16px var(--display); }
+.course .t p { margin: 2px 0 0; }
+.open-tag { margin-left: 8px; padding: 2px 8px; border-radius: 99px; background: var(--green-soft); color: var(--green-ink); font-size: 12px; font-weight: 600; }
+.course .edit { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.course .edit .field { flex: 1; min-width: 200px; }
+.course [role="status"] { flex-basis: 100%; margin: 0; }
+
+/* ---------- Check this computer ---------- */
+.plain { list-style: none; margin: 0; padding: 0; }
+.check { padding: 16px 20px; display: flex; flex-direction: column; gap: 14px; }
+.check-head { display: flex; align-items: center; gap: 12px; }
+.check-head b { flex: 1; font-size: 16px; }
+.check-state { font-size: 14px; font-weight: 600; color: var(--muted); }
+.check-state.ok { color: var(--green-ink); }
+.check-state.problem { color: var(--orange-ink); }
+.ico.wait { width: 24px; height: 24px; border: 2px solid var(--ctl); }
+.fix { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding-left: 36px; }
+.command { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; max-width: 100%; }
+.command code { padding: 8px 12px; border-radius: 8px; background: var(--soft); font: 14px/1.4 var(--mono); font-variant-ligatures: none; overflow-wrap: anywhere; user-select: all; }
+.fix ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 15px; line-height: 1.5; }
+.details { width: 100%; text-align: left; }
+.details summary { cursor: pointer; font-weight: 600; min-height: 32px; display: flex; align-items: center; }
+.details section { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.details .pre { max-height: 180px; overflow: auto; font-size: 13px; }
+.sources { margin-top: 18px; display: flex; flex-direction: column; gap: 6px; }
+.sources ul { margin: 0; padding-left: 18px; font-size: 14px; color: var(--muted); }
+.sources a { color: var(--muted); }
+
+.looking { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 8px; }
+.looking ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--muted); }
+.looking li { overflow-wrap: anywhere; }
+.looking li.now { color: var(--ink); }
+
+.looking .job { max-width: 720px; }
+/* Short windows (200% zoom and more): the editor's footer joins the page's flow, so it never fills the window. */
+@media (max-height: 560px) {
+  .main.editor { overflow-y: auto; }
+  .editor-body { flex: none; overflow: visible; }
+}
+@media (max-width: 760px) {
+  .welcome { flex-direction: column; gap: 24px; padding: 24px 20px; overflow-y: auto; }
+  .welcome-text .h1 { font-size: 40px; }
+  .welcome-art { flex: none; min-height: 240px; }
+  .page-head, .depth { flex-wrap: wrap; }
+  .goal-box { height: auto; min-height: 64px; flex-wrap: wrap; padding: 8px 10px 8px 18px; }
+  .goal-box input { min-height: 46px; font-size: 18px; }
+  /* A roadmap row: its title on the first line, its buttons under it on the right. */
+  .topic { height: auto; min-height: 54px; flex-wrap: wrap; padding: 6px 8px 6px 6px; }
+  .topic .name { flex: 1 1 calc(100% - 70px); overflow-wrap: anywhere; }
+  .topic .name + .deeper, .topic .name + .ibtn { margin-left: auto; }
+}

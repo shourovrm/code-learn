@@ -1,0 +1,221 @@
+/* The shell and what every screen shares: window, sidebar and rail, type and controls, status, dialogs, motion,
+   Markdown, job progress. Page files style their own screens (docs/design-system.md). */
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body, #root { height: 100%; }
+body { margin: 0; background: var(--ground); color: var(--ink); font: 14px var(--sans); font-variant-ligatures: none; overflow: hidden; }
+button, input, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.side :focus-visible, .slim :focus-visible, .failed :focus-visible { outline-color: var(--focus-on-garden); }
+
+/* ---------- Window ---------- */
+.win { position: relative; height: 100%; display: flex; flex-direction: column; overflow: clip; animation: fade .3s ease-out backwards; }
+.tbar { height: 36px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: var(--garden-3); font-size: 13px; font-weight: 500; color: var(--garden-muted); -webkit-app-region: drag; user-select: none; }
+.wbody { flex: 1; min-height: 0; display: flex; position: relative; }
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: auto; }
+.center { flex: 1; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); place-items: center; padding: 40px; overflow: auto; }
+.page { padding: 48px 56px; gap: 24px; }
+
+/* ---------- Navigation ---------- */
+.side { width: 232px; flex-shrink: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; padding: 20px 12px; background: var(--garden); color: #F3F6FB; }
+.logo { padding: 0 10px 22px; }
+.logo img { display: block; }
+.nav { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border: none; border-radius: 10px; background: transparent; color: var(--garden-text); font-size: 14px; font-weight: 500; text-align: left; cursor: pointer; transition: background .2s; }
+.nav:hover { background: rgba(255, 255, 255, .1); color: #fff; }
+/* The slim sidebar's own tooltip (app/SlimTooltip.tsx): fixed, so the sidebar's scrolling never clips it. */
+.slim-tip { position: fixed; z-index: 50; transform: translateY(-50%); padding: 6px 10px; border-radius: 8px; background: var(--garden-2); color: #fff; font-size: 13px; font-weight: 500; white-space: nowrap; pointer-events: none; box-shadow: 0 4px 14px rgba(0, 0, 0, .25); }
+.nav[aria-current="page"] { background: var(--garden-2); color: #fff; font-weight: 600; }
+.side .foot { margin-top: auto; }
+.pick { display: flex; align-items: center; gap: 10px; min-height: 50px; padding: 10px; border: 1px solid var(--garden-line); border-radius: 10px; font-weight: 600; }
+/* A long goal shows two lines; screen readers still read all of it. */
+.pick .goal { min-width: 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; line-height: 1.35; }
+.pick.none { color: var(--garden-muted); font-weight: 500; }
+/* The learner's courses (§4.13): the one on screen keeps the box; the others are plain rows until hovered. */
+.courses { display: flex; flex-direction: column; gap: 4px; }
+button.pick { width: 100%; background: transparent; color: inherit; text-align: left; cursor: pointer; transition: background .2s; }
+button.pick:hover { background: rgba(255, 255, 255, .1); color: #fff; }
+button.pick:not([aria-current]) { border-color: transparent; color: var(--garden-text); font-weight: 500; }
+.slim-courses { align-items: center; }
+.slim .nav[aria-current="true"] { background: var(--garden-2); }
+.badge { width: 30px; height: 30px; flex-shrink: 0; border-radius: 8px; color: #fff; display: grid; place-items: center; font: 700 14px var(--mono); font-variant-ligatures: none; }
+.slim { width: 68px; flex-shrink: 0; overflow-y: auto; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 16px 0; background: var(--garden); }
+.slim .nav { width: 44px; height: 44px; padding: 0; justify-content: center; }
+.slim .lg { padding-bottom: 14px; }
+/* A new version in the slim sidebar (§7.2): one word at its foot. */
+.slim .slim-update { margin-top: auto; display: flex; flex-direction: column; align-items: center; }
+.slim .slim-update a, .slim .slim-update .btn { padding: 6px 4px; font-size: 12px; font-weight: 600; color: #9AF0B8; }
+
+/* ---------- Type and controls ---------- */
+.h1 { margin: 0; font: 600 40px/1.15 var(--display); letter-spacing: -.01em; text-wrap: balance; }
+.h2 { margin: 0; font: 600 28px/1.2 var(--display); text-wrap: balance; }
+.h3 { margin: 0; font: 600 18px/1.3 var(--display); }
+.sub { margin: 0; font-size: 16px; line-height: 1.55; color: var(--muted); }
+.btn { text-decoration: none; height: 42px; padding: 0 18px; border-radius: 10px; border: 1px solid transparent; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 600 14px var(--sans); white-space: nowrap; cursor: pointer; transition: transform .12s, box-shadow .2s, background .2s; }
+.btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 12px var(--shadow); }
+.btn:active:not(:disabled) { transform: translateY(1px) scale(.98); box-shadow: none; }
+.btn:disabled { opacity: .55; cursor: default; }
+.btn.primary { background: var(--primary); color: #fff; }
+.btn.ghost { background: var(--card); color: var(--ink); border-color: var(--ctl); }
+.btn.text { background: transparent; color: var(--ink); padding: 0 10px; }
+.btn.lg { height: 50px; padding: 0 24px; font-size: 15px; }
+.ibtn { width: 32px; height: 32px; flex-shrink: 0; border-radius: 8px; border: none; background: transparent; display: grid; place-items: center; cursor: pointer; }
+.ibtn:hover:not(:disabled) { background: var(--soft); }
+.ibtn:disabled { opacity: .45; cursor: default; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
+.card.on { border: 2px solid var(--green-ink); }
+.card.info { background: var(--blue-soft); border-color: var(--blue-line); color: var(--blue-ink); }
+.pill { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 26px; padding: 0 11px; border-radius: 999px; font-size: 12.5px; font-weight: 600; white-space: nowrap; background: var(--green-soft); color: var(--green-ink); }
+.field { height: 48px; width: 100%; padding: 0 16px; border-radius: 10px; border: 1px solid var(--ctl); background: var(--card); font-size: 14.5px; }
+.field::placeholder { color: var(--faint); }
+textarea.field { height: auto; padding: 12px 16px; line-height: 1.5; resize: vertical; }
+.composer { display: flex; gap: 8px; align-items: center; }
+.row { display: flex; gap: 14px; align-items: center; padding: 14px 0; border-top: 1px solid var(--line); font-size: 15px; font-weight: 500; }
+.row:first-child { border-top: none; }
+.row.off { color: var(--faint); }
+.stack { display: flex; flex-direction: column; gap: 12px; }
+/* Layout set by class, not inline: a column's spacing and width. */
+.stack.tight { gap: 8px; }
+.stack.snug { gap: 10px; }
+.stack.loose { gap: 14px; }
+.stack.wide { gap: 22px; }
+.fill { flex: 1; }
+.page-head { display: flex; align-items: center; gap: 20px; }
+.goal-form { width: min(680px, 100%); }
+.setup-page { width: min(620px, 100%); }
+/* Setup's cards have no status icon to line up with, and their lines sit in the card's own gap. */
+.setup-page .fix { padding-left: 0; }
+.setup-page .check p { margin: 0; }
+.note-form { max-width: 600px; }
+.rename { flex: 1; display: flex; gap: 8px; }
+.actions { display: flex; align-items: center; gap: 10px; }
+.quiet-text { font-size: 14px; color: var(--muted); }
+.alert { color: var(--orange-ink); font-size: 14px; }
+
+/* ---------- Status ---------- */
+.ico { width: 26px; height: 26px; flex-shrink: 0; border-radius: 50%; display: grid; place-items: center; }
+.ico.ok { background: var(--ok); }
+.ico.fail { background: var(--bad); }
+.ico.run { border: 3px solid var(--green-soft); border-top-color: var(--green-ink); animation: spin .9s linear 2; }
+.shim { height: 10px; border-radius: 5px; background: linear-gradient(90deg, var(--shim-a) 0, var(--shim-b) 50%, var(--shim-a) 100%); background-size: 600px 100%; animation: shimmer 1.4s linear 2; }
+.busy { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--muted); }
+.busy-stack { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.cprog { width: 240px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--muted); text-align: center; }
+.cprog .bar > i { animation: none; transition: width .2s ease-out; }
+
+/* ---------- Dialog ---------- */
+.scrim { position: fixed; inset: 36px 0 0 0; z-index: 10; background: var(--scrim); display: grid; place-items: center; animation: fade .3s ease-out backwards; }
+.dialog { width: min(520px, calc(100vw - 32px)); max-height: calc(100vh - 36px - 32px); border-radius: 18px; background: var(--card); display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 60px rgba(11, 31, 68, .3); animation: pop .4s var(--ease) .1s backwards; }
+.dialog-body { min-height: 0; overflow-y: auto; padding: 32px 32px 6px; display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; }
+.dialog > .actions { flex-shrink: 0; justify-content: center; padding: 14px 32px 32px; }
+.panel { width: 520px; padding: 36px; display: flex; flex-direction: column; align-items: center; gap: 16px; text-align: center; }
+
+/* ---------- Motion: each plays once or twice, then rests ---------- */
+@keyframes fade { from { opacity: 0; } }
+@keyframes up { from { opacity: 0; transform: translateY(12px); } }
+@keyframes pop { from { opacity: 0; transform: scale(.7); } 70% { transform: scale(1.06); } }
+@keyframes slide { from { transform: translateY(100%); } }
+@keyframes grow { from { width: 0%; } }
+@keyframes draw { from { transform: scaleY(0); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes shimmer { from { background-position: -300px 0; } to { background-position: 300px 0; } }
+@keyframes bob { 50% { transform: translateY(-6px); } }
+@keyframes blink { 0%, 90%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
+@keyframes cheer { 0%, 100% { transform: translateY(0) rotate(0); } 25% { transform: translateY(-20px) rotate(-3deg); } 50% { transform: translateY(0); } 70% { transform: translateY(-8px) rotate(2deg); } }
+@keyframes sway { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-5deg); } }
+@keyframes twinkle { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .25; transform: scale(.5); } }
+@keyframes colorin { from { filter: grayscale(1); } }
+@keyframes lid { from { transform: scaleY(1); } }
+@keyframes land { 0% { opacity: 0; transform: translateY(-28px); } 55% { opacity: 1; transform: translateY(0) scale(1.05, .92); } 78% { transform: scale(.98, 1.03); } }
+.a-up { animation: up .5s var(--ease) backwards; animation-delay: calc(var(--i, 0) * 120ms + var(--d, 0ms)); }
+.a-pop { animation: pop .45s var(--ease) backwards; animation-delay: calc(var(--i, 0) * 120ms + var(--d, 0ms)); }
+.sprig { overflow: visible; flex-shrink: 0; transform-origin: 50% 100%; animation: bob 3.4s ease-in-out 2; }
+.sprig .eye { transform-box: fill-box; transform-origin: center; animation: blink 3.5s 1s 2; }
+.sprig.cheer { animation: cheer 1.3s ease-in-out .3s 2; }
+.sprig.think { transform-origin: 60% 92%; animation: sway 3s ease-in-out 2; }
+.sprig .spark, .sprig .zz { transform-box: fill-box; transform-origin: center; animation: twinkle 1.6s ease-in-out 2; }
+.sprig .lid { transform-box: fill-box; transform-origin: top; transform: scaleY(0); animation: lid .4s .5s ease-out backwards; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+.failed { position: absolute; left: 50%; bottom: 24px; z-index: 20; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; padding: 10px 10px 10px 18px; border-radius: 12px; background: var(--garden); color: #fff; font-weight: 500; box-shadow: 0 10px 30px rgba(14, 39, 84, .25); }
+.failed .btn { color: #fff; }
+
+.md { max-width: 640px; font-size: 16px; line-height: 1.6; }
+.md h1 { margin: 0 0 12px; font: 600 28px/1.2 var(--display); }
+.md h2, .md h3 { margin: 20px 0 8px; font: 600 20px/1.3 var(--display); }
+.md p { margin: 0 0 12px; }
+.md pre { margin: 0 0 12px; padding: 16px 18px; border-radius: 10px; background: var(--soft); font: 15px/1.65 var(--mono); font-variant-ligatures: none; overflow-x: auto; }
+.md code { font-family: var(--mono); font-variant-ligatures: none; font-size: .92em; }
+.md :not(pre) > code { padding: 1px 6px; border-radius: 5px; background: var(--soft); }
+.md a { color: var(--blue); }
+.md.small { font-size: 14.5px; line-height: 1.5; }
+.md.small p:last-child { margin-bottom: 0; }
+.md.small pre { padding: 10px 12px; font-size: 13px; }
+
+
+/* A link inside running text: the text's own color, underlined, with the usual focus ring. */
+a.inline { color: inherit; text-decoration: underline; text-underline-offset: 2px; font-weight: 600; }
+a.inline:hover { color: var(--ink); }
+
+/* A new version, at the foot of the sidebar (§7.2). */
+.side .update { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; padding: 12px; border: 1px solid var(--garden-line); border-radius: 10px; color: var(--garden-text); font-size: 13px; }
+.side .update a { color: #9AF0B8; font-weight: 600; }
+/* The theme switch, on the sidebar's navy in both themes. */
+.theme-switch { display: flex; gap: 2px; margin-top: 10px; padding: 3px; border: 1px solid var(--garden-line); border-radius: 10px; }
+.theme-switch button { flex: 1; min-width: 0; height: 30px; padding: 0 6px; border: none; border-radius: 7px; background: transparent; color: var(--garden-muted); display: inline-flex; align-items: center; justify-content: center; gap: 5px; font-size: 12px; cursor: pointer; transition: background .2s, color .2s; }
+.theme-switch button:hover { color: #fff; background: rgba(255, 255, 255, .06); }
+.theme-switch button[aria-checked="true"] { background: var(--garden-2); color: #fff; font-weight: 600; }
+/* code-learn's running jobs under the navigation (§4.11): Sprig filling, what it is, and its stage. */
+.work { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.work-job { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 6px 10px; border: 1px solid var(--garden-line); border-radius: 10px; background: transparent; color: var(--garden-text); text-align: left; cursor: pointer; transition: background .2s; }
+.work-job:hover { background: rgba(255, 255, 255, .1); }
+/* Sprig's unfilled part is grey: on navy it needs more body to be seen. */
+.work-job .sprig-fill .sprig-base { opacity: .6; }
+.work-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; line-height: 1.3; }
+.work-what { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; color: #fff; font-weight: 600; font-size: 13px; }
+.work-stage { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--garden-muted); }
+.slim .work { align-items: center; margin-top: 6px; }
+.slim .work-job { width: 44px; height: 44px; padding: 0; justify-content: center; }
+/* Job progress (§4.11): Sprig fills from grey to color, from the pot up to the leaves, as the job reaches each stage. */
+.sprig-fill { position: relative; display: inline-block; flex-shrink: 0; line-height: 0; }
+.sprig-fill .sprig { animation: none; }
+.sprig-fill .sprig .eye { animation: none; }
+.sprig-fill .zz { display: none; }
+.sprig-fill .sprig-base { display: block; filter: grayscale(1); opacity: .35; }
+.sprig-fill .sprig-color, .sprig-fill .sprig-edge { position: absolute; inset: 0; }
+.sprig-fill .sprig-color { clip-path: inset(calc(100% - var(--fill)) 0 0 0); transition: clip-path .6s var(--ease); }
+/* A thin band at the fill edge, lighter, breathing while the stage runs. */
+.sprig-fill .sprig-edge { clip-path: inset(calc(100% - var(--fill)) 0 max(0%, calc(var(--fill) - 8%)) 0); filter: brightness(1.35); animation: edge 1.6s ease-in-out infinite; transition: clip-path .6s var(--ease); }
+.sprig-fill.dim { opacity: .55; }
+.sprig-fill.dim .sprig-edge { display: none; }
+@keyframes edge { 0%, 100% { opacity: .15; } 50% { opacity: .85; } }
+.job { display: flex; align-items: center; min-width: 0; color: var(--muted); }
+.job.full { gap: 18px; width: 100%; }
+.job.full.bare { gap: 0; }
+.job.full .job-step { font-size: 14px; }
+.job-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.job .stages { flex: 1; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: row; flex-wrap: wrap; gap: 4px 18px; font-size: 13.5px; color: var(--faint); }
+.job .stages li.done { color: var(--green-ink); }
+.job .stages li.now { color: var(--blue-ink); font-weight: 600; }
+.job-line { display: flex; gap: 12px; align-items: baseline; font-size: 14px; }
+.job-step { flex: 1; min-width: 0; }
+.job-time { flex-shrink: 0; margin-left: auto; font-variant-numeric: tabular-nums; color: var(--faint); }
+.job.compact { gap: 8px; width: 100%; font-size: 12.5px; }
+.job.compact .job-time { font-size: 12px; }
+.job.compact .job-step { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* An install's words say what to do (sign in in the browser that opened), so they wrap rather than cut. */
+.job.compact.install-fill { align-items: center; font-size: 14px; }
+.job.compact.install-fill .job-step { white-space: normal; overflow: visible; }
+/* A new screen's heading takes focus for screen readers (useRouteFocus); it isn't a control, so it shows no ring. */
+h1[tabindex="-1"]:focus { outline: none; }
+
+/* A screen's column never outgrows the window, even with its width set inline (WCAG reflow). */
+.center > * { min-width: 0; max-width: 100%; }
+.main > .stack { max-width: calc(100% - 40px); }
+
+@media (max-width: 760px) {
+  .center, .page { padding: 24px 20px; }
+  .h1, .h2 { overflow-wrap: break-word; }
+  .actions, .agent { flex-wrap: wrap; }
+}

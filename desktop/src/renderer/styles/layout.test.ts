@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-const css = readFileSync(resolve(__dirname, 'app.css'), 'utf8');
+const css = ['foundation', 'workspace', 'progress', 'setup'].map((name) => readFileSync(resolve(__dirname, `${name}.css`), 'utf8')).join('\n');
 const rule = (selector: string) => css.split('\n').find((line) => line.startsWith(`${selector} {`)) ?? '';
 
 describe('the page never scrolls', () => {

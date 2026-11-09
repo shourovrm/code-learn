@@ -283,7 +283,7 @@ describe('a long roadmap', () => {
   it('scrolls its topics above a footer of its own, so Approve never covers the Ask box', async () => {
     // The real stylesheet (tests run from desktop/), so the computed style is the one the window uses.
     const sheet = document.createElement('style');
-    sheet.textContent = readFileSync(resolve('src/renderer/styles/app.css'), 'utf8');
+    sheet.textContent = readFileSync(resolve('src/renderer/styles/setup.css'), 'utf8');
     document.head.append(sheet);
     const { roadmap } = await mockWithRoadmap();
     renderApp({ to: 'course', roadmap });

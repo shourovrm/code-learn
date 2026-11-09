@@ -68,7 +68,7 @@ describe('Results with real core result shapes', () => {
   it("keeps an error's lines, so a traceback's caret still points at the mistake", () => {
     // The real stylesheet (tests run from desktop/), so the computed style is the one the window uses.
     const sheet = document.createElement('style');
-    sheet.textContent = readFileSync(resolve('src/renderer/styles/app.css'), 'utf8');
+    sheet.textContent = readFileSync(resolve('src/renderer/styles/workspace.css'), 'utf8');
     document.head.append(sheet);
     const traceback = 'Exited with code 1:\n  File "main.py", line 3\n    print("Hello, " + name\n                     ^\nSyntaxError: \'(\' was never closed';
     const crashed: CoreCheckView = { ...core, tests: [{ name: 'visible/02', status: 'error', message: traceback, actual: '' }] };

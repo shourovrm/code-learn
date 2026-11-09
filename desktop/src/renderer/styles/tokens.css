@@ -1,97 +1,183 @@
+/*
+ * Every size and colour the renderer uses (docs/design-system.md). Sizes are Atlassian's (@atlaskit/tokens 20.6.1);
+ * colours are the Seed packet direction: garden green fields, marigold for the one thing to do now, sage-grey paper.
+ * styles/design.test.ts fails on a raw size or colour in any other stylesheet.
+ */
 :root {
   color-scheme: light;
-  --navy: #0E2754;
-  --navy-2: #1B3566;
-  --navy-3: #0B1F44;
-  --navy-line: #2A4677;
-  --navy-text: #C9D5EA;
-  --navy-muted: #AFC0DD;
-  --ink: #0E2754;
-  --muted: #4A5B7A;
-  --faint: #5B6A84;
-  --line: #DCE3EE;
-  --ctl: #8492A9;
-  --ground: #F5F7FA;
-  --card: #FFFFFF;
-  --soft: #F0F3F8;
+
+  /* Space: Atlassian's 8px scale. */
+  --space-025: 2px;
+  --space-050: 4px;
+  --space-075: 6px;
+  --space-100: 8px;
+  --space-150: 12px;
+  --space-200: 16px;
+  --space-250: 20px;
+  --space-300: 24px;
+  --space-400: 32px;
+  --space-500: 40px;
+  --space-600: 48px;
+  --space-800: 64px;
+  --space-1000: 80px;
+
+  /* Type: weight size/line-height family. */
+  --type-heading-xxlarge: 700 32px/36px var(--display);
+  --type-heading-xlarge: 700 28px/32px var(--display);
+  --type-heading-large: 700 24px/28px var(--display);
+  --type-heading-medium: 700 20px/24px var(--display);
+  --type-heading-small: 700 16px/20px var(--display);
+  --type-heading-xsmall: 700 14px/20px var(--display);
+  --type-heading-xxsmall: 700 12px/16px var(--display);
+  --type-body-large: 400 16px/24px var(--sans);
+  --type-body: 400 14px/20px var(--sans);
+  --type-body-small: 400 12px/16px var(--sans);
+  --type-code: 400 14px/24px var(--mono);
+  --type-code-small: 400 12px/16px var(--mono);
+  --heading-track: -0.02em;
+
+  /* Controls. */
+  --control-h: 32px;
+  --control-h-compact: 24px;
+  --input-h: 38px;
+  --border: 1px;
+  --border-bold: 2px;
+  --radius-ctl: 2px;
+  --radius-card: 4px;
+  --radius-tag: 2px;
+  --radius-round: 9999px;
+  --icon-sm: 16px;
+  --icon: 20px;
+  --icon-lg: 24px;
+
+  /* Layout. */
+  --rail-w: 56px;
+  --sidebar-w: 240px;
+  --column-w: 320px;
+  --column-narrow-w: 280px;
+  --tutor-w: 304px;
+  --side-w: 288px;
+  --measure: 72ch;
+  --page-max: 1296px;
+  --page-narrow: 864px;
+  --titlebar-h: 36px;
+
+  /* Garden: the sidebar, the rail and the title bar, in both themes. */
+  --garden: #163A2C;
+  --garden-2: #245640;
+  --garden-3: #0F2C20;
+  --garden-line: #2F6650;
+  --garden-text: #D6E5DA;
+  --garden-muted: #A9C3B1;
+  --on-garden: #FFFFFF;
+  /* The exercise statement's field, and what sits on it. */
+  --packet: #1E4D3B;
+  --packet-text: #F2F6EF;
+  --packet-muted: #B9D0BF;
+  --packet-line: #5E8A73;
+  --packet-code: #2B6450;
+
+  --ink: #17261D;
+  --muted: #3E5246;
+  --faint: #55675C;
+  --line: #D2DBCD;
+  --ctl: #78897D;
+  --ground: #ECF0E8;
+  --card: #F9FAF7;
+  --soft: #E3E9DF;
   /* A raised strip on a card: the editor's tab bar. */
-  --surface-2: #EDF1F6;
-  --green-ink: #0E7C35;
-  --ok: #13883D;
-  --green-soft: #E6F7EC;
-  --green-line: #A8E3BB;
-  --orange-ink: #8A4B00;
-  --bad: #B85C00;
-  --orange-soft: #FFF2E0;
-  --orange-line: #F6C88A;
-  --blue: #3F5DB8;
-  --blue-soft: #E8EDFB;
-  --blue-line: #CDD7F4;
-  --blue-ink: #2B3F80;
-  --note: #FFF7DB;
-  --note-ink: #7A5C00;
-  /* The primary button's fill, under white text (5.3:1). */
-  --primary: #0E7C35;
+  --surface-2: #E7ECE3;
+  --green-ink: #2B6E45;
+  --ok: #2B6E45;
+  --green-soft: #DCEEDD;
+  --green-line: #A9D3B2;
+  --orange-ink: #A8401F;
+  --bad: #A8401F;
+  --orange-soft: #F6E1D8;
+  --orange-line: #E7B29E;
+  --blue: #1F5C8C;
+  --blue-soft: #DDE9F2;
+  --blue-line: #B8CFE2;
+  --blue-ink: #174A72;
+  --note: #FBEFCF;
+  --note-ink: #6B4A00;
+  /* The primary button: marigold under dark green text (8.6:1). */
+  --primary: #F2B33D;
+  --primary-edge: #C98E14;
+  --on-primary: #1A2E22;
+  /* Progress drawn from the logo: the sprout's leaves and the seed. */
+  --leaf: #2B6E45;
+  --leaf-on-packet: #8FD19A;
+  --seed: #C98E14;
   /* Results panels by outcome, and the empty parts of progress bars and step bars. */
-  --res-nok: #FFFBF5;
-  --res-ok: #F6FCF8;
-  --res-off: #F4F6FA;
-  --track: #E4E9F1;
-  --seg: #D8DFEA;
-  --shim-a: #E8EDF4;
-  --shim-b: #F7F9FC;
-  --shadow: rgba(14, 39, 84, .14);
-  --shadow-strong: rgba(14, 39, 84, .18);
-  --scrim: rgba(11, 31, 68, .45);
+  --res-nok: #FBF1EC;
+  --res-ok: #EEF6EE;
+  --res-off: #EEF1EB;
+  --track: #DCE3D8;
+  --seg: #CCD6C7;
+  --shim-a: #E3E9DF;
+  --shim-b: #F3F6F0;
+  --shadow: rgba(23, 38, 29, .14);
+  --shadow-strong: rgba(23, 38, 29, .18);
+  --scrim: rgba(12, 28, 20, .5);
   /* Sprig's shelf, under the mascot on light or dark ground. */
-  --perch: #0E2754;
-  /* Focus rings: navy on light surfaces, green on navy; both above 3:1. */
-  --focus: #0E2754;
-  --focus-on-navy: #3DDB6C;
-  --ease: cubic-bezier(.2, .75, .25, 1);
+  --perch: #163A2C;
+  /* Focus rings: garden on paper, marigold on garden; both above 3:1. */
+  --focus: #1E4D3B;
+  --focus-on-garden: #F2B33D;
+  --ease: cubic-bezier(.16, 1, .3, 1);
 }
 
 /*
- * Dark (app/theme.ts sets data-theme from the learner's choice, System by default). The sidebar, title bar and
- * terminal stay navy, as in the light theme. Every text color is at least 5.7:1 on the surfaces it sits on, and
- * controls' borders at least 3:1.
+ * Dark (app/theme.ts sets data-theme from the learner's choice, System by default). The garden fields go deeper;
+ * marigold stays. Every text colour is at least 4.5:1 on the surfaces it sits on, and controls' borders at least 3:1.
  */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --ink: #E8EEF7;
-  --muted: #B4C1D8;
-  --faint: #97A7C2;
-  --line: #2A3D61;
-  --ctl: #6B7FA3;
-  --ground: #0B1730;
-  --card: #13233F;
-  --soft: #1A2C4D;
-  --surface-2: #0F1D38;
-  --green-ink: #5FE08F;
-  --ok: #45CF77;
-  --green-soft: #123322;
-  --green-line: #2C6B45;
-  --orange-ink: #F7B567;
-  --bad: #F29B45;
-  --orange-soft: #3A2812;
-  --orange-line: #7A5424;
-  --blue: #93B4FF;
-  --blue-soft: #1B2C58;
-  --blue-line: #34497F;
-  --blue-ink: #BCCDFF;
+  --garden: #0C1C14;
+  --garden-2: #1B3A2A;
+  --garden-3: #08140E;
+  --garden-line: #24412F;
+  --packet: #133325;
+  --packet-line: #3E6A52;
+  --packet-code: #1F4A36;
+  --ink: #E4ECE2;
+  --muted: #B4C4B8;
+  --faint: #8DA193;
+  --line: #2A3A30;
+  --ctl: #6B8072;
+  --ground: #111A14;
+  --card: #18231C;
+  --soft: #1F2C24;
+  --surface-2: #151F18;
+  --green-ink: #8FD19A;
+  --ok: #8FD19A;
+  --green-soft: #1D3324;
+  --green-line: #2E5A3B;
+  --orange-ink: #F09A78;
+  --bad: #F09A78;
+  --orange-soft: #3A2219;
+  --orange-line: #6E3B28;
+  --blue: #8CC3EE;
+  --blue-soft: #18303F;
+  --blue-line: #2C4C63;
+  --blue-ink: #B5D8F4;
   --note: #33290F;
   --note-ink: #F2D47E;
-  --primary: #0E7C35;
-  --res-nok: #241F21;
-  --res-ok: #11281B;
-  --res-off: #152440;
-  --track: #22355A;
-  --seg: #2C416A;
-  --shim-a: #1A2B4A;
-  --shim-b: #233759;
+  --primary-edge: #F2B33D;
+  --on-primary: #14231A;
+  --leaf: #8FD19A;
+  --seed: #F2B33D;
+  --res-nok: #2A1E18;
+  --res-ok: #172A1D;
+  --res-off: #1A241D;
+  --track: #26352B;
+  --seg: #31443A;
+  --shim-a: #1F2C24;
+  --shim-b: #27372D;
   --shadow: rgba(0, 0, 0, .35);
   --shadow-strong: rgba(0, 0, 0, .45);
-  --scrim: rgba(3, 9, 22, .62);
-  --perch: #6B7FA3;
-  --focus: #93B4FF;
+  --scrim: rgba(3, 10, 6, .62);
+  --perch: #6B8072;
+  --focus: #F2C766;
 }
