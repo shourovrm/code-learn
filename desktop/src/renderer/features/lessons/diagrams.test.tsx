@@ -4,6 +4,7 @@ const loaded = vi.hoisted(() => vi.fn());
 vi.mock('mermaid', async (importActual) => (loaded(), importActual()));
 
 import { configure, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
@@ -106,6 +107,21 @@ describe('diagrams in a lesson', { timeout: 60_000 }, () => {
     expect(screen.getByText('After')).toBeInTheDocument();
     // Mermaid's own error drawing is left out, and so is anything it leaves in the page.
     expect(document.querySelector('[id^="ddiagram-"], .error-icon')).toBeNull();
+  });
+
+  it("show a failed diagram's box by default, hide it with its close button, and show it again from the Diagram toggle", async () => {
+    const { api, id } = await lessonSaying('# T\n\n```mermaid\nflowchart TD\n  A --> --> B(\n```\n\nAfter');
+    renderApp({ to: 'lesson', lessonId: id }, api);
+    const toggle = await screen.findByRole('button', { name: 'Diagram' });
+    const note = "This diagram didn't draw. Here is its source.";
+    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText(note)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Hide diagram' }));
+    expect(screen.queryByText(note)).toBeNull();
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    await userEvent.click(toggle);
+    expect(screen.getByText(note)).toBeInTheDocument();
+    expect(toggle).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('draw agent-written labels as inert text: no markup, script, handler or remote reference survives', async () => {

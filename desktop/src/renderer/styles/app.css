@@ -448,7 +448,15 @@ button.stop-title.link:hover { text-decoration-color: currentColor; }
 .diagram.wait { min-height: 120px; }
 /* Mermaid measures a diagram's text in a box it adds to the page, and the CSP keeps out the styles it sets there; this is the text's size and font. */
 div[id^="ddiagram-"] { font: 16px var(--sans); }
-.diagram.failed p { margin: 0 0 8px; font-size: 14.5px; color: var(--muted); }
+/* A diagram that didn't draw (§4.3): its source sits in the lesson's flow, in theme colours, and can be hidden. */
+.diagram-chip { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 8px; padding: 6px 12px; border: 1px dashed var(--line); border-radius: 8px; background: transparent; color: var(--muted); font: 500 13px var(--sans); cursor: pointer; }
+.diagram-chip:hover { color: var(--ink); }
+.diagram-chip[aria-pressed="true"] { border-style: solid; color: var(--ink); }
+.diagram-failed { margin: 0 0 14px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: var(--ink); }
+.diagram-failed .head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 14px; color: var(--muted); }
+.diagram-failed .x { margin-left: auto; width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font-size: 18px; cursor: pointer; }
+.diagram-failed .x:hover { background: var(--soft); color: var(--ink); }
+.diagram-failed pre { margin: 0; padding: 12px 14px; border-radius: 8px; background: var(--soft); color: var(--ink); font-size: 13px; }
 
 /* A link inside running text: the text's own color, underlined, with the usual focus ring. */
 a.inline { color: inherit; text-decoration: underline; text-underline-offset: 2px; font-weight: 600; }

@@ -1,4 +1,4 @@
-import { useEffect, useReducer } from 'react';
+import { useEffect, useReducer, useState } from 'react';
 import type { Drawn } from './drawDiagram';
 
 /** A diagram's drawing, or null when it can't be drawn. Kept so a lesson reopens at once (§4.3), and drawn once. */
@@ -36,17 +36,35 @@ export function Diagram({ source }: { source: string }) {
     };
   }, [d]);
   if (d.value === undefined) return <figure className="diagram wait" aria-busy="true" />;
-  if (d.value === null) {
-    return (
-      <div className="diagram failed">
-        <p>This diagram didn&apos;t draw. Here is its source.</p>
-        <div className="md"><pre><code>{source}</code></pre></div>
-      </div>
-    );
-  }
+  if (d.value === null) return <FailedDiagram source={source} />;
   return (
     <figure className="diagram">
       <img src={d.value.src} alt={d.value.alt} />
     </figure>
+  );
+}
+
+/** The source of a diagram that didn't draw, shown in the lesson's flow until the learner hides it. */
+function FailedDiagram({ source }: { source: string }) {
+  const [shown, setShown] = useState(true);
+  return (
+    <>
+      <button type="button" className="diagram-chip" aria-pressed={shown} onClick={() => setShown(!shown)}>
+        <span aria-hidden="true">{shown ? '◆' : '◇'}</span>
+        Diagram
+      </button>
+      {shown && (
+        <div className="diagram-failed">
+          <div className="head">
+            <span aria-hidden="true">⚠</span>
+            <span>This diagram didn&apos;t draw. Here is its source.</span>
+            <button type="button" className="x" aria-label="Hide diagram" onClick={() => setShown(false)}>
+              ✕
+            </button>
+          </div>
+          <div className="md"><pre><code>{source}</code></pre></div>
+        </div>
+      )}
+    </>
   );
 }
