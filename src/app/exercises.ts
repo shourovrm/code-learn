@@ -366,7 +366,10 @@ export type ExerciseStatus = {
   exercise: string;
   /** Recorded checks, passed or failed. */
   checks: number;
-  solved: boolean;
+  /** The first recorded check that passed, when there is one. */
+  solved?: { at: string; passed: number; total: number };
+  /** How many recorded checks open the solution without a pass. */
+  solutionChecks: number;
   solutionOpen: boolean;
   last?: { passed: number; total: number; at: string };
 };
@@ -374,13 +377,14 @@ export type ExerciseStatus = {
 /** An exercise's recorded checks, counted from the course log. */
 function statusOf(course: string, slug: string): ExerciseStatus {
   const checks = store.readEvents(course).filter((e): e is CheckEvent => e.kind === "check" && e.exercise === slug);
-  const solved = checks.some((c) => c.passed === c.total);
+  const first = checks.find((c) => c.passed === c.total);
   const last = checks.at(-1);
   return {
     exercise: slug,
     checks: checks.length,
-    solved,
-    solutionOpen: solved || checks.length >= SOLUTION_CHECKS,
+    ...(first ? { solved: { at: first.at, passed: first.passed, total: first.total } } : {}),
+    solutionChecks: SOLUTION_CHECKS,
+    solutionOpen: first !== undefined || checks.length >= SOLUTION_CHECKS,
     ...(last ? { last: { passed: last.passed, total: last.total, at: last.at } } : {}),
   };
 }
