@@ -171,7 +171,7 @@ function Workspace({ activity, course, focus }: { activity: Activity; course: Co
           <div className="actions"><Button disabled={busy || !answeredAll(activity.questions, files[0].text)} onClick={check}>Check</Button></div>
           <ExerciseNav topics={course.topics} concept={activity.concept} />
         </section> : <>
-        {solution && <p className="quiet-text">Read only. Your file is unchanged.</p>}
+        {solution && <p className="quiet-text solution-note">Read only. Your file is unchanged.</p>}
         <Editor
           files={solution ? solution.map((f) => ({ ...f, path: `solution · ${f.path}` })) : files}
           open={open}
