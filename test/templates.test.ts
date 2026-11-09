@@ -273,6 +273,7 @@ describe("diagrams in lessons", () => {
     expect(brief).toMatch(/flowchart, sequenceDiagram, stateDiagram-v2, classDiagram, pie or xychart/);
     expect(brief).toMatch(/`accTitle` and a one-line `accDescr`/);
     expect(brief).toMatch(/shown as code if it doesn't draw/);
+    expect(brief).toMatch(/a node label with symbols such as `\/ \( \) \[ \] \{ \} :` in double quotes, e\.g\. `C\["\/tmp\/main"\]`/);
     expect(brief.split("\n").length).toBeLessThanOrEqual(25);
   });
 

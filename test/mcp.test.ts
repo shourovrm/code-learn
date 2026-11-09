@@ -148,6 +148,7 @@ describe("the save_lesson description", () => {
     const { description } = (await c.listTools()).tools[0];
     expect(description).toMatch(/Diagrams and charts go in fenced blocks with info string mermaid/);
     expect(description).toMatch(/only when a picture teaches better than words/);
+    expect(description).toMatch(/Node labels with symbols such as \/ \( \) \[ \] \{ \} : go in double quotes, e\.g\. C\["\/tmp\/main"\]/);
   });
 
   it("says an example runs with no input", async () => {

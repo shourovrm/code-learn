@@ -47,7 +47,7 @@ const LESSON_SHAPE =
 
 /** When a lesson gets a picture, and how it is drawn: the app renders these fences (docs/desktop/DESIGN.md §4.3). */
 const DIAGRAMS =
-  "Add a diagram only when a picture teaches better than words, such as control flow, a data structure, the steps of an algorithm or how cost grows. Draw it in a fenced block with info string \`mermaid\` (flowchart, sequenceDiagram, stateDiagram-v2, classDiagram, pie or xychart), keep it small, and give it an \`accTitle\` and a one-line \`accDescr\` for screen readers. It is shown as code if it doesn't draw.";
+  "Add a diagram only when a picture teaches better than words, such as control flow, a data structure, the steps of an algorithm or how cost grows. Draw it in a fenced block with info string \`mermaid\` (flowchart, sequenceDiagram, stateDiagram-v2, classDiagram, pie or xychart), keep it small, and give it an \`accTitle\` and a one-line \`accDescr\` for screen readers. Put a node label with symbols such as \`/ ( ) [ ] { } :\` in double quotes, e.g. \`C[\"/tmp/main\"]\`, or it may not draw. It is shown as code if it doesn't draw.";
 
 const SECRECY = "Never repeat the solution, the mutants or the hidden tests to anyone. The tutor and the learner must not see them.";
 
