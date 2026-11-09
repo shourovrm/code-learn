@@ -70,7 +70,7 @@ describe("tutor instructions (AGENTS.md section)", () => {
       expect(text).toMatch(/a different problem, not one of them renamed/);
       expect(text).toMatch(/title must differ from the concept's title/);
     }
-    expect(AGENTS_SECTION).toMatch(/contract, earlier exercises, lesson text and last result from `next_step`/);
+    expect(AGENTS_SECTION).toMatch(/contract, earlier exercises, topics taught, lesson text and last result from `next_step`/);
   });
 
   it("shows how a roadmap pins its track", () => {
@@ -187,7 +187,7 @@ describe("activities built on the lesson and the learner's last result", () => {
   });
 
   it("has the terminal tutor pass the lesson text and last result to the author subagent", () => {
-    expect(AGENTS_SECTION).toMatch(/contract, earlier exercises, lesson text and last result from `next_step`/);
+    expect(AGENTS_SECTION).toMatch(/contract, earlier exercises, topics taught, lesson text and last result from `next_step`/);
   });
 });
 
@@ -235,7 +235,7 @@ describe("desktop job briefs (docs/desktop/DESIGN.md §3.2, §8)", () => {
   it("sends a fresh author to next_step for the exact target and the track's contract", () => {
     expect(JOB_BRIEFS.author).toMatch(/`contract\.files`/);
     expect(JOB_BRIEFS.author).toMatch(/`contract\.examples`/);
-    expect(AGENTS_SECTION).toMatch(/start the subagent with the concept, title, practice, pitfalls, difficulty, style, track, contract, earlier exercises, lesson text and last result from `next_step`/);
+    expect(AGENTS_SECTION).toMatch(/start the subagent with the concept, title, practice, pitfalls, difficulty, style, track, contract, earlier exercises, topics taught, lesson text and last result from `next_step`/);
   });
 
   it("asks the research job for its sources, and a roadmap change to keep them and the title", () => {
@@ -373,6 +373,26 @@ describe("research and teaching quality", () => {
       expect(text).toMatch(/the common mistakes from the concept's `pitfalls`, with one shown and corrected/);
       expect(text).toMatch(/two self-check questions, with their answers under a final "Answers" heading/);
       expect(text).toMatch(/"try it" prompt/);
+    }
+  });
+
+  it("writes every lesson for a beginner who knows only the earlier topics, ending with a short Remember section", () => {
+    for (const text of [AGENTS_SECTION, JOB_BRIEFS.lesson]) {
+      expect(text).toMatch(/a one-line recap of the previous topic/);
+      expect(text).toMatch(/a "New words" list: each new term with its meaning in one plain line/);
+      expect(text).toMatch(/show a small example first, then state the rule/);
+      expect(text).toMatch(/a "Remember" section: 3 to 5 short facts worth keeping, one line each/);
+      expect(text).toMatch(/Assume the learner knows only what the earlier topics taught/);
+      expect(text).toMatch(/Define each new term in plain words where it first appears/);
+      expect(text).toMatch(/Use nothing from a later topic/);
+      expect(text).toMatch(/about a five-minute read/);
+    }
+  });
+
+  it("keeps every activity to what the course has taught so far", () => {
+    for (const text of [AUTHOR_AGENT, JOB_BRIEFS.author]) {
+      expect(text).toMatch(/`taught` lists the topics before this one/);
+      expect(text).toMatch(/Use nothing from a later topic: no construct, function or term the course hasn't taught yet/);
     }
   });
 

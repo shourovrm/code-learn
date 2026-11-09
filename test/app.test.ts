@@ -177,6 +177,7 @@ describe("the author step", () => {
         },
       },
       earlier: [],
+      taught: [],
     });
   });
 });
@@ -193,6 +194,14 @@ describe("authoring a new exercise", () => {
     expect(step).toMatchObject({ kind: "author", earlier: [{ title: "Sum two numbers", summary: "Read two integers on one line and print their sum." }] });
     // The statement only: never the solution or hidden tests.
     expect(JSON.stringify(step)).not.toMatch(/SECRET|HIDDEN/);
+  });
+
+  it("lists the topics taught before this one, in roadmap order, so the task uses nothing from a later topic", async () => {
+    installFake();
+    await app.saveRoadmap(ws, "shell", roadmap());
+    expect(app.nextStep(ws)).toMatchObject({ kind: "author", concept: "sh.basics", taught: [] });
+    store.appendEvent("shell", event({ kind: "skip", concept: "sh.basics" }));
+    expect(app.nextStep(ws)).toMatchObject({ kind: "author", concept: "sh.loops", taught: ["Basics"] });
   });
 });
 

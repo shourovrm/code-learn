@@ -420,7 +420,7 @@ A failure goes back to the caller with the failing gate and capped output. Hidde
 4. **Starter is unsolved:** the starter does not pass everything.
 5. **Mutants are caught:** each mutant fails or errors on at least one hidden test. A copy of the reference is caught by this gate too.
 6. **Hidden tests matter:** at least one mutant passes every visible test.
-7. **New task:** no earlier exercise's solution on the same track passes every visible test. To bound the wait, it compares at most 3 earlier exercises on a shared concept and the 3 most recent others: at most 6 runs of the visible tests. The author sees the earlier exercises' titles and first lines in `next_step`'s `earlier`, never their solutions or tests.
+7. **New task:** no earlier exercise's solution on the same track passes every visible test. To bound the wait, it compares at most 3 earlier exercises on a shared concept and the 3 most recent others: at most 6 runs of the visible tests. The author sees the earlier exercises' titles and first lines in `next_step`'s `earlier`, never their solutions or tests. It also sees `taught`, the titles of the roadmap's topics before its own, so the task uses nothing from a later topic.
 
 Gates 4 to 7 only ask whether everything passes, so their io runs stop a set at its first error: a slow wrong solution costs one time limit per set, not one per case.
 

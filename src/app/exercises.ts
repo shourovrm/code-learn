@@ -30,7 +30,7 @@ export type NextStep =
   | Step
   | LessonStep
   | { kind: "setup"; track: string }
-  | (Extract<Step, { kind: "author" }> & { title: string; practice?: string; pitfalls?: string[]; style: string; track?: string; contract?: TrackContract; earlier: Earlier[] } & LearnerContext);
+  | (Extract<Step, { kind: "author" }> & { title: string; practice?: string; pitfalls?: string[]; style: string; track?: string; contract?: TrackContract; earlier: Earlier[]; taught: string[] } & LearnerContext);
 
 /**
  * What the author adapts the task to: the concept's lessons as the learner reads them, and their last check on the
@@ -90,8 +90,11 @@ export function nextStep(ws: string, bound?: string): NextStep {
   const step = pickFor(course);
   if (step.kind !== "author") return step;
   // The step's concept comes from this roadmap. JSON leaves out practice and pitfalls when a concept has none.
-  const { title, practice, pitfalls } = course.concepts.find((c) => c.id === step.concept)!;
-  return { ...step, title, practice, pitfalls, style: course.style, ...contract, earlier: earlierExercises(course.course), ...learnerContext(course.course, step.concept) };
+  const at = course.concepts.findIndex((c) => c.id === step.concept);
+  const { title, practice, pitfalls } = course.concepts[at]!;
+  // The topics before this one in roadmap order: the task may use these and nothing from a later topic.
+  const taught = course.concepts.slice(0, at).map((c) => c.title);
+  return { ...step, title, practice, pitfalls, style: course.style, ...contract, earlier: earlierExercises(course.course), taught, ...learnerContext(course.course, step.concept) };
 }
 
 /** Writes each exercise gate as it starts to a job's progress file (`code-learn mcp --progress`), by name only. */
