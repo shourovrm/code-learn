@@ -36,6 +36,12 @@ function neighbours(topic: TopicView, lessonId: string): { prev: Route; next: (c
   };
 }
 
+/** About how long a lesson takes to read, at 200 words a minute. */
+function readingMinutes(markdown: string): number {
+  const words = markdown.split(/\s+/).filter(Boolean).length;
+  return Math.max(1, Math.round(words / 200));
+}
+
 interface View {
   lesson: LessonData;
   course: CourseView;
@@ -93,6 +99,8 @@ function Reader({ lesson, course, topic, onSaved, onNoted }: View & { onSaved: (
   const parts = useLessonParts(lesson.markdown, true);
   // Next on the last lesson leads to the activity: while it is written, say so beside it (the outline shows how far it is).
   // Only when it really is: `writing` also stands for an activity that waits for setup, or whose work has stopped.
+  const at = topic.lessons.findIndex((l) => l.id === lesson.id);
+  const nextTopic = course.topics[course.topics.findIndex((t) => t.id === topic.id) + 1];
   const waiting = topic.lessons.at(-1)?.id === lesson.id && topic.activity === 'writing' && course.setup === 'ready' && !course.stalled;
   const writing = topic.review ? 'review' : 'activity';
 
@@ -121,10 +129,11 @@ function Reader({ lesson, course, topic, onSaved, onNoted }: View & { onSaved: (
 
   return (
     <div className="ws lesson">
-      <Outline topic={topic} current={lesson.id} />
+      <Outline topic={topic} current={lesson.id} next={nextTopic} />
       <main className="reader">
         {/* Setup waits for the learner's OK; reading doesn't wait for setup (§4.1). */}
         <SetupOffer course={course} banner onChange={onSaved} />
+        <p className="quiet-text">{`Lesson ${at + 1} of ${topic.lessons.length} · about ${readingMinutes(lesson.markdown)} min`}</p>
         <div className="head">
           <h1 className="h1 a-up">{lesson.title}</h1>
           {!editing && (
@@ -140,6 +149,12 @@ function Reader({ lesson, course, topic, onSaved, onNoted }: View & { onSaved: (
               <Example key={i} lesson={lesson} index={part.example} />
             ) : 'diagram' in part ? (
               <Diagram key={i} source={part.diagram} />
+            ) : 'answers' in part ? (
+              // Closed until asked, so the learner answers the self-check first.
+              <details key={i} className="answers">
+                <summary>Show answers</summary>
+                <div className="md" dangerouslySetInnerHTML={{ __html: part.answers }} />
+              </details>
             ) : (
               <div key={i} className="md" dangerouslySetInnerHTML={{ __html: part.html }} />
             ),

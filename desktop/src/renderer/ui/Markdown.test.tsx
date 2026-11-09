@@ -73,6 +73,16 @@ describe('lessonParts', () => {
     expect((parts[2] as { html: string }).html).toContain('<pre><code class="language-mermaid">');
   });
 
+  it('cuts out the self-check answers: the Answers section up to the next heading as high, without its own heading', () => {
+    const parts = lessonParts('## Check yourself\n\n1. What prints?\n\n## Answers\n\n1. `AB`\n\n### Why\n\nNo new line.\n\n## Sources\n\n- K&R\n');
+    expect(parts.map((p) => Object.keys(p)[0])).toEqual(['html', 'answers', 'html']);
+    const answers = parts[1] as { answers: string };
+    expect(answers.answers).toContain('<code>AB</code>');
+    expect(answers.answers).toContain('No new line.');
+    expect(answers.answers).not.toContain('Answers');
+    expect((parts[2] as { html: string }).html).toContain('Sources');
+  });
+
   it('shows, never runs, an example fence inside another fence or indented', () => {
     const parts = lessonParts(`\`\`\`\`md\n${fence(1)}\n\`\`\`\`\n\n    \`\`\`example\n    2\n    \`\`\`\n`);
     expect(parts.every((p) => 'html' in p)).toBe(true);

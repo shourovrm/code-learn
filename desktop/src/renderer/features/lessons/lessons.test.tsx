@@ -71,6 +71,49 @@ describe('the end of a topic\'s lessons while its activity is written', () => {
   });
 });
 
+describe('the lesson page (steps through the chapter)', () => {
+  it('says which lesson of the topic this is, and about how long it takes to read', async () => {
+    const { api, course } = await mockWithCourse();
+    const topic = course.topics[0];
+    renderApp({ to: 'lesson', lessonId: topic.lessons[0].id }, api);
+    expect(await screen.findByText(new RegExp(`^Lesson 1 of ${topic.lessons.length} · about \\d+ min$`))).toBeInTheDocument();
+  });
+
+  it('keeps the self-check answers behind Show answers', async () => {
+    const user = userEvent.setup();
+    const { api, course } = await mockWithCourse();
+    const lesson = api.lesson.bind(api);
+    api.lesson = async (id) => ({ ...(await lesson(id)), markdown: 'Text.\n\n## Check yourself\n\n1. What prints?\n\n## Answers\n\n1. It prints AB.\n' });
+    renderApp({ to: 'lesson', lessonId: course.topics[0].lessons[0].id }, api);
+    const answer = await screen.findByText('It prints AB.');
+    expect(answer).not.toBeVisible();
+    await user.click(screen.getByText('Show answers'));
+    expect(answer).toBeVisible();
+  });
+
+  it('leads from the panel on to the next topic, and folds the panel away', async () => {
+    const user = userEvent.setup();
+    const { api, course } = await mockWithCourse();
+    const [first, second] = course.topics;
+    renderApp({ to: 'lesson', lessonId: first.lessons[0].id }, api);
+    const panel = await screen.findByRole('navigation', { name: first.title });
+    expect(panel).toHaveTextContent(`0 of ${first.lessons.length + 1} done`);
+    await user.click(within(panel).getByRole('button', { name: 'Hide panel' }));
+    expect(screen.queryByRole('navigation', { name: first.title })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Show panel' }));
+    await user.click(within(screen.getByRole('navigation', { name: first.title })).getByRole('button', { name: second.title }));
+    expect(await screen.findByRole('heading', { name: second.title, level: 1 })).toBeInTheDocument();
+  });
+
+  it('leads from the panel back to all topics', async () => {
+    const user = userEvent.setup();
+    const { api, course } = await mockWithCourse();
+    renderApp({ to: 'lesson', lessonId: course.topics[0].lessons[0].id }, api);
+    await user.click(await screen.findByRole('button', { name: '‹ All topics' }));
+    expect(await screen.findByRole('list', { name: 'Topics' })).toBeInTheDocument();
+  });
+});
+
 describe('lesson examples', () => {
   it('shows each example where the lesson places it, and runs it on request', async () => {
     const user = userEvent.setup();

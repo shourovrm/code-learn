@@ -7,6 +7,9 @@
   --example-max-h: 320px;
   --lnum-w: 48px;
   --code-min-w: 480px;
+  /* A lesson reads in a narrower column with roomier lines than other text (about 65 characters a line). */
+  --reading-measure: 66ch;
+  --reading-leading: 1.75;
 }
 
 /* ---------- Lessons ---------- */
@@ -25,6 +28,8 @@
 .quiz-questions .opt { white-space: normal; }
 .quiz-results { padding: var(--space-300); }
 .ws.lesson, .ws.lesson:has(> .coach.folded) { grid-template-columns: var(--column-w) minmax(0, 1fr) auto; }
+/* The lesson's panel folded to a strip: the lesson takes the room. */
+.ws.lesson:has(> .outline.folded) { grid-template-columns: auto minmax(0, 1fr) auto; }
 
 /* The statement column is the seed packet's field: garden green, light text, outlined buttons. The quiz form is the
    same column on paper, so it names the same colours from the paper. */
@@ -79,7 +84,9 @@
 .reader .head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-200); }
 .reader .h1 { font: var(--type-heading-xlarge); letter-spacing: var(--heading-track); }
 .reader .sub { font: var(--type-body-large); max-width: var(--measure); }
-.reader .md { max-width: var(--measure); font: var(--type-body-large); }
+.reader .md { max-width: var(--reading-measure); font: var(--type-body-large); line-height: var(--reading-leading); }
+.reader .answers { max-width: var(--reading-measure); }
+.reader .answers summary { cursor: pointer; font: var(--type-heading-small); }
 .reader .md :is(h1, h2, h3) { letter-spacing: var(--heading-track); }
 .reader .md h1 { font: var(--type-heading-xlarge); }
 .reader .md :is(h2, h3) { font: var(--type-heading-medium); }

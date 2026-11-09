@@ -54,13 +54,14 @@ export function Markdown({ text, className = 'md' }: { text: string; className?:
 }
 
 /** `code`: the part holds a fence with an info string, which highlight.js may know (§4.3). */
-export type LessonPart = { html: string; code: boolean } | { example: number } | { diagram: string };
+export type LessonPart = { html: string; code: boolean } | { example: number } | { diagram: string } | { answers: string };
 
 /**
  * A lesson rendered in one pass, cut at each example block: an unindented top-level fence (``` or ~~~) whose info
  * string is `example`, then one line holding N, then the closing fence, exactly as core finds them (core DESIGN §5),
  * and at each diagram: a top-level fence whose info string is `mermaid`, which the lesson screen draws (§4.3). Either
  * kind inside a list, a quote or another fence stays a code block.
+ * A top-level "Answers" section (the self-check answers) becomes its own part, without its heading.
  * Links and other references keep their definitions from anywhere in the lesson. With `dropTitle`, a leading
  * top-level heading is left out (the page shows the title above the lesson). With `hljs`, the code is colored as
  * `Markdown`'s is.
@@ -73,11 +74,29 @@ export function lessonParts(text: string, dropTitle = false, hljs?: HLJSApi): Le
   const options = colored(hljs);
   const parts: LessonPart[] = [];
   let chunk: typeof tokens = [];
+  // Inside the self-check answers: the tag of their "Answers" heading, which the next heading as high ends.
+  let answers: string | undefined;
   const flush = () => {
-    if (chunk.length) parts.push({ html: md.renderer.render(chunk, options, env), code: named(chunk) });
+    if (chunk.length) {
+      const html = md.renderer.render(chunk, options, env);
+      parts.push(answers ? { answers: html } : { html, code: named(chunk) });
+    }
     chunk = [];
   };
-  for (const token of tokens) {
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
+    if (token.type === 'heading_open' && token.level === 0) {
+      if (answers && token.tag <= answers) {
+        flush();
+        answers = undefined;
+      }
+      if (!answers && tokens[i + 1]?.content.trim() === 'Answers') {
+        flush();
+        answers = token.tag;
+        i += 2; // The heading itself: the page shows a button in its place.
+        continue;
+      }
+    }
     // The same test as core's exampleRefs (src/schemas.ts): three lines (open, N, close), unindented.
     const block = token.map !== null && token.map[1] - token.map[0] === 3 && /^[`~]/.test(lines[token.map[0]] ?? '');
     if (token.type === 'fence' && token.level === 0 && block && token.info.trim() === 'example' && /^[ \t]*\d+[ \t]*\n$/.test(token.content)) {
