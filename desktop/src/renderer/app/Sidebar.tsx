@@ -6,13 +6,14 @@ import { Emm } from '../ui/Emm';
 import { Icon, type IconName } from '../ui/Icon';
 import { Logo } from '../ui/Mark';
 import { useApi } from './api';
-import { useRouter, type Route } from './router';
+import { sameRoute, useRouter, type Route } from './router';
 import { useLoad } from './useLoad';
 import { offeredTopic } from './course';
 import { Courses } from './Courses';
 import { ExternalLink } from '../ui/ExternalLink';
 import { editorRoute, WorkNow } from './WorkNow';
 import { ThemeSwitch } from './ThemeSwitch';
+import { SlimTooltip } from './SlimTooltip';
 
 type Section = 'learn' | 'practice' | 'tracks';
 
@@ -29,9 +30,6 @@ function practiceRoute(course: CourseView | null | undefined): Route {
   return offered ? { to: 'practice', concept: offered.id } : { to: 'learn' };
 }
 
-/** Where the learner is already: going there again would only reset the screen (its results, a running program). */
-const sameRoute = (a: Route, b: Route) => JSON.stringify(a) === JSON.stringify(b);
-
 /** A narrow window, or a wide one at 200% zoom: the screen needs the sidebar's room (WCAG reflow). Matches app.css. */
 const NARROW = '(max-width: 760px)';
 const narrowNow = () => typeof window.matchMedia === 'function' && window.matchMedia(NARROW).matches;
@@ -46,7 +44,8 @@ function onNarrowChange(changed: () => void) {
 export function Sidebar({ slim: slimHere = false }: { slim?: boolean }) {
   const slim = useSyncExternalStore(onNarrowChange, narrowNow) || slimHere;
   const api = useApi();
-  const { route, go, fail } = useRouter();
+  const { route, go, back, canGoBack, fail } = useRouter();
+  const slimNav = useRef<HTMLElement>(null);
   const { data: course } = useLoad(() => api.course(), [route]);
   const here = sectionOf(route);
   const items: { key: Section | 'agent'; label: string; icon: IconName; to: Route | (() => Promise<Route>) }[] = [
@@ -66,6 +65,7 @@ export function Sidebar({ slim: slimHere = false }: { slim?: boolean }) {
   async function open(to: Route | (() => Promise<Route>)) {
     const from = route;
     const target = typeof to === 'function' ? await to() : to;
+    // Going where the learner is already would only reset the screen (its results, a running program).
     if (shown.current === from && !sameRoute(target, route)) go(target);
   }
   const nav = items.filter((item) => item.key !== 'practice' || course?.activities !== false).map((item) => (
@@ -73,8 +73,6 @@ export function Sidebar({ slim: slimHere = false }: { slim?: boolean }) {
       key={item.key}
       type="button"
       className="nav"
-      // The slim sidebar shows icons alone: each is named in its tooltip too.
-      title={slim ? item.label : undefined}
       aria-current={here === item.key ? 'page' : undefined}
       aria-label={slim ? item.label : undefined}
       onClick={() => void open(item.to).catch(fail)}
@@ -83,22 +81,33 @@ export function Sidebar({ slim: slimHere = false }: { slim?: boolean }) {
       {!slim && item.label}
     </button>
   ));
+  // Shown only when there is a screen to go back to, so it never sits there doing nothing.
+  const backButton = canGoBack && (
+    <button type="button" className="nav back" aria-label={slim ? 'Back' : undefined} onClick={back}>
+      <Icon name="back" color="#C9D5EA" />
+      {!slim && 'Back'}
+    </button>
+  );
   if (slim) {
     return (
-      <nav className="slim" aria-label="Main">
+      <nav className="slim" aria-label="Main" ref={slimNav}>
         {/* Emm, not the wordmark's "<" on its own: that reads as a Back button. */}
         <div className="lg"><Emm width={44} name={course?.track} /></div>
+        {backButton}
         {nav}
         <WorkNow course={course} slim />
         <UpdateNotice slim />
         <Courses slim />
         <ThemeSwitch slim />
+        {/* The icons carry no words: each is named beside it on hover and focus. */}
+        <SlimTooltip nav={slimNav} />
       </nav>
     );
   }
   return (
     <nav className="side" aria-label="Main">
       <div className="logo"><Logo height={22} onNavy /></div>
+      {backButton}
       {nav}
       <WorkNow course={course} />
       <div className="foot">

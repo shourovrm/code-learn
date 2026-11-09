@@ -11,6 +11,7 @@ const PATHS = {
   pencil: { w: 2.2, d: <path d="M4 20h4L19 9l-4-4L4 16z" /> },
   grip: { w: 2.4, d: <path d="M5 9h14M5 15h14" /> },
   plus: { w: 2.6, d: <path d="M12 5v14M5 12h14" /> },
+  back: { w: 2.4, d: <path d="M19 12H5M11 6l-6 6 6 6" /> },
   // The theme switch's choices: System (a screen), Light and Dark.
   monitor: { w: 2.2, d: <><rect x="3" y="4" width="18" height="12" rx="2.5" /><path d="M8 20h8M12 16v4" /></> },
   sun: { w: 2.2, d: <><circle cx="12" cy="12" r="4" /><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4" /></> },

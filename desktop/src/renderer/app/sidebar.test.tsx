@@ -2,7 +2,7 @@ import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { createMock } from '../../main/mock';
-import { jobAt, jobBus, mockWithRoadmap, renderApp } from '../test-utils';
+import { jobAt, jobBus, mockWithCourse, mockWithRoadmap, renderApp } from '../test-utils';
 
 const sidebar = () => screen.getByRole('navigation', { name: 'Main' });
 
@@ -91,6 +91,34 @@ describe('narrow windows', () => {
     }
   });
 
+  it('names each icon in a tooltip on hover and on keyboard focus, beside the slim sidebar', async () => {
+    narrowWindow();
+    try {
+      const user = userEvent.setup();
+      const { api } = await mockWithCourse();
+      renderApp({ to: 'tracks' }, api);
+      await screen.findByRole('heading', { name: 'Tracks' });
+      for (const name of ['Learn', 'Tracks', 'Agent', 'New course', 'Theme: System. Switch to Light']) {
+        const button = within(sidebar()).getByRole('button', { name });
+        await user.hover(button);
+        expect(await screen.findByRole('tooltip')).toHaveTextContent(name);
+        await user.unhover(button);
+        expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+      }
+      // A course's badge is named by its title.
+      await user.hover(await within(sidebar()).findByRole('button', { name: 'React' }));
+      expect(await screen.findByRole('tooltip')).toHaveTextContent('React');
+      await user.unhover(within(sidebar()).getByRole('button', { name: 'React' }));
+      // Keyboard focus shows it too, and Escape hides it (WCAG 1.4.13).
+      within(sidebar()).getByRole('button', { name: 'Learn' }).focus();
+      expect(await screen.findByRole('tooltip')).toHaveTextContent('Learn');
+      await user.keyboard('{Escape}');
+      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('keeps a new version in reach in the slim sidebar: Update links to the release', async () => {
     narrowWindow();
     try {
@@ -113,7 +141,8 @@ describe('narrow windows', () => {
       act(() => tell(jobAt('s1', 'rebuild', { track: 'React', stage: 0, thinking: false })));
       const job = await within(sidebar()).findByRole('button', { name: 'Rebuilding React, Building and checking' });
       expect(job).not.toHaveTextContent('Rebuilding');
-      expect(job).toHaveAttribute('title', 'Rebuilding React, Building and checking');
+      await userEvent.setup().hover(job);
+      expect(await screen.findByRole('tooltip')).toHaveTextContent('Rebuilding React, Building and checking');
       // Wider again: the words come back.
       wide();
       expect(await within(sidebar()).findByText('Rebuilding React')).toBeInTheDocument();
@@ -187,7 +216,8 @@ describe('changing the agent', () => {
       const user = userEvent.setup();
       renderApp({ to: 'tracks' }, createMock({ connected: 'claude' }));
       const agent = await within(sidebar()).findByRole('button', { name: 'Agent' });
-      expect(agent).toHaveAttribute('title', 'Agent');
+      await user.hover(agent);
+      expect(await screen.findByRole('tooltip')).toHaveTextContent('Agent');
       expect(agent).not.toHaveTextContent('Agent');
       await user.click(agent);
       expect(await screen.findByRole('heading', { name: 'Connect an agent' })).toBeInTheDocument();
@@ -292,5 +322,41 @@ describe('courses (§4.13)', () => {
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+});
+
+describe('back', () => {
+  it('goes back to the screen before, one step at a time, by button, Alt+Left or the mouse back button', async () => {
+    const user = userEvent.setup();
+    const { api, course } = await mockWithCourse();
+    const topic = course.topics[0];
+    renderApp({ to: 'learn' }, api);
+    await screen.findByRole('list', { name: 'Topics' });
+    // Nothing to go back to on the first screen.
+    expect(within(sidebar()).queryByRole('button', { name: 'Back' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: topic.title }));
+    await screen.findByRole('heading', { name: topic.title, level: 1 });
+    await user.click(within(sidebar()).getByRole('button', { name: 'Tracks' }));
+    await screen.findByRole('heading', { name: 'Tracks' });
+    await user.click(within(sidebar()).getByRole('button', { name: 'Back' }));
+    expect(await screen.findByRole('heading', { name: topic.title, level: 1 })).toBeInTheDocument();
+    await user.keyboard('{Alt>}{ArrowLeft}{/Alt}');
+    expect(await screen.findByRole('list', { name: 'Topics' })).toBeInTheDocument();
+    expect(within(sidebar()).queryByRole('button', { name: 'Back' })).not.toBeInTheDocument();
+    // The mouse's back button (button 3) goes back too.
+    await user.click(within(sidebar()).getByRole('button', { name: 'Tracks' }));
+    await screen.findByRole('heading', { name: 'Tracks' });
+    act(() => void window.dispatchEvent(new MouseEvent('mouseup', { button: 3 })));
+    expect(await screen.findByRole('list', { name: 'Topics' })).toBeInTheDocument();
+  });
+
+  it('never goes back into a step of the course setup, such as research', async () => {
+    const user = userEvent.setup();
+    const { api } = await mockWithCourse();
+    renderApp({ to: 'goal' }, api);
+    await screen.findByRole('heading', { name: 'What do you want to learn?' });
+    await user.click(within(sidebar()).getByRole('button', { name: 'Tracks' }));
+    await screen.findByRole('heading', { name: 'Tracks' });
+    expect(within(sidebar()).queryByRole('button', { name: 'Back' })).not.toBeInTheDocument();
   });
 });

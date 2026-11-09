@@ -19,7 +19,9 @@ button, input, textarea { font: inherit; color: inherit; }
 .logo { padding: 0 10px 22px; }
 .logo img { display: block; }
 .nav { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border: none; border-radius: 10px; background: transparent; color: var(--navy-text); font-size: 14px; font-weight: 500; text-align: left; cursor: pointer; transition: background .2s; }
-.nav:hover { background: rgba(255, 255, 255, .06); }
+.nav:hover { background: rgba(255, 255, 255, .1); color: #fff; }
+/* The slim sidebar's own tooltip (app/SlimTooltip.tsx): fixed, so the sidebar's scrolling never clips it. */
+.slim-tip { position: fixed; z-index: 50; transform: translateY(-50%); padding: 6px 10px; border-radius: 8px; background: var(--navy-2); color: #fff; font-size: 13px; font-weight: 500; white-space: nowrap; pointer-events: none; box-shadow: 0 4px 14px rgba(0, 0, 0, .25); }
 .nav[aria-current="page"] { background: var(--navy-2); color: #fff; font-weight: 600; }
 .side .foot { margin-top: auto; }
 .pick { display: flex; align-items: center; gap: 10px; min-height: 50px; padding: 10px; border: 1px solid var(--navy-line); border-radius: 10px; font-weight: 600; }
@@ -29,7 +31,7 @@ button, input, textarea { font: inherit; color: inherit; }
 /* The learner's courses (§4.13): the one on screen keeps the box; the others are plain rows until hovered. */
 .courses { display: flex; flex-direction: column; gap: 4px; }
 button.pick { width: 100%; background: transparent; color: inherit; text-align: left; cursor: pointer; transition: background .2s; }
-button.pick:hover { background: rgba(255, 255, 255, .06); }
+button.pick:hover { background: rgba(255, 255, 255, .1); color: #fff; }
 button.pick:not([aria-current]) { border-color: transparent; color: var(--navy-text); font-weight: 500; }
 .slim-courses { align-items: center; }
 .slim .nav[aria-current="true"] { background: var(--navy-2); }
@@ -322,10 +324,10 @@ button.stop-name.link:hover { background: var(--soft); }
 .perch .emm.ready, .perch .emm.look { animation: none; }
 .stop-main { flex: 1 1 200px; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
 .stop-title { font: 600 19px/1.3 var(--display); overflow-wrap: anywhere; }
-.steps { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; font-size: 14px; color: var(--muted); }
-.step-bar { display: inline-flex; flex-wrap: wrap; gap: 4px; }
 button.stop-title.link { align-self: flex-start; padding: 0; border: none; background: transparent; color: inherit; text-align: left; cursor: pointer; text-decoration: underline transparent; text-underline-offset: 4px; transition: text-decoration-color .2s; }
 button.stop-title.link:hover { text-decoration-color: currentColor; }
+.steps { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; font-size: 14px; color: var(--muted); }
+.step-bar { display: inline-flex; flex-wrap: wrap; gap: 4px; }
 .step-bar i { width: 26px; height: 8px; border-radius: 4px; background: var(--track); }
 .step-bar i.read, .step-bar i.passed { background: var(--green-ink); }
 .step-bar i.act { width: 40px; }
@@ -467,7 +469,7 @@ a.inline:hover { color: var(--ink); }
 /* code-learn's running jobs under the navigation (§4.11): Emm filling, what it is, and its stage. */
 .work { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .work-job { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 6px 10px; border: 1px solid var(--navy-line); border-radius: 10px; background: transparent; color: var(--navy-text); text-align: left; cursor: pointer; transition: background .2s; }
-.work-job:hover { background: rgba(255, 255, 255, .06); }
+.work-job:hover { background: rgba(255, 255, 255, .1); }
 /* Emm's unfilled part is grey: on navy it needs more body to be seen. */
 .work-job .emm-fill .emm-base { opacity: .6; }
 .work-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; line-height: 1.3; }

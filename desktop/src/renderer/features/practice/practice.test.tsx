@@ -349,7 +349,8 @@ describe('Practice in the sidebar', () => {
     expect(await screen.findByRole('heading', { name: course.topics[0].title, level: 1 })).toBeInTheDocument();
     expect(screen.getByText('Practice opens after you finish the lessons.')).toBeInTheDocument();
     expect(nav('Practice')).toHaveAttribute('aria-current', 'page');
-    expect(nav('Practice')).toHaveAttribute('title', 'Practice');
+    await user.hover(nav('Practice'));
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Practice');
     await user.click(screen.getByRole('button', { name: 'Go to the lessons' }));
     expect(await screen.findByRole('button', { name: `Read ${course.topics[0].lessons[0].title}` })).toBeInTheDocument();
     expect(nav('Learn')).toHaveAttribute('aria-current', 'page');

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CodeLearnApi } from '../../shared/api';
 import { Connect } from '../features/connect/Connect';
 import { Welcome } from '../features/connect/Welcome';
@@ -15,7 +15,7 @@ import { Tracks } from '../features/tracks/Tracks';
 import { Button } from '../ui/Button';
 import { ApiContext } from './api';
 import { problemOf, sayOf } from './errors';
-import { RouterContext, type Route, type Router } from './router';
+import { historyAfterGo, RouterContext, type Route, type Router } from './router';
 import { useRouteFocus } from './useRouteFocus';
 import { WithSide } from './Sidebar';
 
@@ -51,8 +51,14 @@ function Screen({ route, visit }: { route: Route; visit: number }) {
 }
 
 export function App({ api, start = { to: 'welcome' } }: { api: CodeLearnApi; start?: Route }) {
-  const [{ route, visit }, setPlace] = useState({ route: start, visit: 0 });
-  const setRoute = (next: Route) => setPlace((p) => ({ route: next, visit: p.visit + 1 }));
+  const [{ route, visit, history }, setPlace] = useState({ route: start, visit: 0, history: [] as Route[] });
+  const setRoute = (next: Route) => setPlace((p) => ({ route: next, visit: p.visit + 1, history: historyAfterGo(p.history, p.route, next) }));
+  const goBack = () =>
+    setPlace((p) => {
+      const previous = p.history.at(-1);
+      if (!previous) return p;
+      return { route: previous, visit: p.visit + 1, history: p.history.slice(0, -1) };
+    });
   const [failed, setFailed] = useState<{ text: string; agent: boolean }>();
   const body = useRef<HTMLDivElement>(null);
   useRouteFocus(route, body);
@@ -63,6 +69,11 @@ export function App({ api, start = { to: 'welcome' } }: { api: CodeLearnApi; sta
         setFailed(undefined);
         setRoute(next);
       },
+      back: () => {
+        setFailed(undefined);
+        goBack();
+      },
+      canGoBack: history.length > 0,
       fail: (error, resume = route) => {
         const problem = problemOf(error);
         if (problem === 'connect') {
@@ -74,8 +85,9 @@ export function App({ api, start = { to: 'welcome' } }: { api: CodeLearnApi; sta
         setFailed({ text: sayOf(error, problem), agent: problem === 'agent' });
       },
     }),
-    [route],
+    [route, history],
   );
+  useBackShortcuts(router.back);
   return (
     <ApiContext.Provider value={api}>
       <RouterContext.Provider value={router}>
@@ -95,4 +107,27 @@ export function App({ api, start = { to: 'welcome' } }: { api: CodeLearnApi; sta
       </RouterContext.Provider>
     </ApiContext.Provider>
   );
+}
+
+/** Alt+Left and the mouse's back button go back, as in a browser. */
+function useBackShortcuts(back: () => void) {
+  const latest = useRef(back);
+  latest.current = back;
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || !event.altKey || event.key !== 'ArrowLeft') return;
+      event.preventDefault();
+      latest.current();
+    };
+    // Button 3 is the mouse's back button.
+    const onMouse = (event: MouseEvent) => {
+      if (event.button === 3) latest.current();
+    };
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('mouseup', onMouse);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('mouseup', onMouse);
+    };
+  }, []);
 }
