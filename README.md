@@ -83,6 +83,26 @@ npm run dist
 
 `npm run dist` downloads micromamba 2.10.0 (checked against its pinned SHA-256) and writes an AppImage and a pacman package to `desktop/release/`. Run the AppImage directly, or install the package with `sudo pacman -U desktop/release/code-learn-*.pacman`. Running an AppImage needs FUSE 2 (`fuse2` on Arch).
 
+#### Use Electron 43
+
+Build and test the desktop app with Electron 43. On Arch, install it with `sudo pacman -S electron43`; it lives in `/usr/lib/electron43`. Then point the tools at it instead of the Electron that npm downloads:
+
+```bash
+cd desktop
+npm run build
+node scripts/fetch-micromamba.mjs
+npx electron-builder --config electron-builder.config.cjs --publish never --linux AppImage \
+  -c.electronDist=/usr/lib/electron43 -c.electronVersion=43.8.7
+```
+
+The end-to-end tests take the same Electron through an environment variable:
+
+```bash
+ELECTRON_OVERRIDE_DIST_PATH=/usr/lib/electron43 npx playwright test e2e/smoke.spec.ts e2e/a11y.spec.ts
+```
+
+Set `-c.electronVersion` to the version in `/usr/lib/electron43/version`.
+
 ### Terminal
 
 ```bash
