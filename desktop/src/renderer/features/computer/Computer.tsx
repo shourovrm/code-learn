@@ -64,7 +64,7 @@ export function Computer({ then, fromConnect = false }: { then: Route; fromConne
   const problem = data.checks.find((c) => c.state === 'problem');
   return (
     <main className="center">
-      <div className="stack" style={{ width: 620, gap: 22 }}>
+      <div className="stack setup-col">
         <h1 className="h1 a-up">Check this computer</h1>
         <p className="sub a-up" style={stagger(1)}>code-learn runs your code in a sandbox, on this computer.</p>
         <ul className="stack plain" onFocus={() => (focusInList.current = true)}>

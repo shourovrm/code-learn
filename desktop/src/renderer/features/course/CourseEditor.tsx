@@ -128,7 +128,7 @@ export function CourseEditor({ roadmap }: { roadmap: Roadmap }) {
   return (
     <main className="main editor">
       <div className="editor-body">
-        <div className="stack editor-col" style={{ gap: 10 }}>
+        <div className="stack editor-col">
           <h1 className="h2 a-up">{roadmap.title}</h1>
           {roadmap.goal !== roadmap.title && <p className="sub a-up">{roadmap.goal}</p>}
           {sources.length > 0 && (
@@ -169,7 +169,7 @@ export function CourseEditor({ roadmap }: { roadmap: Roadmap }) {
       </div>
       {/* Its own space under the topics: asking, what code-learn said, and Approve are always in view, and nothing covers them. */}
       <footer className="editor-foot">
-        <div className="stack editor-col" style={{ gap: 10 }}>
+        <div className="stack editor-col">
           {job && <JobBar job={job} label="Changing the roadmap" />}
           <div role="status">
             {working ? (

@@ -20,7 +20,7 @@ function Starting() {
         <Busy>code-learn is starting</Busy>
       </div>
       <div className="welcome-art bw">
-        <div className="bg" aria-hidden="true"><Mark size={440} ink="#F3F6FB" /></div>
+        <div className="bg" aria-hidden="true"><Mark size={440} ink="var(--on-garden)" /></div>
         <Sprig mood="sleep" width={360} perch />
       </div>
     </main>
@@ -68,7 +68,7 @@ export function Welcome() {
         </div>
       </div>
       <div className={`welcome-art ${fx}`}>
-        <div className="bg" aria-hidden="true"><Mark size={440} ink="#F3F6FB" /></div>
+        <div className="bg" aria-hidden="true"><Mark size={440} ink="var(--on-garden)" /></div>
         <Sprig mood={on ? 'wake' : 'sleep'} width={360} perch />
         {on && (
           <div className="card connected a-pop" style={stagger(0, 600)}>
