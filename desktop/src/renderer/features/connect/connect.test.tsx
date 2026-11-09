@@ -158,7 +158,7 @@ describe('changing the agent', () => {
     expect(within(claude).getByRole('button', { name: 'Connect' })).toBeEnabled();
     expect((await api.agents()).filter((a) => a.state === 'connected').map((a) => a.id)).toEqual(['codex']);
     await user.click(screen.getByRole('button', { name: 'Continue' }));
-    expect(await screen.findByRole('heading', { name: 'Tracks' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Toolchains' })).toBeInTheDocument();
   });
 
   it('asks to sign in to a signed-out agent and keeps the one before connected, so the course goes on', async () => {

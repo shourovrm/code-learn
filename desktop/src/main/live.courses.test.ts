@@ -31,8 +31,8 @@ describe('live CodeLearnApi: several courses (§4.13)', () => {
     const react = await approved(t, 'React');
     const python = await approved(t, 'Python');
     expect(await t.api.courses()).toEqual([
-      { id: react, title: 'React', goal: 'React', track: 'React', current: false },
-      { id: python, title: 'Python', goal: 'Python', track: 'Python', current: true },
+      { id: react, title: 'React', goal: 'React', track: 'React', current: false, practice: 'code' },
+      { id: python, title: 'Python', goal: 'Python', track: 'Python', current: true, practice: 'code' },
     ]);
     expect((await t.api.course())!.goal).toBe('Python');
     await t.api.switchCourse(react);
@@ -317,5 +317,59 @@ describe('live CodeLearnApi: several courses (§4.13)', () => {
     expect((await t.api.check(activity.id, 'run-2')).kind).toBe('graded');
     const course = await until(t.api, (c) => c.topics[1].lessons.some((l) => l.state === 'ready'));
     expect(course).not.toHaveProperty('stalled');
+  });
+});
+
+describe('renaming and deleting a course', () => {
+  /** Waits for the background work an approval starts (its setup), so a delete finds the course idle. */
+  const noJobs = (t: Test) => settle(() => t.api.jobProgress(), (jobs) => jobs.length === 0, 'The jobs');
+
+  it('renames a course, and the list shows the new name', async () => {
+    const t = live();
+    const react = await approved(t, 'React');
+    await t.api.renameCourse(react, 'My React');
+    expect((await t.api.courses())[0]).toMatchObject({ id: react, title: 'My React' });
+  });
+
+  it('deletes a course from core and the state: it leaves the list, and the newest course left is on screen', async () => {
+    const t = live();
+    const react = await approved(t, 'React');
+    const python = await approved(t, 'Python');
+    await noJobs(t);
+    await t.api.deleteCourse(python);
+    expect(t.c.courses.has(python)).toBe(false);
+    expect(await t.api.courses()).toEqual([{ id: react, title: 'React', goal: 'React', track: 'React', current: true, practice: 'code' }]);
+    expect(desktopState(t.dir).read()).toMatchObject({ approved: react, courses: [react] });
+    expect((await t.api.course())!.goal).toBe('React');
+  });
+
+  it('leaves no course on screen once the last one is deleted', async () => {
+    const t = live();
+    const react = await approved(t, 'React');
+    await noJobs(t);
+    await t.api.deleteCourse(react);
+    expect(await t.api.courses()).toEqual([]);
+    expect(await t.api.course()).toBeNull();
+  });
+
+  it('refuses to delete while work runs, since that work could save the course again', async () => {
+    const held = gate();
+    const t = live({ setup: async (_job, usual) => (await held.opened, usual()) });
+    const react = await approved(t, 'React');
+    await expect(t.api.deleteCourse(react)).rejects.toThrow('code-learn is working on this course.');
+    expect(t.c.courses.has(react)).toBe(true);
+    held.open();
+  });
+});
+
+describe('a track names the courses that use it', () => {
+  it('lists the titles of the courses on each installed track', async () => {
+    const t = live();
+    await approved(t, 'React');
+    const ref = t.c.roadmap!.track!;
+    t.c.tracks.push(ref);
+    expect(await t.api.tracks()).toEqual([{ ref, name: expect.any(String), usedBy: [t.c.roadmap!.course] }]);
+    await t.api.renameCourse(t.c.roadmap!.course, 'My React');
+    expect((await t.api.tracks())[0].usedBy).toEqual(['My React']);
   });
 });

@@ -97,6 +97,11 @@ export interface CoreApp {
   listTracks(): { track: string; styles: string[]; files: string[] }[];
   /** Removes an installed track and its toolchain folder; core refuses while a course uses it. */
   removeTrack(ref: string): Promise<{ removed: string }>;
+  /** core courses.ts: the title of each course that uses a track (its id for a course without one). */
+  courseNamesOnTrack(ref: string): string[];
+  renameCourse(course: string, title: string): Promise<{ course: string; title: string }>;
+  /** Deletes a course's folder, its exercise files and the workspace's pointers to it (core courses.ts). */
+  deleteCourse(ws: string, course: string): Promise<{ deleted: string }>;
   rebuildTrack(ref: string): Promise<unknown>;
   saveRoadmap(ws: string, course: string, yaml: string, bound?: string, activate?: boolean): Promise<{ course: string }>;
   progress(ws: string, bound?: string): CoreProgress;

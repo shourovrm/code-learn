@@ -23,6 +23,8 @@ const GOOD: Record<Exclude<keyof CodeLearnApi, 'onCheckProgress' | 'onJobProgres
   course: [],
   courses: [],
   switchCourse: ['react-1'],
+  renameCourse: ['react-1', 'React basics'],
+  deleteCourse: ['react-1'],
   setActivities: [false],
   install: ['a'.repeat(64)],
   retrySetup: [],

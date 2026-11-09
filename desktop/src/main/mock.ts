@@ -428,7 +428,7 @@ export function createMock(options: MockOptions = {}): CodeLearnApi {
       } else {
         c.setup = 'ready';
         delete c.proposal;
-        if (!tracks.some((t) => t.name === c.track)) tracks.push({ ref: `${slugOf(c.track)}@1`, name: c.track });
+        if (!tracks.some((t) => t.name === c.track)) tracks.push({ ref: `${slugOf(c.track)}@1`, name: c.track, usedBy: [] });
       }
     }
     const now = c.topics.find((t) => t.state === 'now');
@@ -678,7 +678,7 @@ export function createMock(options: MockOptions = {}): CodeLearnApi {
     },
 
     async tracks() {
-      return tracks.map((t) => ({ ...t }));
+      return tracks.map((t) => ({ ...t, usedBy: [...kept.values()].filter((k) => `${slugOf(k.course.track)}@1` === t.ref).map((k) => k.course.title) }));
     },
 
     async removeTrack(trackRef) {
@@ -755,7 +755,7 @@ export function createMock(options: MockOptions = {}): CodeLearnApi {
     },
 
     async courses() {
-      return [...kept].map(([id, k]) => ({ id, title: k.course.title, goal: k.course.goal, track: k.course.track, current: id === current }));
+      return [...kept].map(([id, k]) => ({ id, title: k.course.title, goal: k.course.goal, track: k.course.track, current: id === current, practice: k.quiz ? 'quiz' : k.course.activities ? 'code' : 'none' }));
     },
 
     async switchCourse(id) {
@@ -763,6 +763,23 @@ export function createMock(options: MockOptions = {}): CodeLearnApi {
       if (!k) throw new Error('No such course.');
       ({ course, approved, lessons, activities, deferred, quiz } = k);
       current = id;
+    },
+
+    async renameCourse(id, title) {
+      const k = kept.get(id);
+      if (!k) throw new Error('No such course.');
+      k.course.title = title;
+    },
+
+    async deleteCourse(id) {
+      if (!kept.has(id)) throw new Error('No such course.');
+      kept.delete(id);
+      // Unlike live, the mock doesn't put another course on screen: the new-course screen shows.
+      if (current === id) {
+        current = '';
+        course = null;
+        approved = null;
+      }
     },
 
     async draft() {

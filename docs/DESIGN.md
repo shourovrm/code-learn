@@ -308,7 +308,9 @@ The learner's home folder, `$CODE_LEARN_HOME` and the rest of the computer are n
 
 **Run** (the learner's program, interactively) uses the same sandbox with Run's driver and limits.
 
-**Removing a track.** `code-learn track remove <id>@<version>`, and the matching desktop action, delete the track's record and its `envs/` folder under the track lock. It is refused while a course uses the track, and the message names those courses. The package cache `pkgs/` holds only downloads. Deleting it frees space and never breaks an installed track. Deleting `$CODE_LEARN_HOME` removes everything code-learn installed.
+**Removing a track.** `code-learn track remove <id>@<version>`, and the matching desktop action, delete the track's record and its `envs/` folder under the track lock. It is refused while a course uses the track, and the message names those courses by title (by id when a course has none). The package cache `pkgs/` holds only downloads. Deleting it frees space and never breaks an installed track. Deleting `$CODE_LEARN_HOME` removes everything code-learn installed.
+
+**Renaming and deleting a course.** `renameCourse` changes only `title` in the course's `course.json`, under the course lock. `deleteCourse` (the desktop's Courses page) removes the course's folder under its course lock: roadmap, lessons, exercises and `events.jsonl`, so the attempts and mastery go with it. This relaxes the append-only log for a deleted course, as the learner approved. It also removes the learner's `exercises/<course>/` folder and clears the workspace's pointers to the course. The course's toolchain stays installed. A folder without `course.json` is not a course, so a lock taken after a delete leaves no ghost course behind.
 
 **Security compared with Docker.**
 - The program shares the host kernel, as a container does.

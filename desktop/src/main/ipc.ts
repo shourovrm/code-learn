@@ -63,6 +63,8 @@ const ARGS: { [K in Exclude<keyof CodeLearnApi, 'onCheckProgress' | 'onJobProgre
   course: [],
   courses: [],
   switchCourse: [id],
+  renameCourse: [id, text(LIMITS.courseTitle, 1)],
+  deleteCourse: [id],
   setActivities: [(v) => typeof v === 'boolean'],
   install: [digest],
   retrySetup: [],

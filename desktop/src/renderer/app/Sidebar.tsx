@@ -1,4 +1,4 @@
-// The main navigation (§1): Learn, Practice, Tracks and Agent, wide with the course or slim beside a workspace.
+// The main navigation (§1): Learn, Practice, Courses, Toolchains and Agent, wide with the course or slim beside a workspace.
 import { useEffect, useRef, useSyncExternalStore, type ReactNode } from 'react';
 import type { CourseView } from '../../shared/api';
 import { Button } from '../ui/Button';
@@ -15,10 +15,11 @@ import { editorRoute, WorkNow } from './WorkNow';
 import { ThemeSwitch } from './ThemeSwitch';
 import { SlimTooltip } from './SlimTooltip';
 
-type Section = 'learn' | 'practice' | 'tracks';
+type Section = 'learn' | 'practice' | 'courses' | 'tracks';
 
 function sectionOf(route: Route): Section {
   if (route.to === 'practice') return 'practice';
+  if (route.to === 'courses') return 'courses';
   if (route.to === 'tracks') return 'tracks';
   return 'learn';
 }
@@ -51,7 +52,8 @@ export function Sidebar({ slim: slimHere = false }: { slim?: boolean }) {
   const items: { key: Section | 'agent'; label: string; icon: IconName; to: Route | (() => Promise<Route>) }[] = [
     { key: 'learn', label: 'Learn', icon: 'path', to: course ? { to: 'learn' } : { to: 'goal' } },
     { key: 'practice', label: 'Practice', icon: 'code', to: practiceRoute(course) },
-    { key: 'tracks', label: 'Tracks', icon: 'layers', to: { to: 'tracks' } },
+    { key: 'courses', label: 'Courses', icon: 'book', to: { to: 'courses' } },
+    { key: 'tracks', label: 'Toolchains', icon: 'layers', to: { to: 'tracks' } },
     // The connect screen, the only one that names agents: switching there, then Continue, comes back here. The course
     // editor's route holds the roadmap it opened with, so it comes back on the saved draft, which has the edits since.
     { key: 'agent', label: 'Agent', icon: 'plug', to: async () => ({ to: 'connect', then: route.to === 'course' ? await editorRoute(api) : route }) },

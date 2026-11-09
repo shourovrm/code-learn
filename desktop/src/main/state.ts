@@ -26,6 +26,28 @@ export interface DesktopState {
 
 export const workspaceOf = (state: DesktopState, home: string) => state.workspace ?? join(home, 'code-learn');
 
+const omitKey = <T>(record: Record<string, T> | undefined, key: string) =>
+  record && Object.fromEntries(Object.entries(record).filter(([k]) => k !== key));
+
+/**
+ * The state once a course is deleted: off the list, with its session, name and activity style gone. If it was on screen,
+ * the newest course left is (none when no course is left).
+ */
+export function withoutCourse(state: DesktopState, course: string): DesktopState {
+  const courses = coursesOf(state).filter((id) => id !== course);
+  return {
+    ...state,
+    courses,
+    approved: state.approved === course ? courses.at(-1) : state.approved,
+    sessions: Object.fromEntries(Object.entries(state.sessions).filter(([key]) => !key.startsWith(`${course}|`))),
+    names: omitKey(state.names, course),
+    activityStyles: omitKey(state.activityStyles, course),
+  };
+}
+
+/** The name a renamed course shows, with its typed name removed: the title shows instead. */
+export const withoutName = (state: DesktopState, course: string): DesktopState => ({ ...state, names: omitKey(state.names, course) });
+
 /** The learner's courses, oldest first (§4.13). */
 export const coursesOf = (state: DesktopState): string[] => state.courses ?? (state.approved ? [state.approved] : []);
 

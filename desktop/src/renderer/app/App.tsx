@@ -12,6 +12,7 @@ import { CourseMap } from '../features/progress/CourseMap';
 import { Research } from '../features/research/Research';
 import { Setup } from '../features/setup/Setup';
 import { Tracks } from '../features/tracks/Tracks';
+import { CoursesPage } from '../features/courses/CoursesPage';
 import { Button } from '../ui/Button';
 import { ApiContext } from './api';
 import { problemOf, sayOf } from './errors';
@@ -40,6 +41,8 @@ function Screen({ route, visit }: { route: Route; visit: number }) {
       return <WithSide><TopicPage topicId={route.topicId} /></WithSide>;
     case 'learn':
       return <WithSide><CourseMap key={route.course} /></WithSide>;
+    case 'courses':
+      return <WithSide><CoursesPage /></WithSide>;
     case 'tracks':
       return <WithSide><Tracks /></WithSide>;
     case 'lesson':

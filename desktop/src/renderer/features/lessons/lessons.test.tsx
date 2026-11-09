@@ -393,12 +393,12 @@ describe('background work that stopped', () => {
     expect(await screen.findByRole('heading', { name: 'Check this computer' })).toBeInTheDocument();
   });
 
-  it('says a track needs a rebuild, with Go to Tracks and Try again, and no Check this computer', async () => {
+  it('says a track needs a rebuild, with Go to Toolchains and Try again, and no Check this computer', async () => {
     const { api } = await mockWithCourse({ stalled: 'rebuild' });
     renderApp({ to: 'topic', topicId: TOPIC }, api);
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent('This environment needs a rebuild. Rebuild it under Tracks.');
-    expect(within(alert).getAllByRole('button').map((b) => b.textContent)).toEqual(['Go to Tracks', 'Try again']);
+    expect(alert).toHaveTextContent('This environment needs a rebuild. Rebuild it under Toolchains.');
+    expect(within(alert).getAllByRole('button').map((b) => b.textContent)).toEqual(['Go to Toolchains', 'Try again']);
   });
 
   it('says the disk is full, with Try again and no Check your agent', async () => {

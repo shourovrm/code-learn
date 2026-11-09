@@ -355,6 +355,18 @@ button.stop-title.link:hover { text-decoration-color: currentColor; }
 .track b { font: 600 20px var(--display); }
 .new { padding: 24px; max-width: 1040px; display: flex; flex-direction: column; gap: 14px; }
 
+/* ---------- Courses ---------- */
+.course-list { display: flex; flex-direction: column; gap: 10px; max-width: 900px; }
+.course { padding: 14px 18px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
+.course.current { border: 2px solid var(--green-ink); }
+.course .t { flex: 1; min-width: 0; }
+.course .t b { font: 600 16px var(--display); }
+.course .t p { margin: 2px 0 0; }
+.open-tag { margin-left: 8px; padding: 2px 8px; border-radius: 99px; background: var(--green-soft); color: var(--green-ink); font-size: 12px; font-weight: 600; }
+.course .edit { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.course .edit .field { flex: 1; min-width: 200px; }
+.course [role="status"] { flex-basis: 100%; margin: 0; }
+
 /* ---------- Motion: each plays once or twice, then rests ---------- */
 @keyframes fade { from { opacity: 0; } }
 @keyframes up { from { opacity: 0; transform: translateY(12px); } }

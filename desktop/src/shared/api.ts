@@ -22,8 +22,8 @@ export const AGENT_FAILED = 'code-learn:agent-failed';
 export const REPAIR = 'code-learn:repair';
 /** A cancel the agent's process group survived: "code-learn couldn't stop your agent" (§3.1). */
 export const UNSTOPPABLE = 'code-learn:unstoppable';
-/** Why a check wasn't counted when a track's toolchain is missing: the fix is under Tracks, not this computer (§5). */
-export const REBUILD = 'This environment needs a rebuild. Rebuild it under Tracks.';
+/** Why a check wasn't counted when a track's toolchain is missing: the fix is under Toolchains, not this computer (§5). */
+export const REBUILD = 'This environment needs a rebuild. Rebuild it under Toolchains.';
 /** Why a run wasn't counted, or didn't run, when this computer caused it (notCounted.ts). */
 export const NOT_COUNTED = {
   sandbox: "code-learn's sandbox couldn't run that.",
@@ -239,6 +239,8 @@ export interface CourseSummary {
   track: string;
   /** The course on screen. */
   current: boolean;
+  /** How the course is practised: Code, Quiz, or lessons only (`none`). */
+  practice: Practice;
 }
 
 export interface Lesson {
@@ -398,6 +400,8 @@ export interface Message {
 export interface Track {
   ref: string;
   name: string;
+  /** The titles of the courses that use it. Empty: the learner can remove it. */
+  usedBy: string[];
 }
 
 export interface CodeLearnApi {
@@ -439,6 +443,10 @@ export interface CodeLearnApi {
   courses(): Promise<CourseSummary[]>;
   /** Puts another of the learner's courses on screen; the work it still needs starts. */
   switchCourse(course: string): Promise<void>;
+  /** Gives a course another name; the title is trimmed and at most LIMITS.courseTitle characters. */
+  renameCourse(course: string, title: string): Promise<void>;
+  /** Deletes a course and its exercise files; its toolchain stays installed. Refused while work on that course runs. */
+  deleteCourse(course: string): Promise<void>;
   setActivities(on: boolean): Promise<void>;
   /** Builds the proposal the learner saw. Also retries after an offline or low-disk failure. */
   install(digest: string): Promise<void>;

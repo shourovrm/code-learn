@@ -70,6 +70,8 @@ describe('the learner-safe boundary (D4)', () => {
       course: [],
       courses: [],
       switchCourse: [onScreen],
+      renameCourse: [onScreen, 'Renamed'],
+      deleteCourse: [onScreen],
       setActivities: [true],
       draft: [],
       lesson: ['values-1'],

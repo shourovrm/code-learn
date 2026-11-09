@@ -15,6 +15,7 @@ export type Route =
   | { to: 'practice'; concept: string }
   /** `course`: the course just put on screen, so its map opens fresh (§4.13). */
   | { to: 'learn'; course?: string }
+  | { to: 'courses' }
   | { to: 'tracks' };
 
 export interface Router {
@@ -43,7 +44,7 @@ export function useRouter(): Router {
  * The screens Back can return to: the course and its parts. Setup steps (connect, the computer check, research, the
  * roadmap editor) are left out, because opening one again would restart its work.
  */
-const BACK_TARGETS: ReadonlySet<Route['to']> = new Set(['learn', 'topic', 'lesson', 'practice', 'tracks']);
+const BACK_TARGETS: ReadonlySet<Route['to']> = new Set(['learn', 'topic', 'lesson', 'practice', 'courses', 'tracks']);
 
 /** How many screens Back remembers. */
 const BACK_LIMIT = 50;

@@ -85,6 +85,26 @@ describe('tracks', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent("The sandbox isn't ready. Check this computer, then try again.");
   });
 
+  it('says which courses use each toolchain, and keeps Remove off while one does', async () => {
+    const { api } = await mockWithCourse();
+    renderApp({ to: 'tracks' }, api);
+    expect(await screen.findByText('Courses that use the same language share one toolchain.', { exact: false })).toBeInTheDocument();
+    const react = await screen.findByRole('listitem', { name: 'React' });
+    expect(within(react).getByText(/^Used by 1 course: /)).toBeInTheDocument();
+    expect(within(react).getByRole('button', { name: 'Remove' })).toBeDisabled();
+    expect(within(react).getByText('To remove it, first delete these courses in Courses.')).toBeInTheDocument();
+  });
+
+  it('says a toolchain no course uses is not used by any course, and leaves Remove on', async () => {
+    const { api } = await mockWithCourse();
+    const tracks = api.tracks.bind(api);
+    api.tracks = async () => [...(await tracks()), { ref: 'python@1', name: 'Python', usedBy: [] }];
+    renderApp({ to: 'tracks' }, api);
+    const python = await screen.findByRole('listitem', { name: 'Python' });
+    expect(within(python).getByText('Not used by any course.')).toBeInTheDocument();
+    expect(within(python).getByRole('button', { name: 'Remove' })).toBeEnabled();
+  });
+
   describe('removing a track', () => {
     /** The mock's open course keeps React; a second, unused track is what can be removed. */
     async function withSecondTrack() {
@@ -92,7 +112,7 @@ describe('tracks', () => {
       const tracks = api.tracks.bind(api);
       const removeTrack = api.removeTrack.bind(api);
       let secondInstalled = true;
-      api.tracks = async () => [...(await tracks()), ...(secondInstalled ? [{ ref: 'python@1', name: 'Python' }] : [])];
+      api.tracks = async () => [...(await tracks()), ...(secondInstalled ? [{ ref: 'python@1', name: 'Python', usedBy: [] }] : [])];
       api.removeTrack = async (ref) => {
         if (ref !== 'python@1') return removeTrack(ref);
         secondInstalled = false;
@@ -136,6 +156,9 @@ describe('tracks', () => {
       api.removeTrack = async (ref) => {
         throw new Error(`${ref} is used by course "react", so it can't be removed while they need it.`);
       };
+      // A course made after the page loaded isn't in its list yet, so Remove is still on and core refuses.
+      const tracks = api.tracks.bind(api);
+      api.tracks = async () => (await tracks()).map((t) => ({ ...t, usedBy: [] }));
       renderApp({ to: 'tracks' }, api);
       const react = await screen.findByRole('listitem', { name: 'React' });
       await user.click(within(react).getByRole('button', { name: 'Remove' }));

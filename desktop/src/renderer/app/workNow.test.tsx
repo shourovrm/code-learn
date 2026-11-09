@@ -10,14 +10,14 @@ const sidebar = () => screen.getByRole('navigation', { name: 'Main' });
 const working = () => within(sidebar()).queryByRole('list', { name: 'code-learn is working' });
 /** What each listed job says, in order: what it is, then its stage. */
 const names = () => within(working()!).getAllByRole('button').map((b) => b.getAttribute('aria-label'));
-const goTo = (user: ReturnType<typeof userEvent.setup>, place: 'Learn' | 'Tracks') => user.click(within(sidebar()).getByRole('button', { name: place }));
+const goTo = (user: ReturnType<typeof userEvent.setup>, place: 'Learn' | 'Toolchains') => user.click(within(sidebar()).getByRole('button', { name: place }));
 
 describe('running jobs in the sidebar (§4.11)', () => {
   it('names a roadmap review in the sidebar', async () => {
     const api = createMock();
     const tell = jobBus(api);
     renderApp({ to: 'tracks' }, api);
-    await screen.findByRole('heading', { name: 'Tracks' });
+    await screen.findByRole('heading', { name: 'Toolchains' });
     act(() => tell(jobAt('review-1', 'review')));
     expect(names()).toEqual(['Reviewing the roadmap, Reviewing the roadmap']);
   });
@@ -32,7 +32,7 @@ describe('running jobs in the sidebar (§4.11)', () => {
     // The topic page shows the whole bar, so the sidebar doesn't repeat it (its other bars take a moment to mount).
     await waitFor(() => expect(working()).not.toBeInTheDocument());
 
-    await goTo(user, 'Tracks');
+    await goTo(user, 'Toolchains');
     const job = await within(sidebar()).findByRole('button', { name: 'Setting up React, Proposing the setup' });
     await user.click(job);
     expect(await screen.findByRole('heading', { name: 'JavaScript basics' })).toBeInTheDocument();
@@ -48,7 +48,7 @@ describe('running jobs in the sidebar (§4.11)', () => {
     await screen.findByRole('group', { name: 'Researching React' });
     expect(working()).not.toBeInTheDocument();
 
-    await goTo(user, 'Tracks');
+    await goTo(user, 'Toolchains');
     await user.click(await within(sidebar()).findByRole('button', { name: 'Researching React, Researching' }));
     expect(await screen.findByRole('heading', { name: 'Researching React' })).toBeInTheDocument();
     expect(await screen.findByRole('group', { name: 'Researching React' })).toBeInTheDocument();
@@ -93,7 +93,7 @@ describe('running jobs in the sidebar (§4.11)', () => {
     const { api } = await mockWithCourse({ read: true });
     const tell = jobBus(api);
     renderApp({ to: 'tracks' }, api);
-    await screen.findByRole('heading', { name: 'Tracks' });
+    await screen.findByRole('heading', { name: 'Toolchains' });
     expect(working()).not.toBeInTheDocument();
 
     act(() => tell(jobAt('l1', 'lesson', { concept: TOPIC })));
@@ -119,7 +119,7 @@ describe('running jobs in the sidebar (§4.11)', () => {
     const { api } = await mockWithCourse({ read: true });
     const tell = jobBus(api);
     renderApp({ to: 'tracks' }, api);
-    await screen.findByRole('heading', { name: 'Tracks' });
+    await screen.findByRole('heading', { name: 'Toolchains' });
     // A proposing agent ends its turn while code-learn's install runs.
     act(() => tell(jobAt('proposal', 'setup', { stage: 0 })));
     act(() => tell(jobAt('install', 'setup', { stage: 1, part: { done: 3, total: 7 }, thinking: false })));
@@ -132,7 +132,7 @@ describe('running jobs in the sidebar (§4.11)', () => {
     const { api } = await mockWithRoadmap();
     const tell = jobBus(api);
     renderApp({ to: 'tracks' }, api);
-    await screen.findByRole('heading', { name: 'Tracks' });
+    await screen.findByRole('heading', { name: 'Toolchains' });
     act(() => tell(jobAt('r1', 'roadmap')));
     await user.click(within(working()!).getByRole('button', { name: /^Changing the roadmap/ }));
     expect(await screen.findByRole('heading', { name: 'React' })).toBeInTheDocument();

@@ -14,6 +14,12 @@ import { stagger } from '../../ui/motion';
 import { Limit } from '../../ui/Limit';
 import { LIMITS } from '../../../shared/limits';
 
+/** Who uses a toolchain, as the card says it: the courses by title, or that none does. */
+function usageLine(usedBy: string[]): string {
+  if (usedBy.length === 0) return 'Not used by any course.';
+  return `Used by ${usedBy.length === 1 ? '1 course' : `${usedBy.length} courses`}: ${usedBy.join(', ')}`;
+}
+
 /** What code-learn has set up. Anything else is one request away. */
 export function Tracks() {
   const api = useApi();
@@ -89,18 +95,22 @@ export function Tracks() {
 
   return (
     <main className="main page">
-      <h1 className="h2 a-up" ref={heading} tabIndex={-1}>Tracks</h1>
+      <h1 className="h2 a-up" ref={heading} tabIndex={-1}>Toolchains</h1>
+      <p className="sub">The compilers, interpreters and libraries installed for your courses. Courses that use the same language share one toolchain.</p>
       {tracks.length > 0 && (
         <ul className="track-grid plain">
           {tracks.map((t, i) => {
             const job = rebuilds.find((j) => j.progress.track === t.name);
+            const inUse = t.usedBy.length > 0;
             return (
               <li key={t.ref} className="card track a-up" style={stagger(i + 1)} aria-label={t.name}>
                 <Sprig width={140} name={t.name} perch />
                 <b>{t.name}</b>
+                <p className="quiet-text">{usageLine(t.usedBy)}</p>
                 {job && <JobBar job={job} label={`Rebuilding ${t.name}`} compact />}
                 <Button variant="ghost" disabled={rebuilding === t.ref || Boolean(job)} onClick={() => rebuild(t.ref, t.name)}>Rebuild</Button>
-                <Button variant="ghost" disabled={rebuilding === t.ref || Boolean(job)} onClick={() => setConfirming({ ref: t.ref, name: t.name })}>Remove</Button>
+                <Button variant="ghost" disabled={rebuilding === t.ref || Boolean(job) || inUse} onClick={() => setConfirming({ ref: t.ref, name: t.name })}>Remove</Button>
+                {inUse && <p className="quiet-text">To remove it, first delete these courses in Courses.</p>}
                 <span className="quiet-text" role="status">{failed?.ref === t.ref ? failed.text : rebuilt === t.ref ? 'Rebuilt.' : ''}</span>
               </li>
             );

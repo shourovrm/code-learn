@@ -50,7 +50,7 @@ describe('update notice', () => {
   it('says nothing while nothing is new, or while a signed build is still downloading', async () => {
     for (const update of [{ kind: 'none' as const }, { kind: 'downloading' as const, version: '1.2.0' }]) {
       const view = renderApp({ to: 'tracks' }, createMock({ update }));
-      await screen.findByRole('heading', { name: /tracks/i });
+      await screen.findByRole('heading', { name: /toolchains/i });
       expect(within(sidebar()).queryByText(/version|ready/)).not.toBeInTheDocument();
       view.unmount();
     }
@@ -82,7 +82,7 @@ describe('narrow windows', () => {
       expect(await screen.findByRole('navigation', { name: 'Main' })).toHaveClass('slim');
       // Its logo is Sprig, the mascot: there is no room for the wordmark.
       expect(sidebar().querySelector('.lg .sprig')).not.toBeNull();
-      expect(within(sidebar()).getByRole('button', { name: 'Tracks' })).not.toHaveTextContent('Tracks');
+      expect(within(sidebar()).getByRole('button', { name: 'Toolchains' })).not.toHaveTextContent('Toolchains');
       // Wider again: the full sidebar comes back.
       wide();
       expect(sidebar()).toHaveClass('side');
@@ -97,8 +97,8 @@ describe('narrow windows', () => {
       const user = userEvent.setup();
       const { api } = await mockWithCourse();
       renderApp({ to: 'tracks' }, api);
-      await screen.findByRole('heading', { name: 'Tracks' });
-      for (const name of ['Learn', 'Tracks', 'Agent', 'New course', 'Theme: System. Switch to Light']) {
+      await screen.findByRole('heading', { name: 'Toolchains' });
+      for (const name of ['Learn', 'Toolchains', 'Agent', 'New course', 'Theme: System. Switch to Light']) {
         const button = within(sidebar()).getByRole('button', { name });
         await user.hover(button);
         expect(await screen.findByRole('tooltip')).toHaveTextContent(name);
@@ -137,7 +137,7 @@ describe('narrow windows', () => {
       const api = createMock();
       const tell = jobBus(api);
       renderApp({ to: 'tracks' }, api);
-      await screen.findByRole('heading', { name: 'Tracks' });
+      await screen.findByRole('heading', { name: 'Toolchains' });
       act(() => tell(jobAt('s1', 'rebuild', { track: 'React', stage: 0, thinking: false })));
       const job = await within(sidebar()).findByRole('button', { name: 'Rebuilding React, Building and checking' });
       expect(job).not.toHaveTextContent('Rebuilding');
@@ -172,7 +172,7 @@ describe('changing the agent', () => {
     const user = userEvent.setup();
     // StrictMode, as the app's root: its replayed effects must not leave Agent dead.
     renderApp({ to: 'tracks' }, createMock({ connected: 'claude' }), { strict: true });
-    await screen.findByRole('heading', { name: 'Tracks' });
+    await screen.findByRole('heading', { name: 'Toolchains' });
     // Agent names appear only on the connect screen.
     expect(sidebar()).not.toHaveTextContent(/Claude Code|Codex|Cursor/);
     await user.click(within(sidebar()).getByRole('button', { name: 'Agent' }));
@@ -180,7 +180,7 @@ describe('changing the agent', () => {
     expect(within(screen.getByRole('listitem', { name: 'Claude Code' })).getByText('Connected')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Continue' }));
     // Check this computer passes by itself on the way back.
-    expect(await screen.findByRole('heading', { name: 'Tracks' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Toolchains' })).toBeInTheDocument();
   });
 
   it("comes back to the course editor with the learner's edits, which its draft holds", async () => {
@@ -203,10 +203,10 @@ describe('changing the agent', () => {
     api.draft = () => new Promise((done) => waiting.push(() => done(draft())));
     renderApp({ to: 'course', roadmap }, api);
     await user.click(await within(sidebar()).findByRole('button', { name: 'Agent' }));
-    await user.click(within(sidebar()).getByRole('button', { name: 'Tracks' }));
-    expect(await screen.findByRole('heading', { name: 'Tracks' })).toBeInTheDocument();
+    await user.click(within(sidebar()).getByRole('button', { name: 'Toolchains' }));
+    expect(await screen.findByRole('heading', { name: 'Toolchains' })).toBeInTheDocument();
     await act(async () => waiting.forEach((go) => go()));
-    expect(screen.getByRole('heading', { name: 'Tracks' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Toolchains' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Connect an agent' })).not.toBeInTheDocument();
   });
 
@@ -253,8 +253,8 @@ describe('courses (§4.13)', () => {
   it('names two courses with the same words by their goals', async () => {
     const api = await twoCourses();
     api.courses = async () => [
-      { id: 'python-1', title: 'Python', goal: 'Python basics, briefly', track: 'python', current: true },
-      { id: 'python-2', title: 'Python', goal: 'Python in depth', track: 'python', current: false },
+      { id: 'python-1', title: 'Python', goal: 'Python basics, briefly', track: 'python', current: true, practice: 'code' },
+      { id: 'python-2', title: 'Python', goal: 'Python in depth', track: 'python', current: false, practice: 'code' },
     ];
     renderApp({ to: 'tracks' }, api);
     expect(await within(sidebar()).findByRole('button', { name: 'Python basics, briefly' })).toHaveAttribute('aria-current', 'true');
@@ -295,10 +295,10 @@ describe('courses (§4.13)', () => {
     try {
       const api = await twoCourses();
       api.courses = async () => [
-        { id: 'a', title: 'springboot?', goal: 'A', track: 'a', current: true },
-        { id: 'b', title: '🇵🇭 Cooking', goal: 'B', track: 'b', current: false },
-        { id: 'c', title: '👩‍💻 Code', goal: 'C', track: 'c', current: false },
-        { id: 'd', title: 'ßtraße', goal: 'D', track: 'd', current: false },
+        { id: 'a', title: 'springboot?', goal: 'A', track: 'a', current: true, practice: 'code' },
+        { id: 'b', title: '🇵🇭 Cooking', goal: 'B', track: 'b', current: false, practice: 'code' },
+        { id: 'c', title: '👩‍💻 Code', goal: 'C', track: 'c', current: false, practice: 'code' },
+        { id: 'd', title: 'ßtraße', goal: 'D', track: 'd', current: false, practice: 'code' },
       ];
       renderApp({ to: 'tracks' }, api);
       expect(await within(sidebar()).findByRole('button', { name: 'springboot?' })).toHaveTextContent(/^S$/);
@@ -336,16 +336,16 @@ describe('back', () => {
     expect(within(sidebar()).queryByRole('button', { name: 'Back' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: topic.title }));
     await screen.findByRole('heading', { name: topic.title, level: 1 });
-    await user.click(within(sidebar()).getByRole('button', { name: 'Tracks' }));
-    await screen.findByRole('heading', { name: 'Tracks' });
+    await user.click(within(sidebar()).getByRole('button', { name: 'Toolchains' }));
+    await screen.findByRole('heading', { name: 'Toolchains' });
     await user.click(within(sidebar()).getByRole('button', { name: 'Back' }));
     expect(await screen.findByRole('heading', { name: topic.title, level: 1 })).toBeInTheDocument();
     await user.keyboard('{Alt>}{ArrowLeft}{/Alt}');
     expect(await screen.findByRole('list', { name: 'Topics' })).toBeInTheDocument();
     expect(within(sidebar()).queryByRole('button', { name: 'Back' })).not.toBeInTheDocument();
     // The mouse's back button (button 3) goes back too.
-    await user.click(within(sidebar()).getByRole('button', { name: 'Tracks' }));
-    await screen.findByRole('heading', { name: 'Tracks' });
+    await user.click(within(sidebar()).getByRole('button', { name: 'Toolchains' }));
+    await screen.findByRole('heading', { name: 'Toolchains' });
     act(() => void window.dispatchEvent(new MouseEvent('mouseup', { button: 3 })));
     expect(await screen.findByRole('list', { name: 'Topics' })).toBeInTheDocument();
   });
@@ -355,8 +355,8 @@ describe('back', () => {
     const { api } = await mockWithCourse();
     renderApp({ to: 'goal' }, api);
     await screen.findByRole('heading', { name: 'What do you want to learn?' });
-    await user.click(within(sidebar()).getByRole('button', { name: 'Tracks' }));
-    await screen.findByRole('heading', { name: 'Tracks' });
+    await user.click(within(sidebar()).getByRole('button', { name: 'Toolchains' }));
+    await screen.findByRole('heading', { name: 'Toolchains' });
     expect(within(sidebar()).queryByRole('button', { name: 'Back' })).not.toBeInTheDocument();
   });
 });

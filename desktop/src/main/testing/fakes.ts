@@ -126,6 +126,17 @@ export function fakeCore() {
     hiddenMaterial: () => [CANARY, 'printf("CANARY-MUTANT-LINE %d", count + 2);', 'CANARY-HIDDEN-INPUT-LINE with enough length', 'CANARY-EXPECTED-OUTPUT-LINE 42'],
     listTracks: () => c.tracks.map((track) => ({ track, styles: ['io'], files: ['main.c'] })),
     removeTrack: async (ref) => ({ removed: ref }),
+    courseNamesOnTrack: (ref) => [...c.courses.values()].filter((r) => r.track === ref).map((r) => r.title ?? r.course),
+    renameCourse: async (course, title) => {
+      roadmapOf(course).title = title;
+      return { course, title };
+    },
+    deleteCourse: async (_ws, course) => {
+      roadmapOf(course);
+      c.courses.delete(course);
+      if (c.active === course) c.active = undefined;
+      return { deleted: course };
+    },
     cleanupLeftovers: async () => void c.cleanups++,
     rebuildTrack: async () => ({}),
     saveRoadmap: async (_ws, course, yaml, _bound, activate = true) => {

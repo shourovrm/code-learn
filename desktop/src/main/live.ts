@@ -19,6 +19,7 @@ import {
   type Computer,
   type Concept,
   type CourseView,
+  type Practice,
   type Proposal,
   type Roadmap,
   type SetupProblem,
@@ -36,7 +37,7 @@ import { courseView, currentConcept, otherReady, type Setup } from './courseView
 import { noLog, type Log } from './log';
 import { asNotCounted, rebuildFailure } from './notCounted';
 import { programs } from './programs';
-import { coursesOf, type desktopState } from './state';
+import { coursesOf, type desktopState, withoutCourse, withoutName } from './state';
 import type { usageStore } from './usage';
 import { HELD_BACK, activityView, checkView, exampleRunView, filterReply, hiddenLines, lessonView, roadmapView, setupWhy, trackName, tryView } from './views';
 
@@ -91,6 +92,8 @@ const stallOf = (problem: JobProblem = 'failed'): Stall => {
 };
 /** What a setup that failed on this computer shows (the setup card has no row for "too busy"). */
 const setupProblemOf = (infra: Infra): SetupProblem => (infra === 'sandbox-busy' ? 'sandbox' : infra);
+/** How a course's roadmap style is practised: its exercises (code), its quiz, or lessons only. */
+const practiceOf = (style: string): Practice => (style === 'quiz' ? 'quiz' : style === 'none' ? 'none' : 'code');
 /** core store.ts's damaged-record errors: the learner repairs them; a retry can't (§5). */
 function repairable(e: unknown): unknown {
   if (kindOf(e) === 'damaged') (e as Error).message = `${REPAIR}\n${(e as Error).message}`;
@@ -100,6 +103,8 @@ function repairable(e: unknown): unknown {
 interface Running {
   outcome: Promise<JobOutcome>;
   stop: AbortController;
+  /** The course the job works on, if any: its save is what a delete must wait for. */
+  course: string | undefined;
 }
 
 /** An agent's session, which only that agent can continue. */
@@ -403,7 +408,7 @@ export function createLive(d: LiveDeps): Live {
         },
       );
     const outcome = queue(`${lane}:${course ?? ''}`)(run).finally(() => running.delete(key));
-    running.set(key, { outcome, stop });
+    running.set(key, { outcome, stop, course });
     return outcome;
   }
 
@@ -657,7 +662,7 @@ export function createLive(d: LiveDeps): Live {
     },
 
     async tracks() {
-      return core.listTracks().map((t) => ({ ref: t.track, name: trackName(t.track) }));
+      return core.listTracks().map((t) => ({ ref: t.track, name: trackName(t.track), usedBy: core.courseNamesOnTrack(t.track) }));
     },
 
     async research(goal) {
@@ -770,7 +775,7 @@ export function createLive(d: LiveDeps): Live {
       const s = d.state.read();
       return coursesOf(s).flatMap((id) => {
         const r = roadmapOrNull(id);
-        return r ? [{ id, title: nameOf(r), goal: r.goal, track: r.track ? trackName(r.track) : '', current: id === s.approved }] : [];
+        return r ? [{ id, title: nameOf(r), goal: r.goal, track: r.track ? trackName(r.track) : '', current: id === s.approved, practice: practiceOf(r.style) }] : [];
       });
     },
 
@@ -779,6 +784,19 @@ export function createLive(d: LiveDeps): Live {
       d.state.update((s) => ({ ...s, approved: course }));
       // Opening a course is the learner's step: the work it still needs starts.
       schedule(course);
+    },
+
+    async renameCourse(course, title) {
+      await core.renameCourse(course, title);
+      d.state.update((s) => withoutName(s, course));
+    },
+
+    async deleteCourse(course) {
+      // A job still working on the course could save it again, so it is deleted only once that work ends.
+      if ([...running.values()].some((job) => job.course === course)) throw new SafeError('code-learn is working on this course. Delete it when that finishes.');
+      log('course-delete', {});
+      await core.deleteCourse(ws, course);
+      d.state.update((s) => withoutCourse(s, course));
     },
 
     async setActivities(on) {

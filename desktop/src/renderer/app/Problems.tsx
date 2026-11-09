@@ -55,7 +55,7 @@ export function Stalled({ stalled, work, later, retry }: { stalled: NonNullable<
       {stalled === 'failed' ? unfinished(work) : named(stalled) ? STALL[stalled] : SAY[stalled]}
       {stalled === 'failed' && <Button variant="text" onClick={() => go({ to: 'connect', then: route })}>Check your agent</Button>}
       {stalled === 'sandbox' && <Button variant="text" onClick={() => go({ to: 'computer', then: route })}>Check this computer</Button>}
-      {stalled === 'rebuild' && <Button variant="text" onClick={() => go({ to: 'tracks' })}>Go to Tracks</Button>}
+      {stalled === 'rebuild' && <Button variant="text" onClick={() => go({ to: 'tracks' })}>Go to Toolchains</Button>}
       {/* An agent code-learn couldn't stop is still running: only quitting stops it (§3.1). */}
       {stalled !== 'unstoppable' && <Button variant="text" disabled={starting.busy} onClick={again}>Try again</Button>}
       {later && <Button variant="text" disabled={starting.busy} onClick={() => leave(later)}>Come back later</Button>}

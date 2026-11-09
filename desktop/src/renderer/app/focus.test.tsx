@@ -46,18 +46,18 @@ describe('focus on a new screen (accessibility)', () => {
     const { api } = await mockWithCourse({ read: true });
     renderApp({ to: 'learn' }, api);
     await screen.findByRole('list', { name: 'Topics' });
-    // Tracks loads slowly: its heading appears only once the read answers.
+    // Toolchains loads slowly: its heading appears only once the read answers.
     let answer!: () => void;
     const tracks = api.tracks.bind(api);
     api.tracks = () => new Promise((done) => (answer = () => done(tracks())));
-    await user.click(screen.getByRole('button', { name: 'Tracks' }));
+    await user.click(screen.getByRole('button', { name: 'Toolchains' }));
     await user.tab({ shift: true });
     const chosen = document.activeElement as HTMLElement;
-    expect(chosen).toHaveAccessibleName('Practice');
+    expect(chosen).toHaveAccessibleName('Courses');
     // Even if focus then falls back to the page, the learner moved it: the heading doesn't take it.
     chosen.blur();
     answer();
-    const heading = await screen.findByRole('heading', { level: 1, name: 'Tracks' });
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Toolchains' });
     await new Promise((r) => setTimeout(r, 50));
     expect(heading).not.toHaveFocus();
   });
