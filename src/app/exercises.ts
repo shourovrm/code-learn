@@ -6,7 +6,7 @@ import { type ExerciseGate, verifyQuiz, verifyExercise } from "../gates.js";
 import { type CaseFrames, expectedText, gradeIo, gradeQuiz, redact, type ShownResult, type Status, type TestResult, type TestSet } from "../grading.js";
 import { judgeSets } from "../judge.js";
 import { type ProgramOptions, type ProgramRun, runProgram } from "../program.js";
-import { lastCheck, nextLesson, nextStep as pickNext, type LessonStep, type Step } from "../learner.js";
+import { type CheckEvent, lastCheck, nextLesson, nextStep as pickNext, type LessonStep, type Step } from "../learner.js";
 import { parseQuizYaml, parseAnswersYaml, type CourseRecord, type ExerciseRecord, type TrackRecord } from "../schemas.js";
 import * as store from "../store.js";
 import { activeCourse, ensureToolchain, installedTrack, learnerDir, noteAssistLocked, quietly, trackContract } from "./shared.js";
@@ -357,6 +357,53 @@ export async function checkExercise(ws: string, slug?: string, bound?: string, o
     });
   });
   return view;
+}
+
+/** A solution opens after this many recorded checks, or after one that passes (DESIGN A5). */
+const SOLUTION_CHECKS = 3;
+
+export type ExerciseStatus = {
+  exercise: string;
+  /** Recorded checks, passed or failed. */
+  checks: number;
+  solved: boolean;
+  solutionOpen: boolean;
+  last?: { passed: number; total: number; at: string };
+};
+
+/** An exercise's recorded checks, counted from the course log. */
+function statusOf(course: string, slug: string): ExerciseStatus {
+  const checks = store.readEvents(course).filter((e): e is CheckEvent => e.kind === "check" && e.exercise === slug);
+  const solved = checks.some((c) => c.passed === c.total);
+  const last = checks.at(-1);
+  return {
+    exercise: slug,
+    checks: checks.length,
+    solved,
+    solutionOpen: solved || checks.length >= SOLUTION_CHECKS,
+    ...(last ? { last: { passed: last.passed, total: last.total, at: last.at } } : {}),
+  };
+}
+
+export function exerciseStatus(ws: string, slug: string, bound?: string): ExerciseStatus {
+  const course = activeCourse(ws, bound).course;
+  store.readExercise(course, slug);
+  return statusOf(course, slug);
+}
+
+/**
+ * The reference solution's learner files, once the learner may see them (DESIGN A5). Opening it records an assist,
+ * so the checks after it don't count toward mastery. Tests, mutants and expected outputs never leave.
+ */
+export async function getSolution(ws: string, slug: string, bound?: string): Promise<{ exercise: string; files: FileMap }> {
+  const { course, record, files, editable } = loadExercise(ws, slug, bound);
+  if (record.style === "quiz") throw new CodeLearnError("A quiz has no solution.");
+  return store.withLock(store.courseLockPath(course.course), async () => {
+    const status = statusOf(course.course, record.slug);
+    if (!status.solutionOpen) throw new CodeLearnError(`The solution opens after ${SOLUTION_CHECKS} recorded checks, or one that passes. "${record.slug}" has ${status.checks}.`);
+    noteAssistLocked(course.course, record.slug);
+    return { exercise: record.slug, files: Object.fromEntries(editable.map((f) => [f, files[`solution/${f}`] ?? ""])) };
+  });
 }
 
 /** Only a fully answered quiz is graded, and only its first check is recorded, decided under the course lock. */

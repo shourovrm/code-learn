@@ -277,6 +277,66 @@ describe("assistance", () => {
   });
 });
 
+describe("a solution the learner may see", () => {
+  const failed = () => store.appendEvent("shell", event({ kind: "check", exercise: "e1", concepts: ["sh.basics"], difficulty: 1, passed: 0, total: 1, assisted: false }));
+  const passed = () => store.appendEvent("shell", event({ kind: "check", exercise: "e1", concepts: ["sh.basics"], difficulty: 1, passed: 1, total: 1, assisted: false }));
+
+  async function course() {
+    installFake();
+    await app.saveRoadmap(ws, "shell", roadmap());
+    addExercise("shell", "e1", "sh.basics");
+  }
+
+  it("stays closed until three recorded checks have failed", async () => {
+    await course();
+    await expect(app.getSolution(ws, "e1")).rejects.toThrow(/3 recorded checks/);
+    failed();
+    failed();
+    await expect(app.getSolution(ws, "e1")).rejects.toThrow(/has 2/);
+    failed();
+    expect(await app.getSolution(ws, "e1")).toEqual({ exercise: "e1", files: { "main.sh": "SECRET-SOLUTION\n" } });
+  });
+
+  it("opens after one passing check, however few failed", async () => {
+    await course();
+    passed();
+    expect(await app.getSolution(ws, "e1")).toMatchObject({ exercise: "e1" });
+  });
+
+  it("returns only the track's learner files, never tests, mutants or expected outputs", async () => {
+    await course();
+    passed();
+    const { files } = await app.getSolution(ws, "e1");
+    expect(Object.keys(files)).toEqual(["main.sh"]);
+    expect(JSON.stringify(files)).not.toMatch(/HIDDEN/);
+  });
+
+  it("records an assist when it opens, so a later check counts as assisted", async () => {
+    await course();
+    passed();
+    await app.getSolution(ws, "e1");
+    expect(store.readEvents("shell").filter((e) => e.kind === "assist")).toEqual([expect.objectContaining({ exercise: "e1" })]);
+    await app.getSolution(ws, "e1");
+    expect(store.readEvents("shell").filter((e) => e.kind === "assist")).toHaveLength(1);
+  });
+
+  it("is never open for a quiz", async () => {
+    await course();
+    store.commitFolder(store.exerciseDir("shell", "q1"), { "README.md": "# Quiz\n", "quiz.yaml": "questions: []\n" }, { "exercise.json": { format_version: 1, slug: "q1", style: "quiz", concepts: ["sh.basics"], difficulty: 1, createdAt: new Date().toISOString() } });
+    await expect(app.getSolution(ws, "q1")).rejects.toThrow(/quiz has no solution/);
+  });
+
+  it("reports the recorded checks and whether one passed, for the exercise status", async () => {
+    await course();
+    expect(app.exerciseStatus(ws, "e1")).toEqual({ exercise: "e1", checks: 0, solved: false, solutionOpen: false });
+    failed();
+    failed();
+    expect(app.exerciseStatus(ws, "e1")).toMatchObject({ checks: 2, solved: false, solutionOpen: false, last: { passed: 0, total: 1 } });
+    passed();
+    expect(app.exerciseStatus(ws, "e1")).toMatchObject({ checks: 3, solved: true, solutionOpen: true, last: { passed: 1, total: 1 } });
+  });
+});
+
 describe("lessons", () => {
   const lesson = (id: string, concept = "sh.basics") => ({ id, concept, title: `About ${id}`, markdown: `# ${id}\n\nText.` });
 
