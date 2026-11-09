@@ -37,6 +37,20 @@ async function checkUntilStuck(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe('practice', () => {
+  it('indents as the learner types: Enter keeps the indent, Tab adds a step, and Esc then Tab leaves the editor', async () => {
+    const { user } = await open();
+    await user.clear(code());
+    await user.type(code(), 'if (x) {{{Enter}y();{Enter}}');
+    expect(code().value).toBe('if (x) {\n  y();\n}');
+    await user.tab();
+    expect(code()).toHaveFocus();
+    expect(code().value).toBe('if (x) {\n  y();\n}  ');
+    expect(code()).toHaveAccessibleDescription('Tab indents. Esc, then Tab, leaves the editor.');
+    await user.keyboard('{Escape}');
+    await user.tab();
+    expect(code()).not.toHaveFocus();
+  });
+
   it("lists the topic's lessons and this exercise beside the task, and a lesson opens from there", async () => {
     const { user } = await open();
     const steps = screen.getByRole('navigation', { name: 'This topic' });

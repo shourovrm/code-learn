@@ -459,6 +459,8 @@ async function tabTo(page: Page, role: 'button' | 'textbox' | 'menuitem' | 'comb
     if (presses >= (await focusables(page)) + 2) {
       throw new Error(`Tab never reached ${role} "${name}" in ${presses} presses on:\n${await page.locator('body').ariaSnapshot()}`);
     }
+    // Tab indents inside the code editor; Esc, then Tab, leaves it, as a keyboard user does.
+    if (await page.evaluate(() => document.activeElement?.matches('.etext textarea') ?? false)) await page.keyboard.press('Escape');
     await page.keyboard.press('Tab');
     presses++;
   }
