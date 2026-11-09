@@ -51,7 +51,7 @@ export function Courses({ slim = false }: { slim?: boolean }) {
         </button>
       ))}
       <button type="button" className="nav" aria-label={slim ? 'New course' : undefined} onClick={() => go({ to: 'goal' })}>
-        <Icon name="plus" color="#C9D5EA" size={slim ? 18 : 16} />
+        <Icon name="plus" color="var(--garden-text)" size={slim ? 18 : 16} />
         {!slim && 'New course'}
       </button>
     </div>

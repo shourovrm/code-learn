@@ -89,10 +89,10 @@ function createWindow() {
     minWidth: 800,
     minHeight: 600,
     title: 'code-learn',
-    // The page's ground before it paints, by the desktop's theme (renderer/styles/tokens.css), so a dark desktop never flashes light.
-    backgroundColor: nativeTheme.shouldUseDarkColors ? '#0B1730' : '#F5F7FA',
+    // The page's ground before it paints, by the desktop's theme (--ground in renderer/styles/tokens.css; the title bar is --garden-3), so a dark desktop never flashes light.
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#111A14' : '#ECF0E8',
     titleBarStyle: 'hidden',
-    titleBarOverlay: { color: '#0B1F44', symbolColor: '#AFC0DD', height: 36 },
+    titleBarOverlay: { color: '#0F2C20', symbolColor: '#A9C3B1', height: 36 },
     trafficLightPosition: { x: 14, y: 11 },
     webPreferences: {
       preload: join(__dirname, '../preload/preload.js'),

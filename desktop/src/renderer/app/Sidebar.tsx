@@ -32,7 +32,7 @@ function practiceRoute(course: CourseView | null | undefined): Route {
 }
 
 /** A narrow window, or a wide one at 200% zoom: the screen needs the sidebar's room (WCAG reflow). Matches app.css. */
-const NARROW = '(max-width: 760px)';
+const NARROW = '(max-width: 768px)';
 const narrowNow = () => typeof window.matchMedia === 'function' && window.matchMedia(NARROW).matches;
 function onNarrowChange(changed: () => void) {
   if (typeof window.matchMedia !== 'function') return () => undefined;
@@ -79,14 +79,14 @@ export function Sidebar({ slim: slimHere = false }: { slim?: boolean }) {
       aria-label={slim ? item.label : undefined}
       onClick={() => void open(item.to).catch(fail)}
     >
-      <Icon name={item.icon} color={here === item.key ? '#3DDB6C' : '#C9D5EA'} />
+      <Icon name={item.icon} color={here === item.key ? 'var(--primary)' : 'var(--garden-text)'} />
       {!slim && item.label}
     </button>
   ));
   // Shown only when there is a screen to go back to, so it never sits there doing nothing.
   const backButton = canGoBack && (
     <button type="button" className="nav back" aria-label={slim ? 'Back' : undefined} onClick={back}>
-      <Icon name="back" color="#C9D5EA" />
+      <Icon name="back" color="var(--garden-text)" />
       {!slim && 'Back'}
     </button>
   );
