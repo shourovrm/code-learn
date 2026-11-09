@@ -143,6 +143,8 @@ test('renderer security', async ({ launch }) => {
   expect(failures.every((f) => f === 'csp')).toBe(true);
 
   expect(await page.evaluate(() => window.open('https://example.com/') === null)).toBe(true);
+  // It goes to the learner's browser instead (recorded by launch(), so no real tab opens).
+  expect(await app.evaluate(() => (globalThis as { openedLinks?: string[] }).openedLinks)).toEqual(['https://example.com/']);
   await page.evaluate(() => {
     location.href = 'https://example.com/';
   });

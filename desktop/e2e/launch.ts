@@ -25,6 +25,12 @@ export const test = base.extend<{ launch: Launch; settled: boolean }>({
       const own = args.some((a) => a.startsWith('--user-data-dir=')) ? [] : [`--user-data-dir=${profile}`];
       const app = await electron.launch({ args: ['.', ...own, ...args], env: { ...process.env, CODE_LEARN_MOCK: scenario, ...env } });
       apps.push(app);
+      // Links the app hands to the learner's browser are recorded instead, so a test never opens a real browser tab.
+      await app.evaluate(({ shell }) => {
+        const opened: string[] = [];
+        (globalThis as { openedLinks?: string[] }).openedLinks = opened;
+        shell.openExternal = async (url: string) => void opened.push(url);
+      });
       const page = await app.firstWindow();
       if (settled) {
         await page.waitForLoadState('domcontentloaded');
