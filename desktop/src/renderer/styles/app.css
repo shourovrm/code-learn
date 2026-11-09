@@ -181,6 +181,12 @@ textarea.field { height: auto; padding: 12px 16px; line-height: 1.5; resize: ver
 .quiz-results { padding: 24px; }
 .ws.lesson { grid-template-columns: 270px minmax(0, 1fr) 340px; }
 .stmt { min-width: 0; padding: 28px; display: flex; flex-direction: column; gap: 18px; background: var(--card); border-right: 1px solid var(--line); overflow: auto; }
+/* An exercise that has a passed check (DESIGN E): a green card at the top of its statement. */
+.solved { padding: 12px 16px; border: 1px solid var(--green-line); border-radius: 12px; background: var(--green-soft); color: var(--ink); }
+.solved p { margin: 0; }
+.solved p + p { margin-top: 4px; font-size: 14px; color: var(--muted); }
+/* Previous and Next between exercises, at the foot of the statement (DESIGN D). */
+.exnav { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 8px; }
 .outline { gap: 6px; }
 .outline .h3 { padding: 0 14px 8px; }
 .outline .item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: none; border-radius: 10px; background: transparent; color: var(--faint); text-align: left; }

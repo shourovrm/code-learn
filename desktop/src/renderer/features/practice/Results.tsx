@@ -19,6 +19,8 @@ function shownName(name: string): string {
 }
 /** An output as Results shows it: its own lines, without the final line breaks. */
 const lines = (text: string) => text.replace(/\n+$/, '');
+/** A recorded check's day, as the learner reads it: "Nov 9, 2026". */
+export const shortDate = (at: string) => new Date(at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 
 export type Shown =
   | { kind: 'idle' }
@@ -44,6 +46,8 @@ interface Props {
   topic: string;
   visibleTests: VisibleTest[];
   ways: Ways;
+  /** The exercise's last recorded check, which the idle pane shows until a new one. */
+  last?: { passed: number; total: number; at: string };
 }
 
 /** A sentence ending in a topic's title: the title's own ? or ! ends it, so it never reads "Algorithm?." */
@@ -73,7 +77,8 @@ export function Results(props: Props) {
   );
 }
 
-function Body({ shown, name, topic, visibleTests, ways, quiz }: Props) {
+function Body({ shown, name, topic, visibleTests, ways, quiz, last }: Props) {
+  if (shown.kind === 'idle' && last) return <div className="idle">Last check: {last.passed} of {last.total} passed, on {shortDate(last.at)}.</div>;
   if (shown.kind === 'idle') return <div className="idle">Only Check is graded.</div>;
   if (shown.kind === 'busy') {
     return (
@@ -96,7 +101,7 @@ function Body({ shown, name, topic, visibleTests, ways, quiz }: Props) {
           <div className="actions a-up" style={stagger(2)}>
             <Button size="lg" onClick={ways.retry}>Try again</Button>
             {result.reason === REBUILD ? (
-              <Button variant="ghost" size="lg" onClick={ways.tracks}>Go to Tracks</Button>
+              <Button variant="ghost" size="lg" onClick={ways.tracks}>Go to Toolchains</Button>
             ) : (
               <Button variant="ghost" size="lg" onClick={ways.computer}>Check this computer</Button>
             )}

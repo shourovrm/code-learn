@@ -727,3 +727,60 @@ it('shows quiz choices, saves answers before Check, and explains only picked wro
   expect(results()).toHaveTextContent('Question 2: Right');
   expect(results()).not.toHaveTextContent('Bound work');
 });
+
+describe('the solution and the solved state', () => {
+  it("is locked until three checks fail, then opens read-only beside the learner's own file, and hides again", async () => {
+    const { user } = await open();
+    const locked = await screen.findByRole('button', { name: /Solution/ });
+    expect(locked).toBeDisabled();
+    expect(locked).toHaveTextContent('0 of 3 checks');
+    await checkUntilStuck(user);
+    await user.click(screen.getByRole('button', { name: 'Solution' }));
+    const shown = screen.getByRole('textbox', { name: 'solution · Counter.jsx' });
+    expect(shown).toHaveAttribute('readonly');
+    expect(shown).toHaveValue('The mock app shows its reference solution here.\n');
+    expect(screen.getByText('Read only. Your file is unchanged.')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Hide solution' }));
+    expect(screen.getByRole('textbox', { name: 'Counter.jsx' })).toHaveValue(code().value);
+    expect(screen.queryByText('Read only. Your file is unchanged.')).not.toBeInTheDocument();
+  });
+
+  it('says a passing exercise is solved, with when and how it passed, and shows the last check in Results after reopening', async () => {
+    const view = await open();
+    await write(view.user, 'count + 1');
+    await view.user.click(screen.getByRole('button', { name: 'Check' }));
+    expect(await within(results()).findByRole('heading', { name: '4 of 4 passed' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Solution' })).toBeEnabled();
+    const card = await screen.findByText(/^Solved on /);
+    expect(card.closest('.solved')).toHaveTextContent('4 of 4 passed');
+    expect(card.closest('.solved')).toHaveTextContent('Your passing code is in the editor.');
+    view.unmount();
+    renderApp({ to: 'practice', concept: view.course.topics[0].id }, view.api);
+    expect(await screen.findByText(/^Solved on /)).toBeInTheDocument();
+    expect(results()).toHaveTextContent('Last check: 4 of 4 passed');
+    expect(results()).not.toHaveTextContent('Only Check is graded.');
+  });
+});
+
+describe('moving between exercises', () => {
+  it('goes to the previous and next exercise in roadmap order, and the ends have no step past them', async () => {
+    const { api, course } = await mockWithCourse({ read: true });
+    // The mock opens one topic's activity at a time, so three are shown as open here; each has its own activity.
+    const real = api.course;
+    api.course = async () => {
+      const current = (await real())!;
+      return { ...current, topics: current.topics.map((t, i) => (i < 3 ? { ...t, activity: 'open' as const } : t)) };
+    };
+    renderApp({ to: 'practice', concept: course.topics[0].id }, api);
+    await screen.findByRole('heading', { name: 'Click Counter' });
+    expect(screen.getByRole('button', { name: '‹ Previous' })).toBeDisabled();
+    expect(screen.getByText('1 of 3')).toBeInTheDocument();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Next ›' }));
+    expect(await screen.findByText('2 of 3')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '‹ Previous' })).toBeEnabled();
+    await user.click(screen.getByRole('button', { name: 'Next ›' }));
+    expect(await screen.findByText('3 of 3')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Next ›' })).toBeDisabled();
+  });
+});

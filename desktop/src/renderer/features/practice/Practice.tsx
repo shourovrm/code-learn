@@ -20,6 +20,10 @@ import { useAttempt } from './useAttempt';
 import { useLearnerFiles } from './useLearnerFiles';
 import { RunButton } from '../../ui/RunButton';
 import { Writing } from '../lessons/Writing';
+import { ExerciseNav } from './ExerciseNav';
+import { SolutionButton } from './SolutionButton';
+import { Solved } from './Solved';
+import { useExerciseStatus } from './useExerciseStatus';
 
 export function Practice({ concept }: { concept: string }) {
   const api = useApi();
@@ -43,7 +47,7 @@ export function Practice({ concept }: { concept: string }) {
     waited.current = true;
     return <><Sidebar slim /><Waiting topic={data.topic!} course={data.course} stale={stale} retry={reload} /></>;
   }
-  return <><Sidebar slim /><Workspace activity={data.activity} course={data.course} focus={waited.current} /></>;
+  return <><Sidebar slim /><Workspace key={data.activity.id} activity={data.activity} course={data.course} focus={waited.current} /></>;
 }
 
 /**
@@ -96,6 +100,10 @@ function Workspace({ activity, course, focus }: { activity: Activity; course: Co
 
   // While a program runs, Results' Try again doesn't start an attempt either.
   const { shown, setShown, attempt } = useAttempt({ save, fail, blocked: () => program.running });
+  const status = useExerciseStatus(activity.id, shown);
+  // The reference solution, read-only, while the learner has it open (DESIGN A5).
+  const [solution, setSolution] = useState<{ path: string; text: string }[]>();
+  const showSolution = () => void api.solution(activity.id).then(setSolution, fail);
 
   const busy = shown.kind === 'busy' || program.running;
   // code-learn reads the saved files, so pending edits are saved before each question.
@@ -145,12 +153,15 @@ function Workspace({ activity, course, focus }: { activity: Activity; course: Co
   return (
     <div className={`ws${activity.style === 'quiz' ? ' quiz' : ''}`}>
       {activity.style !== 'quiz' && <section className="stmt" aria-labelledby="activity-title">
+        {status?.solved && <Solved solved={status.solved} />}
         {topic?.review === 'due' && <span className="pill" style={{ alignSelf: 'flex-start' }}>Review</span>}
         <h1 className="h2" id="activity-title" ref={title} tabIndex={-1}>{activity.title}</h1>
         <Markdown text={activity.statement} />
+        <ExerciseNav topics={course.topics} concept={activity.concept} />
       </section>}
       <div className="mid">
         {activity.style === 'quiz' ? <section className="stmt quiz-form" aria-labelledby="activity-title">
+          {status?.solved && <Solved solved={status.solved} />}
           <h1 className="h2" id="activity-title" ref={title} tabIndex={-1}>{activity.title}</h1>
           <Markdown text={activity.statement} />
           <QuizAnswers questions={activity.questions} text={files[0].text} disabled={busy} onChange={(text) => {
@@ -158,21 +169,25 @@ function Workspace({ activity, course, focus }: { activity: Activity; course: Co
             setShown({ kind: 'idle' });
           }} />
           <div className="actions"><Button disabled={busy || !answeredAll(activity.questions, files[0].text)} onClick={check}>Check</Button></div>
+          <ExerciseNav topics={course.topics} concept={activity.concept} />
         </section> : <>
+        {solution && <p className="quiet-text">Read only. Your file is unchanged.</p>}
         <Editor
-          files={files}
+          files={solution ? solution.map((f) => ({ ...f, path: `solution · ${f.path}` })) : files}
           open={open}
           onOpen={setOpen}
           onChange={(text) => edit(open, text)}
+          readOnly={solution !== undefined}
           tools={<>
             {activity.run && <RunButton running={program.running} disabled={busy} onStop={program.stop} onRun={() => (setRan(true), void program.start())} />}
+            {status && <SolutionButton status={status} showing={solution !== undefined} disabled={busy} onShow={showSolution} onHide={() => setSolution(undefined)} />}
             <Button variant="ghost" disabled={busy} onClick={tryIt}>Try it</Button>
             <Button disabled={busy} onClick={check}>Check</Button>
           </>}
         />
         {activity.run && ran && <Terminal ref={terminal} label={`Terminal for ${activity.title}`} status={program.status} onInput={program.input} onEnd={program.end} />}
         </>}
-        <Results quiz={activity.style === 'quiz'} shown={shown} name={course.track} topic={topic?.title ?? ''} visibleTests={activity.visibleTests} ways={ways} />
+        <Results quiz={activity.style === 'quiz'} shown={shown} name={course.track} topic={topic?.title ?? ''} visibleTests={activity.visibleTests} ways={ways} last={status?.last} />
       </div>
       <Rail messages={chat.messages} onAsk={ask} busy={chat.busy} answering={chat.answering} name={course.track}>
         <div className="actions">

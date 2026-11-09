@@ -107,9 +107,9 @@ describe('Results with real core result shapes', () => {
 });
 
 describe('not counted', () => {
-  it('sends a rebuild to Tracks, and anything else to Check this computer', () => {
+  it('sends a rebuild to Toolchains, and anything else to Check this computer', () => {
     const view = render(<Results shown={{ kind: 'check', result: { kind: 'not-counted', reason: REBUILD }, keepTrying: false }} name="Sprig" topic="State" visibleTests={visibleTests} ways={ways} />);
-    expect(screen.getByRole('button', { name: 'Go to Tracks' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Go to Toolchains' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Check this computer' })).not.toBeInTheDocument();
     view.unmount();
     render(<Results shown={{ kind: 'check', result: { kind: 'not-counted', reason: "code-learn's sandbox couldn't run that." }, keepTrying: false }} name="Sprig" topic="State" visibleTests={visibleTests} ways={ways} />);

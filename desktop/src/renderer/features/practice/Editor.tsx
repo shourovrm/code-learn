@@ -1,17 +1,18 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import type { LearnerFile } from '../../../shared/api';
 import { colorize, highlighter, loadedHighlighter, nameOf } from '../../ui/colors';
 
 interface Props {
-  files: LearnerFile[];
+  files: { path: string; text: string }[];
   open: string;
   onOpen: (path: string) => void;
   onChange: (text: string) => void;
   tools: ReactNode;
+  /** A reference solution is shown, not edited: its text can be selected and copied, never changed. */
+  readOnly?: boolean;
 }
 
 /** A code editor: file tabs, line numbers, and the code colored by its file's extension where highlight.js knows it (§4.10). */
-export function Editor({ files, open, onOpen, onChange, tools }: Props) {
+export function Editor({ files, open, onOpen, onChange, tools, readOnly }: Props) {
   const id = useId();
   const file = files.find((f) => f.path === open) ?? files[0];
   const lines = file.text.split('\n');
@@ -65,6 +66,7 @@ export function Editor({ files, open, onOpen, onChange, tools }: Props) {
               className={colored !== undefined ? 'lit' : undefined}
               aria-label={file.path}
               value={file.text}
+              readOnly={readOnly}
               rows={lines.length}
               wrap="off"
               spellCheck={false}
