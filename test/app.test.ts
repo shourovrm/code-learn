@@ -212,8 +212,15 @@ describe("an author step's learner context", () => {
   it("puts the newest lesson first and keeps the text within 32 KB, never the learner's notes", async () => {
     installFake();
     await app.saveRoadmap(ws, "shell", roadmap());
-    await app.saveLesson(ws, { id: "basics-long", concept: "sh.basics", title: "Long", markdown: `# Long\n\n${"é".repeat(30_000)}\n` });
-    await app.saveLesson(ws, { id: "basics-again", concept: "sh.basics", title: "Again", markdown: "# Again\n\nThe re-teach.\n" });
+    // Two saves in one millisecond would tie on `created`; fix the clock so "Again" is newer.
+    vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-01-01T00:00:00Z") });
+    try {
+      await app.saveLesson(ws, { id: "basics-long", concept: "sh.basics", title: "Long", markdown: `# Long\n\n${"é".repeat(30_000)}\n` });
+      vi.setSystemTime(new Date("2026-01-01T00:00:01Z"));
+      await app.saveLesson(ws, { id: "basics-again", concept: "sh.basics", title: "Again", markdown: "# Again\n\nThe re-teach.\n" });
+    } finally {
+      vi.useRealTimers();
+    }
     await app.saveNotes(ws, "basics-again", "MY PRIVATE NOTE");
     const step = app.nextStep(ws) as { lessonText: string };
     expect(step.lessonText.startsWith("# Again")).toBe(true);
