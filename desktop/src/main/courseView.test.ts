@@ -27,6 +27,12 @@ describe('course view', () => {
     expect(view.topics.map((t) => t.mastery)).toEqual([0.9, 0.5, 0]);
   });
 
+  it('carries each topic’s check count, and keeps a checked topic’s activity open after the course moves on', () => {
+    const moved = { ...progress({ kind: 'practice', exercise: 'e', concept: 'state' }), concepts: concepts.map((c) => (c.id === 'forms' ? { ...c, attempts: 2, mastery: 0.6 } : c)) };
+    const view = courseView(moved, [], ready, new Set());
+    expect(view.topics.map((t) => [t.id, t.state, t.activity, t.checks])).toEqual([['values', 'mastered', 'passed', 2], ['state', 'now', 'open', 1], ['forms', 'later', 'open', 2]]);
+  });
+
   it('keeps the activity locked until the lessons are read, and shows a lesson being written', () => {
     const unread = courseView(progress({ kind: 'practice', exercise: 'e', concept: 'state', lesson: 'state-1' }), [{ id: 'state-1', concept: 'state', title: 'What state is', read: false }], ready, new Set());
     expect(unread.topics[1]).toMatchObject({ activity: 'locked', lessons: [{ state: 'ready' }] });

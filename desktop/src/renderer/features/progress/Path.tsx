@@ -65,15 +65,12 @@ function Stop({ topic, index, current, track, up, down, last, picking }: StopPro
       <Leaf state={topic.state} current={current} />
       {current ? (
         <Current topic={topic} track={track} />
-      ) : topic.state === 'mastered' || topic.state === 'covered' ? (
-        <div className="stop-row">
-          {/* A mastered topic opens again: its lessons and the activity, to reread or practise. */}
-          <button type="button" className="stop-name link" onClick={() => go({ to: 'topic', topicId: topic.id })}>{topic.title}</button>
-          {topic.reviewIn && <span className="soon">{reviewText(topic.reviewIn)}</span>}
-        </div>
       ) : (
         <div className="stop-row">
-          <span className="stop-name">{topic.title}</span>
+          {/* Every topic opens: to master one left behind, reread one, or look ahead. */}
+          <button type="button" className="stop-name link" onClick={() => go({ to: 'topic', topicId: topic.id })}>{topic.title}</button>
+          {topic.reviewIn && <span className="soon">{reviewText(topic.reviewIn)}</span>}
+          <span className="quiet-text">{progressText(topic)}</span>
         </div>
       )}
     </li>
@@ -115,6 +112,17 @@ function Current({ topic, track }: { topic: TopicView; track: string }) {
       )}
     </div>
   );
+}
+
+/** How far a topic got, in a few words: lessons read, checks and mastery, or Not started. */
+function progressText(topic: TopicView): string {
+  const read = topic.lessons.filter((l) => l.state === 'read').length;
+  const parts: string[] = [];
+  if (read > 0) parts.push(read === topic.lessons.length ? 'Lessons read' : `Lessons ${read} of ${topic.lessons.length}`);
+  if (topic.checks > 0) parts.push(topic.checks === 1 ? '1 check' : `${topic.checks} checks`);
+  if (topic.mastery > 0) parts.push(`Mastery ${Math.round(topic.mastery * 100)}%`);
+  if (parts.length === 0) return 'Not started';
+  return parts.join(' · ');
 }
 
 /** How far into the topic: one step per lesson, then the activity. The words say the lessons read. */

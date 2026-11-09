@@ -199,6 +199,8 @@ export interface TopicView {
   state: TopicState;
   /** 0 to 1. */
   mastery: number;
+  /** Graded checks on this topic so far: with a read lesson, how the Learn page tells a started topic. */
+  checks: number;
   stuck: boolean;
   lessons: { id: string; title: string; state: LessonState }[];
   activity: ActivityState;

@@ -43,7 +43,7 @@ export function courseView(
     const isCurrent = c.id === current;
     if (!activities) return {
       id: c.id, title: c.title, state: c.covered ? 'covered' : isCurrent ? 'now' : 'later',
-      mastery: 0, stuck: false, lessons: own, activity: 'none',
+      mastery: 0, checks: 0, stuck: false, lessons: own, activity: 'none',
     };
     let activity: TopicView['activity'] = 'locked';
     // A due review reopens a mastered topic's activity (core §7).
@@ -55,12 +55,14 @@ export function courseView(
     // Stuck: the activity stays open beside the ways forward (§3.2).
     else if (isCurrent && next.kind === 'stuck') activity = 'open';
     else if (isCurrent) activity = 'writing';
+    // A topic checked before stays open after the course moves on, so the learner can go back and master it.
+    else if (c.attempts > 0) activity = 'open';
     // Only future reviews count down; an overdue one waits its turn behind the review core offers now.
     const left = c.reviewDue ? Date.parse(c.reviewDue) - now : 0;
     const reviewIn = !review && left > 0 ? Math.ceil(left / 86_400_000) : undefined;
     return {
       // Before its first check a topic has only core's starting estimate, not mastery the learner showed.
-      id: c.id, title: c.title, state: c.mastered ? 'mastered' : isCurrent ? 'now' : 'later', mastery: c.attempts > 0 ? c.mastery : 0, stuck: c.stuck, lessons: own, activity,
+      id: c.id, title: c.title, state: c.mastered ? 'mastered' : isCurrent ? 'now' : 'later', mastery: c.attempts > 0 ? c.mastery : 0, checks: c.attempts, stuck: c.stuck, lessons: own, activity,
       ...(review ? { review } : {}), ...(reviewIn ? { reviewIn } : {}),
     };
   });

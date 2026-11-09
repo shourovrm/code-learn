@@ -209,6 +209,28 @@ describe('course path', () => {
     expect(within(all[now]).getByRole('button', { name: 'Continue' })).toBeInTheDocument();
   });
 
+  it('opens any topic from its title, even one not reached yet', async () => {
+    const user = userEvent.setup();
+    const { api, course } = await mockWithCourse();
+    renderApp({ to: 'learn' }, api);
+    const last = (await items()).at(-1)!;
+    const title = course.topics.at(-1)!.title;
+    await user.click(within(last).getByRole('button', { name: title }));
+    expect(await screen.findByRole('heading', { name: title, level: 1 })).toBeInTheDocument();
+  });
+
+  it('says how far each topic got: lessons read and checks for a started one, Not started for the rest', async () => {
+    const { api, course } = await mockWithCourse({ read: true, passes: 2 });
+    const { id, files } = await api.activity(course.topics[0].id);
+    await api.saveFile(id, files[0].path, 'count + 1', files[0].digest);
+    await api.check(id);
+    await api.skip(course.topics[0].id);
+    renderApp({ to: 'learn' }, api);
+    const all = await items();
+    expect(all[0]).toHaveTextContent('Lessons read · 1 check');
+    expect(all.at(-1)).toHaveTextContent('Not started');
+  });
+
   it('puts an easier topic before the one it helps, as the one to do now', async () => {
     const { api } = await mockWithCourse();
     await master(api, 2);

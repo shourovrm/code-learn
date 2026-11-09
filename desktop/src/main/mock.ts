@@ -343,7 +343,7 @@ export function createMock(options: MockOptions = {}): CodeLearnApi {
     }
     const activity = exercise(concept.id, 1);
     activities.set(activity.id, { activity, fails: 0 });
-    return { id: concept.id, title: concept.title, state: 'later' as const, mastery: 0, stuck: false, lessons: own.map((l) => ({ id: l.id, title: l.title, state: 'writing' as const })), activity: 'writing' as const };
+    return { id: concept.id, title: concept.title, state: 'later' as const, mastery: 0, checks: 0, stuck: false, lessons: own.map((l) => ({ id: l.id, title: l.title, state: 'writing' as const })), activity: 'writing' as const };
   }
 
   /** A concept's `n`th activity, from its starter files. */
@@ -912,6 +912,7 @@ export function createMock(options: MockOptions = {}): CodeLearnApi {
       const topic = topicOf(record.activity.concept);
       if (!graded || recorded) {
         deferred.delete(record.activity.concept);
+        if (recorded) topic.checks += 1;
         if (!done && !unedited) record.fails++;
         if (done && topic.state !== 'mastered') {
           const passes = [...activities.values()].filter((r) => r.activity.concept === topic.id).length;
