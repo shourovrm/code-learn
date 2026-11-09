@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1 (2026-11-09)
+
+- Rebuild takes optional instructions for the agent. They go into the rebuilt topics' lesson and exercise jobs; the course's original instructions aren't reused.
+
 ## 0.1.0 (2026-11-09)
 
 - Courses: a Courses page in the sidebar renames and deletes courses, with a confirmation. Deleting a course removes its lessons, exercises, history and exercise files; its toolchain stays installed.
