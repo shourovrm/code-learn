@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0 (2026-11-09)
+
+- A new look, the Seed packet: garden-green sidebar and exercise column, marigold for the one thing to do now on each screen, sage-grey paper elsewhere, in light and dark. Sizes follow Atlassian's design system: 14px body text, 32px buttons, an 8px spacing scale.
+- Progress is drawn from the logo: a seed not started, a shoot under way, a sprout done, on the Learn path and beside lessons.
+- The exercise screen lists the topic's lessons and the exercise beside the task; a lesson opens from there.
+- The screens say "exercise" everywhere, where some said "activity"; the Learn switch is now Exercises. A message no longer points to a Settings screen that doesn't exist.
+- The tutor's Send is a plain button, so each screen has one main action.
+- Results wrap at 400% zoom, and every line on the Solved card meets contrast.
+
 ## 0.1.1 (2026-11-09)
 
 - Rebuild takes optional instructions for the agent. They go into the rebuilt topics' lesson and exercise jobs; the course's original instructions aren't reused.
