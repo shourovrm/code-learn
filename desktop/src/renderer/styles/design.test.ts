@@ -6,8 +6,6 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const PAGES = ['foundation', 'workspace', 'progress', 'setup'];
-// Files not yet rebuilt on the tokens. Each leaves this list when its rebuild lands; GATE_STRICT=1 runs them as is.
-const PENDING = new Set(['foundation', 'workspace', 'progress', 'setup']);
 const BREAKPOINTS = new Set(['320', '480', '560', '768', '1024', '1440', '1768']);
 
 function problems(name: string): string[] {
@@ -27,8 +25,7 @@ function problems(name: string): string[] {
 
 describe('every stylesheet takes its sizes and colours from tokens.css', () => {
   for (const name of PAGES) {
-    const strict = !PENDING.has(name) || process.env.GATE_STRICT === '1';
-    (strict ? it : it.fails)(`${name}.css`, () => {
+    it(`${name}.css`, () => {
       expect(problems(name)).toEqual([]);
     });
   }

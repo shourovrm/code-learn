@@ -63,7 +63,7 @@ function narrowWindow() {
   const listeners = new Set<() => void>();
   vi.stubGlobal('matchMedia', (query: string) => ({
     get matches() {
-      return query === '(max-width: 760px)' && narrow;
+      return query === '(max-width: 768px)' && narrow;
     },
     addEventListener: (_: string, l: () => void) => listeners.add(l),
     removeEventListener: (_: string, l: () => void) => listeners.delete(l),
@@ -75,7 +75,7 @@ function narrowWindow() {
 }
 
 describe('narrow windows', () => {
-  it('slims the sidebar below 760 px (a narrow window, or 200% zoom), so the screen keeps its room', async () => {
+  it('slims the sidebar below 768 px (a narrow window, or 200% zoom), so the screen keeps its room', async () => {
     const wide = narrowWindow();
     try {
       renderApp({ to: 'tracks' });
