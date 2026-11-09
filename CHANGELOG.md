@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1 (2026-11-09)
+
+- The code keeps the column: Run output and check results share one panel under the editor, as Terminal and Results tabs. Run shows Terminal, Check and Try it show Results; the panel can be dragged from 15% to 75% of the column, or folded to its tabs.
+- The task column is wider (400px), and the tutor narrower (288px); the tutor folds into a strip beside the code, which gives the task 440px, and the app remembers the choice.
+- The editor indents as you type: Enter keeps the line's indent and adds a step after `{`, `(`, `[` or `:`; Tab and Shift+Tab indent and outdent lines; a closer on a blank line steps back; Backspace removes a whole step. Esc, then Tab, leaves the editor.
+
 ## 0.2.0 (2026-11-09)
 
 - A new look, the Seed packet: garden-green sidebar and exercise column, marigold for the one thing to do now on each screen, sage-grey paper elsewhere, in light and dark. Sizes follow Atlassian's design system: 14px body text, 32px buttons, an 8px spacing scale.
