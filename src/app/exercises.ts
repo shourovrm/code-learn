@@ -363,7 +363,6 @@ export async function checkExercise(ws: string, slug?: string, bound?: string, o
 const SOLUTION_CHECKS = 3;
 
 export type ExerciseStatus = {
-  exercise: string;
   /** Recorded checks, passed or failed. */
   checks: number;
   /** The first recorded check that passed, when there is one. */
@@ -380,7 +379,6 @@ function statusOf(course: string, slug: string): ExerciseStatus {
   const first = checks.find((c) => c.passed === c.total);
   const last = checks.at(-1);
   return {
-    exercise: slug,
     checks: checks.length,
     ...(first ? { solved: { at: first.at, passed: first.passed, total: first.total } } : {}),
     solutionChecks: SOLUTION_CHECKS,

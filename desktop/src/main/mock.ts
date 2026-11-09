@@ -3,7 +3,7 @@
 // the starter's placeholder; quizzes use a private key. Hidden code results
 // are reported as statuses only.
 import { parse, stringify } from 'yaml';
-import { type CheckProgress, type JobKind, type JobProgress, type JobStep, type RunOutput, type UpdateStatus, type RunResult,
+import { type CheckProgress, type ExerciseStatus, type JobKind, type JobProgress, type JobStep, type RunOutput, type UpdateStatus, type RunResult,
   AGENT_FAILED,
   CHANGED,
   NO_AGENT,
@@ -253,12 +253,32 @@ function hostPlatform(): Platform {
 
 const slugOf = (title: string) => title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
+type RecordedCheck = { at: string; passed: number; total: number };
+
+/** A solution opens after this many recorded checks, or after one that passes (core DESIGN A5). */
+const SOLUTION_CHECKS = 3;
+
+/** Core's rule for an exercise's status (DESIGN A5), over the mock's recorded checks. */
+function mockStatus(checks: RecordedCheck[]): ExerciseStatus {
+  const first = checks.find((c) => c.passed === c.total);
+  const last = checks.at(-1);
+  return {
+    checks: checks.length,
+    ...(first ? { solved: first } : {}),
+    solutionChecks: SOLUTION_CHECKS,
+    solutionOpen: first !== undefined || checks.length >= SOLUTION_CHECKS,
+    ...(last ? { last } : {}),
+  };
+}
+
+const MOCK_SOLUTION = 'The mock app shows its reference solution here.\n';
+
 export function createMock(options: MockOptions = {}): CodeLearnApi {
   const agents = AGENTS.map((a) => ({ ...a, state: (options.agents?.[a.id] === 'missing' ? 'missing' : options.connected === a.id ? 'connected' : 'not-connected') as Agent['state'] }));
   const tracks: Track[] = [];
   // The course on screen: its lessons, activities, roadmap and view. Switching swaps them for another course's (§4.13).
   let lessons = new Map<string, Lesson>();
-  let activities = new Map<string, { activity: Activity; fails: number; checked?: boolean }>();
+  let activities = new Map<string, { activity: Activity; fails: number; checked?: boolean; checks?: RecordedCheck[] }>();
   let quiz = false;
   let draftQuiz = false;
   let research: { topic: string; calls: number; job: string; review: string; started: number } | null = null;
@@ -809,6 +829,17 @@ export function createMock(options: MockOptions = {}): CodeLearnApi {
       unlock(lesson.concept);
     },
 
+    async exerciseStatus(activityId) {
+      return mockStatus(find(activities, activityId).checks ?? []);
+    },
+
+    async solution(activityId) {
+      const record = find(activities, activityId);
+      if (record.activity.style === 'quiz') throw new Error('A quiz has no solution.');
+      if (!mockStatus(record.checks ?? []).solutionOpen) throw new Error('The solution opens after 3 recorded checks, or one that passes.');
+      return record.activity.files.map((f) => ({ path: f.path, text: MOCK_SOLUTION }));
+    },
+
     async activity(concept) {
       // The newest: a topic gets a new activity after each pass that doesn't master it.
       const record = [...activities.values()].reverse().find((r) => r.activity.concept === concept);
@@ -892,7 +923,9 @@ export function createMock(options: MockOptions = {}): CodeLearnApi {
       // Leaving this topic for later opens another: one ready already, or one after it (core §7).
       const met = (r: string) => topicOf(r).state === 'mastered' || r === topic.id || deferred.has(r);
       const later = course!.topics.some((t) => t !== topic && t.state !== 'mastered' && requires(t.id).every(met));
-      return { kind: 'graded', passed: tests.filter((t) => t.status === 'pass').length, total: tests.length, tests, recorded, stuck: topic.stuck, mastered: topic.state === 'mastered', later };
+      const passed = tests.filter((t) => t.status === 'pass').length;
+      if (recorded) record.checks = [...(record.checks ?? []), { at: new Date().toISOString(), passed, total: tests.length }];
+      return { kind: 'graded', passed, total: tests.length, tests, recorded, stuck: topic.stuck, mastered: topic.state === 'mastered', later };
     },
 
     async ask(place, text) {

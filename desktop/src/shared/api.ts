@@ -2,7 +2,8 @@
 // make, and the learner-safe views it gets back. Main validates each call's
 // input (src/main/ipc.ts) and answers with one function. Nothing here may
 // carry a solution, mutant, hidden test, expected hidden output, author
-// transcript, tool argument or agent stderr (§2.2, D4).
+// transcript, tool argument or agent stderr (§2.2, D4). The one exception is `solution`, the learner's own view of a
+// solution once its checks open it (DESIGN A5).
 
 // ---------- errors ----------
 
@@ -343,6 +344,18 @@ export type CheckResult =
   | { kind: 'not-counted'; reason: string };
 
 /** Try it: visible tests only, never recorded. */
+/** An exercise's recorded checks (core §7, DESIGN A5): what Solution, the solved card and Results' last line show. */
+export interface ExerciseStatus {
+  /** Recorded checks, passed or failed. */
+  checks: number;
+  /** The first recorded check that passed, when there is one. */
+  solved?: { at: string; passed: number; total: number };
+  /** How many recorded checks open the solution without a pass. */
+  solutionChecks: number;
+  solutionOpen: boolean;
+  last?: { passed: number; total: number; at: string };
+}
+
 export type TryResult = { kind: 'ran'; passed: number; total: number; tests: TestView[] } | { kind: 'not-counted'; reason: string };
 
 /** What the agent CLIs reported using (§4.12). `costUsd` is Claude's own estimate; Codex and Cursor report none. */
@@ -447,6 +460,10 @@ export interface CodeLearnApi {
   /** Run for a lesson's io example `index`, as runProgram is for an activity: typed input, output through onRunOutput. */
   runExampleLive(lessonId: string, index: number, run: string): Promise<RunResult>;
   check(activityId: string, run?: string): Promise<CheckResult>;
+  /** The exercise's recorded checks: whether it's solved, and whether its solution is open to the learner. */
+  exerciseStatus(activityId: string): Promise<ExerciseStatus>;
+  /** A code exercise's reference solution, read-only, once `exerciseStatus` says it's open. Rejects until then. */
+  solution(activityId: string): Promise<{ path: string; text: string }[]>;
   /**
    * Run: the learner's program with typed input, time-limited, never recorded. Resolves when it ends; what it prints
    * arrives through onRunOutput, tagged with `run`, and only in the window that started it.

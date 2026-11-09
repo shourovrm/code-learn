@@ -1,4 +1,4 @@
-import type { CheckProgress } from '../../shared/api';
+import type { CheckProgress, ExerciseStatus } from '../../shared/api';
 // The core `app` functions the desktop calls in-process (DESIGN §2), with the
 // shapes it relies on. coreApp.test.ts checks the bundled core against them.
 
@@ -105,6 +105,9 @@ export interface CoreApp {
   getExercise(ws: string, slug?: string, bound?: string): Promise<CoreExercise>;
   testExercise(ws: string, slug?: string, bound?: string, onProgress?: (p: CheckProgress) => void): Promise<CoreCheckView>;
   checkExercise(ws: string, slug?: string, bound?: string, onProgress?: (p: CheckProgress) => void): Promise<CoreCheckView>;
+  exerciseStatus(ws: string, slug: string, bound?: string): ExerciseStatus;
+  /** A code exercise's solution, learner files only, once its checks open it. Rejects until then (core DESIGN A5). */
+  getSolution(ws: string, slug: string, bound?: string): Promise<{ exercise: string; files: Record<string, string> }>;
   skip(ws: string, concept: string, bound?: string): Promise<void>;
   assertRuntime(): Promise<void>;
   getRoadmap(ws: string, bound?: string): CoreRoadmap;

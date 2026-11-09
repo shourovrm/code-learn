@@ -171,6 +171,14 @@ export function fakeCore() {
       if (done) c.mastered.add(c.exercises.get(slug!)!.concept);
       return view(slug!, done ? 2 : 1, true);
     },
+    exerciseStatus: (_ws, slug, bound) => {
+      c.bound.push(bound);
+      return { checks: c.checks.filter((s) => s === slug).length, solutionChecks: 3, solutionOpen: false };
+    },
+    getSolution: async (_ws, slug, bound) => {
+      c.bound.push(bound);
+      throw coreError(`The solution opens after 3 recorded checks, or one that passes. "${slug}" has 0.`);
+    },
     skip: async (_ws, concept, bound) => {
       c.bound.push(bound);
       c.skipped.add(concept);

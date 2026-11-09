@@ -328,10 +328,10 @@ describe("a solution the learner may see", () => {
 
   it("reports the recorded checks and whether one passed, for the exercise status", async () => {
     await course();
-    expect(app.exerciseStatus(ws, "e1")).toEqual({ exercise: "e1", checks: 0, solutionChecks: 3, solutionOpen: false });
+    expect(app.exerciseStatus(ws, "e1")).toEqual({ checks: 0, solutionChecks: 3, solutionOpen: false });
     failed();
     failed();
-    expect(app.exerciseStatus(ws, "e1")).toEqual({ exercise: "e1", checks: 2, solutionChecks: 3, solutionOpen: false, last: { passed: 0, total: 1, at: expect.any(String) } });
+    expect(app.exerciseStatus(ws, "e1")).toEqual({ checks: 2, solutionChecks: 3, solutionOpen: false, last: { passed: 0, total: 1, at: expect.any(String) } });
     passed();
     expect(app.exerciseStatus(ws, "e1")).toMatchObject({ checks: 3, solved: { passed: 1, total: 1 }, solutionOpen: true, last: { passed: 1, total: 1 } });
   });

@@ -78,6 +78,8 @@ describe('the learner-safe boundary (D4)', () => {
       activity: ['values'],
       tryIt: [activity.id, 'canary-run'],
       check: [activity.id, 'canary-run'],
+      exerciseStatus: [activity.id],
+      solution: [activity.id],
       runExample: ['values-1', 1],
       // Started, then fed and stopped by the calls after them.
       runProgram: [activity.id, 'canary-program'],

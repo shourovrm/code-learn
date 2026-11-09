@@ -75,6 +75,8 @@ const ARGS: { [K in Exclude<keyof CodeLearnApi, 'onCheckProgress' | 'onJobProgre
   runExample: [id, exampleNumber],
   runExampleLive: [id, exampleNumber, runId],
   check: [id, runId],
+  exerciseStatus: [id],
+  solution: [id],
   runProgram: [id, runId],
   sendRunInput: [runId, text(64 * 1024, 1)],
   endRunInput: [runId],

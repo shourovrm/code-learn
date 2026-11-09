@@ -36,6 +36,8 @@ const GOOD: Record<Exclude<keyof CodeLearnApi, 'onCheckProgress' | 'onJobProgres
   runExample: ['values-1', 2],
   runExampleLive: ['values-1', 2, 'run-1'],
   check: ['values-easy-1', 'run-1'],
+  exerciseStatus: ['values-easy-1'],
+  solution: ['values-easy-1'],
   runProgram: ['values-easy-1', 'run-1'],
   sendRunInput: ['run-1', 'Ada\n'],
   endRunInput: ['run-1'],

@@ -929,6 +929,15 @@ export function createLive(d: LiveDeps): Live {
     endRunInput: (run) => programRuns.end(run),
     stopRun: (run) => programRuns.stop(run),
 
+    async exerciseStatus(activityId) {
+      return core.exerciseStatus(ws, activityId, openedIn.get(activityId) ?? approved());
+    },
+
+    async solution(activityId) {
+      const { files } = await core.getSolution(ws, activityId, openedIn.get(activityId) ?? approved());
+      return Object.entries(files).map(([path, text]) => ({ path, text }));
+    },
+
     async check(activityId, run) {
       try {
         const course = approved();
