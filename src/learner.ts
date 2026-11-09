@@ -83,6 +83,10 @@ export function replay(log: LearnerEvent[]): Map<string, ConceptState> {
       continue;
     }
     if (a.kind === "read") continue;
+    if (a.kind === "rebuild") {
+      for (const concept of a.concepts) states.set(concept, fresh());
+      continue;
+    }
     const score = a.total > 0 ? a.passed / a.total : 0;
     const previousBest = best.get(a.exercise);
     const firstTry = previousBest === undefined;

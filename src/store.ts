@@ -267,7 +267,7 @@ const byCodeUnit = ([a]: [string, string], [b]: [string, string]) => (a < b ? -1
 export const fileMapDigest = (files: FileMap) => digestText(JSON.stringify(Object.entries(files).sort(byCodeUnit)));
 
 /** Renames a folder aside, then deletes it, so a half-deleted folder is never read as a proposal. */
-function discard(dir: string): void {
+export function discard(dir: string): void {
   if (!existsSync(dir)) return;
   const aside = join(dirname(dir), `.discard-${randomBytes(4).toString("hex")}`);
   renameSync(dir, aside);

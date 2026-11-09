@@ -300,6 +300,8 @@ Each addition lands in its own module (`schemas`, `store`, `learner`, `app`, `mc
 
 The goal form has two chips, Code (on by default) and Quiz, which may both be on. Both on saves core style `both` (a mixed course, which needs a track); Code alone saves `code`; Quiz alone saves `quiz`; neither saves `none` (lessons only). The "isn't set up yet" notice shows while Code is on. The choice travels with the goal. For Quiz the research brief adds "Save style: quiz and no track." For Lessons only it adds "Save style: none and no track." For both it adds "Save style: both and a track." The form also takes optional Instructions (at most 500 characters): how the course should be made, in the learner's words. The research brief adds them as "The learner's instructions for the course", and only when they are given.
 
+The course map has a **Rebuild…** button beside the course title. It enters select mode: a bar above the topics has a tri-state "Select all" box, "N of M selected", Cancel and "Rebuild selected" (or "Rebuild all M" when every topic is ticked, disabled when none is). A confirmation dialog names the topics (the first few, then "and K more") and offers "Replace the existing lessons and exercises. Their attempts and mastery reset.", ticked by default. Untick it to keep the old ones beside the new. Confirming calls `rebuildTopics` in core, then starts a lesson job for each chosen topic. The course's current topic gets its activity job as usual. Other topics get theirs when they become current, since the author step picks its own target.
+
 The course map has an **Activities** switch, On or Off. Off re-saves `style: none`, keeping the track and all history, and stops this course's author jobs and any setup job it alone needs. On restores the previous activity style, including quiz, remembered in `desktop.json`. Code styles must still be offered by the track. With neither a track nor a remembered quiz style, On runs the existing roadmap job with "Turn on graded coding activities: choose a track and a style for this course." Setup then follows the ordinary flow for code. Quiz has no setup job or Docker wait.
 
 - **Draft before setup.**
@@ -328,7 +330,7 @@ A lessons-only course follows core's `learn` step. `lesson: null` starts a lesso
 - **Saving.** `save_lesson { id, concept, title, markdown, examples? }`. The id is new in the course, the concept is in the roadmap, and the Markdown is at most 64 KB. Optional runnable examples are checked by running them in the sandbox (core §5).
 - **Storage.** `courses/<course>/lessons/<id>/` holds:
   - `lesson.json` (`format_version`, id, concept, title, created);
-  - `lesson.md`, the agent's text, never changed after saving;
+  - `lesson.md`, the agent's text, never changed after saving (a rebuild from the course map removes it);
   - `notes.md`, the learner's notes.
   Writes are atomic and hold the course lock.
 - **Reading.** `get_lesson { id }` and `app.getLesson` return the text and the notes and change nothing. Other app functions: `listLessons`, `saveNotes` and `markLessonRead`.

@@ -12,6 +12,7 @@ function attempt(over: Partial<CheckEvent> & { exercise: string; concepts: strin
 const skip = (concept: string, n: number): SkipEvent => ({ format_version: 1, kind: "skip", at: at(n), concept });
 const retry = (concept: string, n: number): RetryEvent => ({ format_version: 1, kind: "retry", at: at(n), concept });
 const read = (lesson: string, concept: string, n: number): LearnerEvent => ({ format_version: 1, kind: "read", at: at(n), lesson, concept });
+const rebuild = (concepts: string[], n: number): LearnerEvent => ({ format_version: 1, kind: "rebuild", at: at(n), concepts });
 
 describe("replay: mastery", () => {
   it("starts at 0.5 and needs four perfect unassisted checks to reach mastery", () => {
@@ -89,6 +90,31 @@ describe("replay: mastery", () => {
 
   it("a read changes nothing about mastery", () => {
     expect(replay([read("l1", "x", 0)]).get("x")?.mastery ?? 0.5).toBe(0.5);
+  });
+});
+
+describe("replay: rebuild", () => {
+  const fresh = { mastery: 0.5, difficulty: 1, failStreak: 0, attempts: 0, stuck: false, deferred: false };
+  const mastered = [0, 1, 2, 3].map((n) => attempt({ exercise: `e${n}`, concepts: ["x"] }, n));
+
+  it("starts the rebuilt concept afresh from the rebuild, and leaves the other concepts alone", () => {
+    const other = attempt({ exercise: "o", concepts: ["y"], passed: 0 }, 4);
+    const log = [...mastered, other];
+    expect(replay(log).get("x")!.mastery).toBeGreaterThanOrEqual(MASTERED);
+    const after = replay([...log, rebuild(["x"], 5)]);
+    expect(after.get("x")).toEqual(fresh);
+    expect(after.get("y")).toEqual(replay(log).get("y"));
+  });
+
+  it("clears a skip and a stuck streak on the rebuilt concept", () => {
+    const log = [attempt({ exercise: "f", concepts: ["x"], passed: 0 }, 0), attempt({ exercise: "g", concepts: ["x"], passed: 0 }, 1), skip("x", 2)];
+    expect(replay(log).get("x")).toMatchObject({ stuck: true, deferred: true });
+    expect(replay([...log, rebuild(["x"], 3)]).get("x")).toEqual(fresh);
+  });
+
+  it("counts new checks from the fresh start", () => {
+    const log = [...mastered, rebuild(["x"], 4), attempt({ exercise: "new", concepts: ["x"] }, 5)];
+    expect(replay(log).get("x")).toMatchObject({ mastery: 0.65, attempts: 1, difficulty: 2 });
   });
 });
 

@@ -325,6 +325,8 @@ export const LearnerEventSchema = z.discriminatedUnion("kind", [
   z.object({ format_version: z.literal(1), kind: z.literal("assist"), at: z.string(), exercise: Id }),
   z.object({ format_version: z.literal(1), kind: z.literal("retry"), at: z.string(), concept: Id }),
   z.object({ format_version: z.literal(1), kind: z.literal("read"), at: z.string(), lesson: Id, concept: Id }),
+  // The topics' lessons and exercises were rebuilt with their progress reset: their state starts afresh from here.
+  z.object({ format_version: z.literal(1), kind: z.literal("rebuild"), at: z.string(), concepts: z.array(Id).min(1) }),
 ]);
 export type LearnerEventRecord = z.infer<typeof LearnerEventSchema>;
 

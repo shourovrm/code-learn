@@ -58,7 +58,9 @@ export async function saveLesson(ws: string, input: unknown, bound?: string): Pr
   const save = async () => {
     const course = store.readCourse(courseId)!;
     if (!course.concepts.some((c) => c.id === lesson.concept)) throw new CodeLearnError(`"${lesson.concept}" is not in the roadmap for ${courseId}.`);
-    if (store.listLessons(courseId).some((l) => l.id === lesson.id)) throw new CodeLearnError(`Lesson id "${lesson.id}" is already used in ${courseId}. Pick a new id.`);
+    // A rebuilt lesson's read events stay in the log, so its id can't come back for a new lesson.
+    const logged = store.readEvents(courseId).some((e) => e.kind === "read" && e.lesson === lesson.id);
+    if (logged || store.listLessons(courseId).some((l) => l.id === lesson.id)) throw new CodeLearnError(`Lesson id "${lesson.id}" is already used in ${courseId}. Pick a new id.`);
     const track = examples.length > 0 && course.track ? store.readTrack(course.track) : undefined;
     const style = track && codeStyleOf(course.style, track);
     if (examples.length > 0) {

@@ -97,6 +97,10 @@ export function nextStep(ws: string, bound?: string): NextStep {
 /** Writes each exercise gate as it starts to a job's progress file (`code-learn mcp --progress`), by name only. */
 export const gateProgressTo = (path: string) => ({ gate }: { gate: ExerciseGate }) => store.writeJobProgress(path, gate);
 
+/** Saved slugs, and those a check logged: a rebuilt exercise's events stay in the log, so its slug isn't reused. */
+const takenSlugs = (course: string, saved: { slug: string }[]) =>
+  new Set([...saved.map((e) => e.slug), ...store.readEvents(course).flatMap((e) => (e.kind === "check" || e.kind === "assist" ? [e.exercise] : []))]);
+
 /** `onProgress` hears which gate runs, by name only (DESIGN §6). */
 export async function saveExercise(ws: string, files: FileMap, bound?: string, onProgress?: (p: { gate: ExerciseGate }) => void): Promise<{ exercise: string; warning?: string }> {
   const onGate = quietly(onProgress);
@@ -108,7 +112,7 @@ export async function saveExercise(ws: string, files: FileMap, bound?: string, o
     assertActivities(course);
     if (course.style === "quiz" || (course.style === "both" && parseExerciseYaml(files["exercise.yaml"] ?? "").style === "quiz")) {
       const existing = store.listExercises(courseId);
-      const verified = verifyQuiz(course, files, new Set(existing.map((e) => e.slug)),
+      const verified = verifyQuiz(course, files, takenSlugs(courseId, existing),
         existing.filter((e) => e.style === "quiz").map((e) => store.readExercise(courseId, e.slug).files["quiz.yaml"]!));
       store.commitFolder(store.exerciseDir(courseId, verified.record.slug), verified.files, { "exercise.json": verified.record });
       return { ...verified, track: undefined };
@@ -117,7 +121,7 @@ export async function saveExercise(ws: string, files: FileMap, bound?: string, o
       const track = installedTrack(course.track);
       await ensureToolchain(track);
       const existing = store.listExercises(courseId);
-      const taken = new Set(existing.map((e) => e.slug));
+      const taken = takenSlugs(courseId, existing);
       // Earlier exercises on this track have the same learner files, so their solutions can run against the new tests.
       const earlier = existing
         .filter((e) => e.style !== "quiz").filter((e) => e.track === course.track)

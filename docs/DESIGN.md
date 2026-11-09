@@ -63,8 +63,8 @@ $CODE_LEARN_HOME (default ~/.code-learn)
   courses/<course>/
     course.json                     { format_version, title?, goal, track, style, concepts }
     exercises/<slug>/               full exercise + exercise.json (inventory, expected io outputs)
-    lessons/<id>/                   lesson.json, lesson.md (never changed after saving), notes.md (the learner's)
-    events.jsonl                    append-only learner events (check, skip, assist, retry, read)
+    lessons/<id>/                   lesson.json, lesson.md (never changed after saving, but a rebuild removes it), notes.md (the learner's)
+    events.jsonl                    append-only learner events (check, skip, assist, retry, read, rebuild)
     .lock                           held while mutating this course
 
 <workspace>/                        --workspace if given; otherwise learner commands use the nearest folder with
@@ -378,7 +378,8 @@ sources:                    # optional: the roadmaps and docs the agent used, at
   - Examples need the installed track, and `get_roadmap` over MCP includes the track's contract once it's installed.
 - **Running.** `runExample(ws, lesson, n)` runs a saved example the same way and returns its exit code, output (capped at 16 KB) and errors (capped at 4 KB). It is never recorded. `runExampleLive(ws, lesson, n, bound, output)` runs an io example interactively instead, as Run does for an activity (`runProgram`): its output streams, and the learner's typed input reaches its stdin. It checks the files against the recorded track first, and is never recorded either. A unit example has no live run.
 - **Diagrams.** The Markdown may hold diagrams and charts: top-level fenced blocks (``` or ~~~) whose info string is `mermaid` (flowcharts, sequence, state and class diagrams, pie and xy charts). The text is still checked for structure only: core accepts any fence, never parses or draws one, and a diagram is not an example. The app draws it (desktop §4.3).
-- **Storage.** `lesson.md` never changes after saving. The learner's `notes.md` (at most 64 KB) sits beside it. Writes are atomic and hold the course lock.
+- **Storage.** `lesson.md` never changes after saving: the only change is a rebuild, which removes it and its exercises (below). The learner's `notes.md` (at most 64 KB) sits beside it. Writes are atomic and hold the course lock.
+- **Rebuild.** `rebuildTopics(ws, course, concepts, { replace })` (`src/app/rebuild.ts`) asks for fresh content on some topics. Every id must be in the roadmap, and at least one is needed. With `replace`, under the course lock, the chosen topics' lessons go, and so do the exercises whose concepts are all chosen, with their learner files. Then a `rebuild` event (§7) restarts those topics' progress. The log itself is never edited. Without `replace`, nothing changes on disk. Either way the agent then writes new lessons and exercises, and their ids and slugs are new: a removed id or slug is never reused, since its events stay in the log.
 - **Reading.** `get_lesson` returns the text, the notes and the examples, and records nothing. A lesson with examples also names their `style`, which says how they run. Only an acknowledgement records a read: `mark_lesson_read` appends a `read` event the first time.
 
 ## 6. Exercises and gates
@@ -438,13 +439,14 @@ These replace the code gates and run without a sandbox, under the course lock on
 
 ## 7. Learner model
 
-`events.jsonl` is the only learner state. It holds `check`, `skip`, `assist`, `retry` and `read` events, and everything below is recomputed by replaying them in order.
+`events.jsonl` is the only learner state. It holds `check`, `skip`, `assist`, `retry`, `read` and `rebuild` events, and everything below is recomputed by replaying them in order.
 
 - **`check` event:** `{ kind: "check", at, exercise, concepts, difficulty, passed, total, assisted, missed? }`. `missed` is `{ visible: string[], hidden: number[] }`: tests that didn't pass, with visible names and 1-based hidden indexes exactly as `check` shows them. Each list keeps its first 50 entries. Hidden names, inputs, messages and outputs are never recorded in it. A perfect check omits `missed`; older events without it still parse. It is recorded only when grading completed. Infrastructure failures record nothing: no container runtime, a missing image, or a host-side kill of the whole check. Learner-caused outcomes are graded, as `error`: build failures, timeouts and output floods. A check whose learner files are byte-identical to the starter is graded and shown but no `check` event is recorded (`recorded: false`): it isn't an attempt, so it can't count toward the fail streak, lower mastery or take the first try. Assistance and the current exercise are still updated as for any check.
 - **Quiz checks.** A quiz is checked only when every question is answered: grading one answer at a time would reveal the key, as Test would. Only the first check is recorded; later ones are graded with `recorded: false`, and the course lock makes concurrent checks obey the same rule. `missed.visible` holds wrong question numbers as strings, and `missed.hidden` is empty. A recorded quiz check changes mastery, difficulty, reviews and stuck state by the same rules as code.
 - **`skip` event:** `{ kind: "skip", at, concept }`. "Come back later": it defers the concept until a `check` of an exercise written for it (the exercise's first concept, the one `next_step` asked for) and never changes mastery. A check of a later concept's exercise that also lists it ends nothing. While deferred, the concept counts as met for unlocking the concepts that require it, so a learner whose activity can't be written still moves on; it never counts as mastered, so it never finishes a course, and it comes back once nothing else is open.
 - **`retry` event:** `{ kind: "retry", at, concept }`. It resets the concept's fail streak, so a stuck concept isn't stuck, and leaves mastery and difficulty unchanged (§5).
 - **`read` event:** `{ kind: "read", at, lesson, concept }`. The learner acknowledged a lesson. It never changes mastery.
+- **`rebuild` event:** `{ kind: "rebuild", at, concepts }`. The topics were rebuilt with replacement (§5). Each listed concept's state starts afresh from here: mastery, difficulty, streaks, attempts, deferral and review schedule. Earlier events stay in the log and still count for other concepts.
 - **`assist` event:** `{ kind: "assist", at, exercise }`. It marks that exercise as assisted for good, in every workspace.
 
 For each `check`, in order, for each concept it lists:
