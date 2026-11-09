@@ -1,4 +1,6 @@
 // @vitest-environment node
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NO_AGENT, SIGNED_OUT } from '../shared/api';
 import type { AgentId, AgentInstall } from '../shared/api';
@@ -52,7 +54,7 @@ describe('connect (§3.1, §3.3)', () => {
   });
 
   it('lists each agent: installed or not, tested version or not, recommended model and experimental', async () => {
-    const agents = await connector(lookup(), state()).agents();
+    const agents = await connector(lookup(), state(), undefined, tempDir('code-learn-home-')).agents();
     expect(agents.map((a) => [a.id, a.state, a.untested, a.experimental])).toEqual([
       ['claude', 'not-connected', false, false],
       ['codex', 'not-connected', true, false],
@@ -63,7 +65,7 @@ describe('connect (§3.1, §3.3)', () => {
   });
 
   it('offers only bench-tested models per agent, the recommended one first and chosen by default', async () => {
-    const agents = await connector(lookup(), state()).agents();
+    const agents = await connector(lookup(), state(), undefined, tempDir('code-learn-home-')).agents();
     const claude = agents.find((a) => a.id === 'claude')!;
     expect(claude.models).toEqual([
       { id: 'sonnet', label: 'Sonnet', recommended: true },
@@ -79,6 +81,18 @@ describe('connect (§3.1, §3.3)', () => {
     // The free plan runs only Auto, so Auto is the one bench-tested Cursor model.
     const cursor = agents.find((a) => a.id === 'cursor')!;
     expect([cursor.models, cursor.model]).toEqual([[{ id: 'auto', label: 'Auto', recommended: true }], 'auto']);
+  });
+
+  it("offers the models an agent's own settings approve; the recommended one is the first when it isn't among them", async () => {
+    const home = tempDir('code-learn-home-');
+    mkdirSync(join(home, '.codex'));
+    writeFileSync(join(home, '.codex', 'config.toml'), 'model = "gpt-5.6-luna"\n');
+    const c = connector(lookup(), state(), undefined, home);
+    const codex = (await c.agents()).find((a) => a.id === 'codex')!;
+    expect(codex.models).toEqual([{ id: 'gpt-5.6-luna', label: 'gpt-5.6-luna', recommended: true }]);
+    expect(codex.model).toBe('gpt-5.6-luna');
+    expect(await c.chooseModel('codex', 'gpt-5.6-luna')).toMatchObject({ model: 'gpt-5.6-luna' });
+    await expect(c.chooseModel('codex', 'gpt-6-astra')).rejects.toThrow();
   });
 
   it('remembers a model choice per agent in desktop.json, and jobs run with it', async () => {

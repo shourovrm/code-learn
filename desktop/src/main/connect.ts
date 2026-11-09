@@ -1,9 +1,11 @@
 // Agents on the connect screen (DESIGN §3.1, §3.3): found or not, the sign-in
 // check (a yes or no; code-learn never touches credentials), the tested-version
 // warning and the recommended minimum model.
+import { homedir } from 'node:os';
 import { NO_AGENT, SIGNED_OUT, type Agent, type AgentId, type AgentInstall } from '../shared/api';
 import { modelChoices, modelFor } from '../shared/models';
 import { AGENT_CLIS, isTested } from './agent/agents';
+import { approvedIds } from './agent/approvedModels';
 import type { Executable } from './agent/bridge';
 import type { desktopState } from './state';
 
@@ -37,7 +39,9 @@ const NO_SETUP: AgentSetup = { canInstall: () => false, install: () => undefined
 /** A look checks an agent's sign-in again only this long after its last check ended: each check starts the agent. */
 export const RECHECK_MS = 5000;
 
-export function connector(lookup: Lookup, state: ReturnType<typeof desktopState>, setup: AgentSetup = NO_SETUP) {
+export function connector(lookup: Lookup, state: ReturnType<typeof desktopState>, setup: AgentSetup = NO_SETUP, home: string = homedir()) {
+  /** The models an agent may run with: its approved ids from its own settings, read as the list is shown. */
+  const choicesOf = (id: AgentId) => modelChoices(id, approvedIds(id, home));
   /** The last sign-in answer per agent this session. */
   const signedIn = new Map<AgentId, boolean>();
   /** Keeps a real answer; one that couldn't tell is asked again on the next look. */
@@ -123,9 +127,10 @@ export function connector(lookup: Lookup, state: ReturnType<typeof desktopState>
       agentState = known === false ? 'signed-out' : state.read().agent === id ? 'connected' : 'not-connected';
     }
     const version = versions.get(id);
-    const model = modelFor(id, state.read().models?.[id]);
+    const models = choicesOf(id);
+    const model = modelFor(models, state.read().models?.[id]);
     return {
-      id, ...AGENT_INFO[id], state: agentState, models: modelChoices(id), model, untested: Boolean(exe && version && !isTested(id, version)),
+      id, ...AGENT_INFO[id], state: agentState, models, model, untested: Boolean(exe && version && !isTested(id, version)),
       canInstall: setup.canInstall(id), ...(install ? { install } : {}),
     };
   }
@@ -171,9 +176,9 @@ export function connector(lookup: Lookup, state: ReturnType<typeof desktopState>
       return view(id);
     },
 
-    /** Saves the model for an agent's jobs; only one of its bench-tested models. */
+    /** Saves the model for an agent's jobs; only one of the models the agent's list offers. */
     async chooseModel(id: AgentId, model: string): Promise<Agent> {
-      if (!modelChoices(id).some((m) => m.id === model)) throw new Error(`${model} isn't a tested model for ${AGENT_INFO[id].name}.`);
+      if (!choicesOf(id).some((m) => m.id === model)) throw new Error(`${model} isn't an approved model for ${AGENT_INFO[id].name}.`);
       state.update((s) => ({ ...s, models: { ...s.models, [id]: model } }));
       return view(id);
     },
@@ -190,7 +195,7 @@ export function connector(lookup: Lookup, state: ReturnType<typeof desktopState>
       const ok = signedIn.get(id) ?? (await this.recheck(id));
       // Signed out only when the agent says so; a check that can't tell lets the job run and say the rest.
       if (ok === false) throw new Error(SIGNED_OUT);
-      return { id, exe, model: modelFor(id, state.read().models?.[id]) ?? undefined };
+      return { id, exe, model: modelFor(choicesOf(id), state.read().models?.[id]) ?? undefined };
     },
 
     /**

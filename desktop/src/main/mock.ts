@@ -152,9 +152,10 @@ const SANDBOX_REASON: Record<Exclude<Sandbox, 'ready'>, string> = {
 };
 
 /** The connect screen's agents, as the connector describes them; code-learn installs each of them. */
-const AGENTS: Omit<Agent, 'state' | 'untested'>[] = (Object.keys(AGENT_INFO) as AgentId[]).map((id) => ({
-  id, ...AGENT_INFO[id], canInstall: true, models: modelChoices(id), model: modelFor(id),
-}));
+const AGENTS: Omit<Agent, 'state' | 'untested'>[] = (Object.keys(AGENT_INFO) as AgentId[]).map((id) => {
+  const models = modelChoices(id);
+  return { id, ...AGENT_INFO[id], canInstall: true, models, model: modelFor(models) };
+});
 
 const TOPICS: [string, string[]][] = [
   ['JavaScript basics', []],
@@ -623,7 +624,7 @@ export function createMock(options: MockOptions = {}): CodeLearnApi {
 
     async chooseModel(id, model) {
       const agent = agents.find((a) => a.id === id)!;
-      if (!agent.models.some((m) => m.id === model)) throw new Error(`${model} isn't a tested model for ${agent.name}.`);
+      if (!agent.models.some((m) => m.id === model)) throw new Error(`${model} isn't an approved model for ${agent.name}.`);
       agent.model = model;
       return { ...agent, untested: Boolean(options.untested) && agent.state !== 'missing' };
     },

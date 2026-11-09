@@ -9,9 +9,6 @@ import { count, json, obj, PLAN_LIMIT, plain, progress, stepOf, str, TEXT_MAX, t
  */
 const TOOL_PREFIX = 'mcp__code_learn__';
 
-/** The model code-learn suggests for pi: Claude Haiku 5.5 through OpenRouter (shared/models.json). */
-export const PI_RECOMMENDED = 'openrouter/anthropic/claude-haiku-5.5';
-
 /** A code-learn tool by the name the rest of the app uses (`code-learn.<tool>`); any other tool keeps pi's name. */
 const toolName = (name: string) => (name.startsWith(TOOL_PREFIX) ? `code-learn.${name.slice(TOOL_PREFIX.length)}` : name);
 

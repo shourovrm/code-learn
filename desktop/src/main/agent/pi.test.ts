@@ -2,14 +2,14 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { AgentEvent } from './agents';
-import { PI_RECOMMENDED, pi } from './pi';
+import { pi } from './pi';
 
 const server = { command: '/app/code-learn', args: ['/app/core/cli.mjs', 'mcp', '--workspace', '/ws'], env: { CODE_LEARN_HOME: '/home/me/.code-learn' } };
 const parseAll = (lines: string[]) => lines.flatMap((line) => pi.parse!(line));
 const line = (event: unknown) => JSON.stringify(event);
 
 describe('pi: launching a turn', () => {
-  const { args, files } = pi.launch!({ prompt: 'Teach me', server, tools: ['list_tracks', 'save_track'], model: PI_RECOMMENDED });
+  const { args, files } = pi.launch!({ prompt: 'Teach me', server, tools: ['list_tracks', 'save_track'], model: 'openrouter/anthropic/claude-haiku-5.5' });
 
   it("allows only the job's code-learn tools: no built-in tools, extensions, skills or context files", () => {
     expect(args.slice(0, 5)).toEqual(['-p', '--mode', 'json', '--approve', '--no-builtin-tools']);
