@@ -12,7 +12,7 @@
 code-learn is a Linux app for learning to code by practice: your own coding agent writes the lessons and graded exercises, and code-learn checks, grades and tracks your progress.
 
 > [!NOTE]
-> code-learn is a fork of [Codemm](https://github.com/iignaite/Codemm) (MIT), version 1.0.0-beta.10. Codemm runs every exercise in Docker and ships for macOS and Windows. code-learn is Linux only and has no Docker: each language is installed on your computer into its own removable folder, and every check runs in a [bubblewrap](https://github.com/containers/bubblewrap) sandbox. The rest of the design (agents writing tracks, roadmaps and exercises; code-learn verifying and grading them) is Codemm's.
+> code-learn is a fork of [Codemm](https://github.com/iignaite/Codemm) (MIT), forked from its version 1.0.0-beta.10. Codemm runs every exercise in Docker and ships for macOS and Windows. code-learn is Linux only and has no Docker: each language is installed on your computer into its own removable folder, and every check runs in a [bubblewrap](https://github.com/containers/bubblewrap) sandbox. The rest of the design (agents writing tracks, roadmaps and exercises; code-learn verifying and grading them) is Codemm's.
 
 ## Overview
 
