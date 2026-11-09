@@ -100,3 +100,11 @@ side column (next up with Continue, rebuild, usage).
 rules still switch on at 200% zoom on a 1080p screen); no hex, `rgb()` or `hsl()` colour; font weights 400 to 700.
 Not gated: colours drawn in code (the terminal palette, the mermaid palette, Sprig's art), which set their own
 values from these tokens by hand.
+
+## Not yet followed
+
+- The exercise statement doesn't list the topic's lessons and exercises with their growth stages (the mockup's
+  "This topic" strip): Practice has no such list yet, so it needs new markup and data, not a restyle.
+- On the Learn screen, Continue stays on the current topic's card rather than in the side column; the side column
+  holds Mastery, Activities and Usage.
+- Copy has not had its pass (docs/copy.md): wording is unchanged.
