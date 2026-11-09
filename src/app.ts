@@ -5,6 +5,7 @@
  */
 
 export * from "./app/tracks.js";
+export * from "./app/courses.js";
 export * from "./app/roadmaps.js";
 export * from "./app/lessons.js";
 export * from "./app/exercises.js";

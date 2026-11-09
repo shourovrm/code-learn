@@ -39,6 +39,14 @@ describe("events log", () => {
   });
 });
 
+describe("listing courses", () => {
+  it("skips a folder without a course record, such as one a lock left behind after its course was deleted", () => {
+    mkdirSync(join(home, "courses", "ghost"), { recursive: true });
+    mkdirSync(join(home, "courses", ".discard-1"), { recursive: true });
+    expect(store.listCourses()).toEqual([]);
+  });
+});
+
 describe("withLock", () => {
   it("runs the work and releases the lock", async () => {
     const lock = join(home, "x.lock");

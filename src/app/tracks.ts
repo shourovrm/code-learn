@@ -6,6 +6,7 @@ import type { ToolchainFolders } from "../judge.js";
 import type { TrackRecord } from "../schemas.js";
 import * as store from "../store.js";
 import { commitToolchain, removeToolchain, type StagedToolchain } from "../toolchain.js";
+import { courseNamesOnTrack } from "./courses.js";
 import { installedTrack, quietly } from "./shared.js";
 
 // ---------- tracks ----------
@@ -76,7 +77,7 @@ export async function removeTrack(ref: string): Promise<{ removed: string }> {
   const { id } = store.parseTrackRef(ref);
   return store.withLock(store.trackLockPath(id), async () => {
     installedTrack(ref);
-    const using = store.listCourses().filter((course) => store.readCourse(course)?.track === ref);
+    const using = courseNamesOnTrack(ref);
     if (using.length > 0) {
       throw new CodeLearnError(`${ref} is used by ${using.length === 1 ? "course" : "courses"} ${using.map((c) => `"${c}"`).join(", ")}, so it can't be removed while they need it.`);
     }

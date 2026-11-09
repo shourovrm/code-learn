@@ -342,10 +342,17 @@ export function readCourse(course: string): CourseRecord | undefined {
 
 export const writeCourse = (record: CourseRecord) => writeJsonAtomic(join(courseDir(record.course), "course.json"), record);
 
+/**
+ * The courses on this computer. A folder without a course record isn't one: withLock makes a course's folder to hold
+ * its lock, so a lock taken after the course was deleted leaves an empty folder behind.
+ */
 export function listCourses(): string[] {
   const dir = join(codeLearnHome(), "courses");
-  return existsSync(dir) ? readdirSync(dir).filter((n) => !n.startsWith(".")).sort() : [];
+  return existsSync(dir) ? readdirSync(dir).filter((n) => !n.startsWith(".") && existsSync(join(dir, n, "course.json"))).sort() : [];
 }
+
+/** Deletes a course's folder: its roadmap, lessons, exercises and learning log. Call while holding the course lock. */
+export const removeCourseRecord = (course: string) => discard(courseDir(course));
 
 export const exerciseDir = (course: string, slug: string) => {
   assertId("slug", slug);

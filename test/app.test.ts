@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { chmodSync, existsSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as app from "../src/app.js";
@@ -709,6 +709,12 @@ describe("removing a track", () => {
     expect(app.listTracks()).toHaveLength(1);
   });
 
+  it("names a course by its title when it has one", async () => {
+    installFixtureTrack("shell-io");
+    await app.saveRoadmap(ws, "shell", `title: Shell scripting\n${roadmap()}`);
+    await expect(app.removeTrack("shell-io@1")).rejects.toThrow(/used by course "Shell scripting"/);
+  });
+
   it("refuses a track that isn't installed", async () => {
     await expect(app.removeTrack("shell-io@1")).rejects.toThrow(/shell-io@1/);
   });
@@ -719,5 +725,57 @@ describe("removing a track", () => {
     await app.removeTrack("shell-io@1");
     expect(app.listTracks().map((t) => t.track)).toEqual(["shell-io@2"]);
     expect(existsSync(store.envDir("shell-io@2"))).toBe(true);
+  });
+});
+
+describe("renaming and deleting a course", () => {
+  it("renames the course, trimmed, and keeps the rest of its roadmap", async () => {
+    await app.saveRoadmap(ws, "shell", roadmap());
+    expect(await app.renameCourse("shell", "  Shell basics  ")).toEqual({ course: "shell", title: "Shell basics" });
+    expect(store.readCourse("shell")).toMatchObject({ title: "Shell basics", goal: "Shell basics", concepts: [{ id: "sh.basics" }, { id: "sh.loops" }] });
+  });
+
+  it("refuses an empty name and one longer than a roadmap's title, writing nothing", async () => {
+    await app.saveRoadmap(ws, "shell", roadmap());
+    await expect(app.renameCourse("shell", "   ")).rejects.toThrow(/needs a name/);
+    await expect(app.renameCourse("shell", "x".repeat(61))).rejects.toThrow(/at most 60 characters/);
+    expect(store.readCourse("shell")?.title).toBeUndefined();
+  });
+
+  it("refuses an unknown course without creating a folder for it", async () => {
+    await expect(app.renameCourse("nope", "Name")).rejects.toThrow(/No course "nope"/);
+    await expect(app.deleteCourse(ws, "nope")).rejects.toThrow(/No course "nope"/);
+    expect(existsSync(join(store.codeLearnHome(), "courses", "nope"))).toBe(false);
+  });
+
+  it("deletes the course folder, its log and exercise files, and clears the workspace's pointers to it", async () => {
+    await app.saveRoadmap(ws, "shell", roadmap());
+    addExercise("shell", "loops-1", "sh.loops");
+    store.appendEvent("shell", event({ kind: "skip", concept: "sh.basics" }));
+    mkdirSync(join(ws, "exercises", "shell", "loops-1"), { recursive: true });
+    writeFileSync(join(ws, "exercises", "shell", "loops-1", "main.sh"), "echo hi\n");
+    expect(store.readWorkspace(ws).course).toBe("shell");
+
+    expect(await app.deleteCourse(ws, "shell")).toEqual({ deleted: "shell" });
+    expect(existsSync(join(store.codeLearnHome(), "courses", "shell"))).toBe(false);
+    expect(existsSync(join(ws, "exercises", "shell"))).toBe(false);
+    expect(store.readWorkspace(ws).course).toBeUndefined();
+    expect(store.listCourses()).toEqual([]);
+  });
+
+  it("keeps the workspace's pointers when they name another course", async () => {
+    await app.saveRoadmap(ws, "shell", roadmap());
+    await app.saveRoadmap(ws, "calc", "goal: Calculator\ntrack: custom-unit@1\nstyle: unit\nconcepts:\n  - { id: calc.add, title: Adding, requires: [] }\n");
+    await app.deleteCourse(ws, "shell");
+    expect(store.readWorkspace(ws).course).toBe("calc");
+    expect(store.listCourses()).toEqual(["calc"]);
+  });
+
+  it("never brings back a deleted course's folder when a rename arrives after the delete", async () => {
+    await app.saveRoadmap(ws, "shell", roadmap());
+    await app.deleteCourse(ws, "shell");
+    await expect(app.renameCourse("shell", "Late")).rejects.toThrow(/No course "shell"/);
+    expect(existsSync(join(store.codeLearnHome(), "courses", "shell"))).toBe(false);
+    expect(store.listCourses()).toEqual([]);
   });
 });
