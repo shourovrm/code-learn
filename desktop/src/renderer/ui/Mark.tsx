@@ -4,7 +4,7 @@ import logo from '../../../../docs/brand/code-learn-logo.svg';
 import logoOnNavy from '../../../../docs/brand/code-learn-logo-dark.svg';
 
 /** The code-learn mark alone: a sprout growing from a cursor. `ink` colors the cursor for the ground it sits on. */
-export function Mark({ size = 24, ink = '#0E2754' }: { size?: number; ink?: string }) {
+export function Mark({ size = 24, ink = 'var(--garden)' }: { size?: number; ink?: string }) {
   const id = useId();
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden="true">
@@ -22,7 +22,7 @@ export function Mark({ size = 24, ink = '#0E2754' }: { size?: number; ink?: stri
   );
 }
 
-/** The brand logo (the wordmark is outlined, so it needs no font): the light wordmark on navy and in the dark theme. */
+/** The brand logo (the wordmark is outlined, so it needs no font): the light wordmark on garden and in the dark theme. */
 export function Logo({ height, onNavy = false, className }: { height: number; onNavy?: boolean; className?: string }) {
   const dark = useTheme() === 'dark';
   return <img className={className} src={onNavy || dark ? logoOnNavy : logo} alt="code-learn" height={height} />;
