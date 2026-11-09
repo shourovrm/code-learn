@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.2 (2026-11-10)
+
+- Lessons and exercises stay within what the course has taught: the exercise author gets the topics before its own and may use nothing from a later one. Lessons are written for a beginner: a recap of the last topic, a "New words" list, a small example before each rule, short sentences, about five minutes to read, and a short Remember section of 3 to 5 facts.
+- Every topic opens from the Learn page, with how far it got (lessons read, checks, mastery, or Not started). A topic checked before keeps its exercise open after the course moves on, so it can be mastered later.
+- On an exercise, Previous and Next step through every topic ("Topic 2 of 19").
+- The lesson page: a panel with all topics, the topic's pages, its done count and the next topic, which folds away; "Lesson 1 of 3 · about 5 min"; a narrower column with roomier lines; self-check answers stay hidden behind Show answers.
+- A topic opened ahead of the path with no lessons yet names what it builds on, warns about topics not started, and offers Write this topic's lessons. The current topic stays where it is.
+
 ## 0.2.1 (2026-11-09)
 
 - The code keeps the column: Run output and check results share one panel under the editor, as Terminal and Results tabs. Run shows Terminal, Check and Try it show Results; the panel can be dragged from 15% to 75% of the column, or folded to its tabs.

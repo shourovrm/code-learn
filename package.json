@@ -1,6 +1,6 @@
 {
   "name": "code-learn",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Open-source harness for graded coding practice: your coding agent writes the tracks and exercises, code-learn verifies, grades and tracks mastery.",
   "license": "MIT",
   "type": "module",
