@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.0 (2026-11-09)
+
+- Courses: a Courses page in the sidebar renames and deletes courses, with a confirmation. Deleting a course removes its lessons, exercises, history and exercise files; its toolchain stays installed.
+- Tracks are called Toolchains in the app. Each toolchain names the courses that use it, and Remove waits until none do.
+- A new course can mix code exercises and quizzes (Code and Quiz both picked; course.json format 2), and takes optional instructions for the agent.
+- Rebuild: on the Learn page, pick some topics or all of them and have the agent write their lessons and exercises again, replacing the old ones or adding beside them.
+- Exercises: Previous and Next, a Solved card and the last check when you come back, and a Solution button that opens the reference solution after three checks or a pass. Checks after that count as assisted.
+- A diagram that doesn't draw stays inside the lesson with its source, in the theme's colours, and can be hidden and shown again. Agents are told to quote diagram labels that contain symbols.
+- The model list on the Connect screen shows the models that pi and Codex approve in their own settings.
+- Built and tested with Electron 43.
+
 ## 0.1.0-beta.1 (2026-11-09)
 
 - Linux only. Checks run in a bubblewrap sandbox inside a systemd user scope, with no network, read-only inputs and memory, process and CPU limits; there is no Docker.
