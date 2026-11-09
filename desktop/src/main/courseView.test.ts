@@ -27,6 +27,11 @@ describe('course view', () => {
     expect(view.topics.map((t) => t.mastery)).toEqual([0.9, 0.5, 0]);
   });
 
+  it('carries the topics each topic builds on', () => {
+    const view = courseView(progress({ kind: 'practice', exercise: 'e', concept: 'state' }), [], ready, new Set());
+    expect(view.topics.map((t) => t.requires)).toEqual([[], ['values'], []]);
+  });
+
   it('carries each topic’s check count, and keeps a checked topic’s activity open after the course moves on', () => {
     const moved = { ...progress({ kind: 'practice', exercise: 'e', concept: 'state' }), concepts: concepts.map((c) => (c.id === 'forms' ? { ...c, attempts: 2, mastery: 0.6 } : c)) };
     const view = courseView(moved, [], ready, new Set());

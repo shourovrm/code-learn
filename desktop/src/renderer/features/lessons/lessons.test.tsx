@@ -114,6 +114,31 @@ describe('the lesson page (steps through the chapter)', () => {
   });
 });
 
+describe('a topic not written yet', () => {
+  const unwritten = async () => {
+    const { api, course } = await mockWithCourse();
+    const [first, , third] = course.topics;
+    const real = api.course.bind(api);
+    api.course = async () => {
+      const now = (await real())!;
+      return { ...now, topics: now.topics.map((t) => (t.id === third.id ? { ...t, lessons: [], requires: [first.id] } : t)) };
+    };
+    return { api, first, third };
+  };
+
+  it('offers to write its lessons, names what it builds on, and warns about a topic not started', async () => {
+    const user = userEvent.setup();
+    const { api, first, third } = await unwritten();
+    const write = vi.spyOn(api, 'writeLesson');
+    renderApp({ to: 'topic', topicId: third.id }, api);
+    expect(await screen.findByText("This topic's lessons aren't written yet.")).toBeInTheDocument();
+    expect(screen.getByText(`Builds on: ${first.title}`)).toBeInTheDocument();
+    expect(screen.getByText(`You haven't started ${first.title} yet. This lesson will assume you know it.`)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: "Write this topic's lessons" }));
+    expect(write).toHaveBeenCalledWith(third.id);
+  });
+});
+
 describe('lesson examples', () => {
   it('shows each example where the lesson places it, and runs it on request', async () => {
     const user = userEvent.setup();

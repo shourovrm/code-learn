@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { CourseView, TopicView } from '../../shared/api';
 import { continueRoute, reviewText, settled } from './course';
 
-const topic = (over: Partial<TopicView> = {}): TopicView => ({ id: 'a', title: 'A', state: 'now', mastery: 0, checks: 0, stuck: false, lessons: [], activity: 'locked', ...over });
+const topic = (over: Partial<TopicView> = {}): TopicView => ({ id: 'a', title: 'A', state: 'now', requires: [], mastery: 0, checks: 0, stuck: false, lessons: [], activity: 'locked', ...over });
 const course = (over: Partial<CourseView> = {}): CourseView => ({ title: 'G', goal: 'G', track: 't', setup: 'ready', activities: true, topics: [topic()], done: false, ...over });
 
 describe('settled', () => {
@@ -26,7 +26,7 @@ describe('settled', () => {
 });
 
 describe('continueRoute', () => {
-  const topic = (activity: 'open' | 'locked' | 'writing' | 'passed') => ({ id: 'state', title: 'State', state: 'now' as const, mastery: 0, checks: 0, stuck: false, lessons: [], activity });
+  const topic = (activity: 'open' | 'locked' | 'writing' | 'passed') => ({ id: 'state', title: 'State', state: 'now' as const, requires: [], mastery: 0, checks: 0, stuck: false, lessons: [], activity });
   it('opens the activity when it is open, and the topic page otherwise', () => {
     expect(continueRoute(topic('open'))).toEqual({ to: 'practice', concept: 'state' });
     for (const a of ['locked', 'writing', 'passed'] as const) expect(continueRoute(topic(a))).toEqual({ to: 'topic', topicId: 'state' });

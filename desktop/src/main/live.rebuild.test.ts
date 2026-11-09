@@ -39,3 +39,20 @@ describe('rebuilding topics', () => {
     expect(t.c.lessons.some((l) => l.concept === 'values')).toBe(true);
   });
 });
+
+describe('writing a topic ahead of the path', () => {
+  it("starts a lesson job for that topic, which isn't the current one", async () => {
+    const t = live();
+    await practising(t);
+    const before = t.jobs.ran.length;
+    await t.api.writeLesson('state');
+    const lesson = await settle(async () => t.jobs.ran.slice(before).find((j) => j.kind === 'lesson'), Boolean, 'Lesson job');
+    expect(lesson!.brief).toContain('Concept: state');
+  });
+
+  it('refuses a topic the course does not have', async () => {
+    const t = live();
+    await practising(t);
+    await expect(t.api.writeLesson('nope')).rejects.toThrow(/isn’t in this course/);
+  });
+});

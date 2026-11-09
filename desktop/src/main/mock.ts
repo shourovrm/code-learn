@@ -343,7 +343,7 @@ export function createMock(options: MockOptions = {}): CodeLearnApi {
     }
     const activity = exercise(concept.id, 1);
     activities.set(activity.id, { activity, fails: 0 });
-    return { id: concept.id, title: concept.title, state: 'later' as const, mastery: 0, checks: 0, stuck: false, lessons: own.map((l) => ({ id: l.id, title: l.title, state: 'writing' as const })), activity: 'writing' as const };
+    return { id: concept.id, title: concept.title, state: 'later' as const, requires: concept.requires, mastery: 0, checks: 0, stuck: false, lessons: own.map((l) => ({ id: l.id, title: l.title, state: 'writing' as const })), activity: 'writing' as const };
   }
 
   /** A concept's `n`th activity, from its starter files. */
@@ -979,6 +979,14 @@ export function createMock(options: MockOptions = {}): CodeLearnApi {
         deferred.delete(concept);
         Object.assign(topicOf(concept), addConcept(roadmapConcept));
       }
+      advance();
+    },
+
+    async writeLesson(concept) {
+      agentJob();
+      const roadmapConcept = approved!.concepts.find((x) => x.id === concept);
+      if (!roadmapConcept) throw new Error('That topic isn’t in this course.');
+      if (topicOf(concept).lessons.length === 0) Object.assign(topicOf(concept), addConcept(roadmapConcept));
       advance();
     },
 

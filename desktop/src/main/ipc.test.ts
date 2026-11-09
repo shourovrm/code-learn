@@ -48,6 +48,7 @@ const GOOD: Record<Exclude<keyof CodeLearnApi, 'onCheckProgress' | 'onJobProgres
   skip: ['values'],
   easier: ['values'],
   rebuildTopics: [['values'], true, 'Use Linux examples'],
+  writeLesson: ['values'],
   rebuild: ['react@1'],
   removeTrack: ['react@1'],
   usage: [],

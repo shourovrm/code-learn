@@ -199,6 +199,8 @@ export interface TopicView {
   state: TopicState;
   /** 0 to 1. */
   mastery: number;
+  /** The ids of the topics this one builds on, from the roadmap. */
+  requires: string[];
   /** Graded checks on this topic so far: with a read lesson, how the Learn page tells a started topic. */
   checks: number;
   stuck: boolean;
@@ -500,6 +502,8 @@ export interface CodeLearnApi {
    * reach the topics' lesson and exercise jobs; without any, earlier ones for those topics are dropped.
    */
   rebuildTopics(concepts: string[], replace: boolean, instructions?: string): Promise<void>;
+  /** Writes the lessons of a topic opened ahead of the path. The current topic stays where it is. */
+  writeLesson(concept: string): Promise<void>;
 
   rebuild(trackRef: string): Promise<void>;
 

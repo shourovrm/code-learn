@@ -43,7 +43,7 @@ export function courseView(
     const isCurrent = c.id === current;
     if (!activities) return {
       id: c.id, title: c.title, state: c.covered ? 'covered' : isCurrent ? 'now' : 'later',
-      mastery: 0, checks: 0, stuck: false, lessons: own, activity: 'none',
+      requires: c.requires, mastery: 0, checks: 0, stuck: false, lessons: own, activity: 'none',
     };
     let activity: TopicView['activity'] = 'locked';
     // A due review reopens a mastered topic's activity (core §7).
@@ -62,7 +62,7 @@ export function courseView(
     const reviewIn = !review && left > 0 ? Math.ceil(left / 86_400_000) : undefined;
     return {
       // Before its first check a topic has only core's starting estimate, not mastery the learner showed.
-      id: c.id, title: c.title, state: c.mastered ? 'mastered' : isCurrent ? 'now' : 'later', mastery: c.attempts > 0 ? c.mastery : 0, checks: c.attempts, stuck: c.stuck, lessons: own, activity,
+      id: c.id, title: c.title, state: c.mastered ? 'mastered' : isCurrent ? 'now' : 'later', requires: c.requires, mastery: c.attempts > 0 ? c.mastery : 0, checks: c.attempts, stuck: c.stuck, lessons: own, activity,
       ...(review ? { review } : {}), ...(reviewIn ? { reviewIn } : {}),
     };
   });

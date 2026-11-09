@@ -35,6 +35,7 @@ export function TopicPage({ topicId }: { topicId: string }) {
         {/* A failed setup says so above the lessons, which stay readable. */}
         {course.setup === 'failed' && <SetupFailed course={course} topicId={topicId} onRetry={reload} />}
         {!course.activities && <p className="sub">{topic.lessons.filter((l) => l.state === 'read').length} of {topic.lessons.length} lessons read</p>}
+        {topic.lessons.length === 0 && <Unwritten course={course} topic={topic} onWrite={reload} />}
         <Items topic={topic} onRetry={reload} />
         {(course.setup === 'proposing' || course.setup === 'installing') &&
           (setupJob ? (
@@ -51,6 +52,34 @@ export function TopicPage({ topicId }: { topicId: string }) {
       {course.stalled && !(course.stalled === 'lesson' && topic?.lessons.some((l) => l.state === 'failed')) && <Stalled stalled={course.stalled} work={course.stalledWork} later={course.later} retry={reload} />}
       {stale !== undefined && <Stale error={stale} retry={reload} />}
     </main>
+  );
+}
+
+/** A topic opened ahead of the path, with no lessons yet: what it builds on, and a way to have them written. */
+function Unwritten({ course, topic, onWrite }: { course: CourseView; topic: TopicView; onWrite: () => void }) {
+  const api = useApi();
+  const { fail } = useRouter();
+  const writing = useBusy();
+  const before = course.topics.filter((t) => topic.requires.includes(t.id));
+  const started = (t: TopicView) => t.state === 'mastered' || t.state === 'covered' || t.checks > 0 || t.lessons.some((l) => l.state === 'read');
+  const write = () =>
+    writing.guard(async () => {
+      try {
+        await api.writeLesson(topic.id);
+        onWrite();
+      } catch (e) {
+        fail(e);
+      }
+    });
+  return (
+    <section className="card panel a-up">
+      {before.length > 0 && <p className="sub">Builds on: {before.map((t) => t.title).join(' · ')}</p>}
+      <p>This topic's lessons aren't written yet.</p>
+      {before.filter((t) => !started(t)).map((t) => (
+        <p key={t.id} className="locked">You haven't started {t.title} yet. This lesson will assume you know it.</p>
+      ))}
+      <Button disabled={writing.busy} onClick={write}>Write this topic's lessons</Button>
+    </section>
   );
 }
 

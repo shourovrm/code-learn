@@ -1030,6 +1030,16 @@ export function createLive(d: LiveDeps): Live {
       schedule(course);
     },
 
+    async writeLesson(concept) {
+      const course = core.getRoadmap(ws, approved()).course;
+      const topic = core.getRoadmap(ws, course).concepts.find((c) => c.id === concept);
+      if (!topic) throw new SafeError('That topic isn’t in this course.');
+      const lessonsOf = () => core.listLessons(ws, course).filter((l) => l.concept === concept).length;
+      // Core saves a lesson for any roadmap topic and leaves the current one where it is.
+      background(`lesson:${course}:${concept}`, 'lesson', briefs.lesson(concept, topic.title, rebuildNote(course, concept)), course, () => lessonsOf() > 0, { concept });
+      schedule(course);
+    },
+
     async rebuild(ref) {
       // A job of its own (§4.11), heard whatever course is on screen, since Tracks isn't a course's. Core reports no
       // steps, so it has the one stage; it starts when its turn comes and ends with the rebuild, failed or not.
