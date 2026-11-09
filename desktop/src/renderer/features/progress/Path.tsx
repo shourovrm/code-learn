@@ -56,7 +56,7 @@ function Stop({ topic, index, current, track, up, down, last, picking }: StopPro
   const { go } = useRouter();
   return (
     <li className={`stop ${topic.state}${current ? ' current' : ''}`} style={timing(index)} aria-current={current ? 'step' : undefined}>
-      {picking && <input type="checkbox" className="pick" aria-label={topic.title} checked={picking.chosen.has(topic.id)} onChange={() => picking.toggle(topic.id)} />}
+      {picking && <input type="checkbox" className="topic-pick" aria-label={topic.title} checked={picking.chosen.has(topic.id)} onChange={() => picking.toggle(topic.id)} />}
       <span className="vine" aria-hidden="true">
         {index > 0 && <i className={`seg up${up ? ' on' : ''}`} />}
         {!last && <i className={`seg down${down ? ' on' : ''}`} />}

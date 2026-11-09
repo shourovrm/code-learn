@@ -186,7 +186,7 @@ textarea.field { height: auto; padding: 12px 16px; line-height: 1.5; resize: ver
 .solved p { margin: 0; }
 .solved p + p { margin-top: 4px; font-size: 14px; color: var(--muted); }
 /* Previous and Next between exercises, at the foot of the statement (DESIGN D). */
-.exnav { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 8px; }
+.exnav { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: auto; padding-top: 8px; }
 .outline { gap: 6px; }
 .outline .h3 { padding: 0 14px 8px; }
 .outline .item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: none; border-radius: 10px; background: transparent; color: var(--faint); text-align: left; }
@@ -300,7 +300,7 @@ textarea.field { height: auto; padding: 12px 16px; line-height: 1.5; resize: ver
 .rebuild-all { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; }
 .rebuild-bar .quiet-text { flex: 1 1 auto; margin: 0; }
 .path.picking { padding-left: 34px; }
-.pick { position: absolute; left: -34px; top: 50%; width: 20px; height: 20px; margin: 0; transform: translateY(-50%); accent-color: var(--green-ink); }
+.topic-pick { position: absolute; left: -34px; top: 50%; width: 20px; height: 20px; margin: 0; transform: translateY(-50%); accent-color: var(--green-ink); }
 .rebuild-list { margin: 0; padding: 0; list-style: none; font-size: 14px; }
 .rebuild-replace { display: flex; align-items: flex-start; gap: 8px; font-size: 14px; text-align: left; }
 .rebuild-replace input, .rebuild-all input { accent-color: var(--green-ink); }
@@ -582,6 +582,8 @@ h1[tabindex="-1"]:focus { outline: none; }
   .reader { padding: 24px 20px; }
   .reader .head { flex-wrap: wrap; }
   .etool { height: auto; min-height: 56px; flex-wrap: wrap; }
+  .etool > .actions { flex-shrink: 1; min-width: 0; }
+  .etool .btn { height: auto; min-height: 42px; white-space: normal; }
   .etabs { height: auto; flex-wrap: wrap; }
   .etab { height: 44px; }
   /* A roadmap row: its title on the first line, its buttons under it on the right. */
