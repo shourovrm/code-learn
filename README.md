@@ -1,3 +1,12 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/brand/code-learn-logo-dark.svg">
+    <img src="docs/brand/code-learn-logo.svg" alt="code-learn" width="420">
+  </picture>
+</p>
+
+<p align="center"><img src="docs/brand/sprig.svg" alt="Sprig, the code-learn mascot" width="150"></p>
+
 # code-learn
 
 code-learn is a Linux app for learning to code by practice: your own coding agent writes the lessons and graded exercises, and code-learn checks, grades and tracks your progress.
@@ -10,6 +19,17 @@ code-learn is a Linux app for learning to code by practice: your own coding agen
 Your agent (Claude Code, Codex, Cursor or [pi](https://pi.dev), signed in with your own account) writes everything a course needs: a roadmap of topics, a lesson per topic, and exercises with hidden tests. code-learn launches the agent with only code-learn's tools, checks each exercise before you see it, runs your code in a sandbox and keeps a per-topic mastery score. code-learn never calls a model API, and it never reads, stores or asks for credentials.
 
 code-learn ships no languages. The first time a course needs a language or framework, your agent writes a *track*: a list of [conda-forge](https://conda-forge.org) packages (for example `python=3.13` and `pytest`), an optional setup command, and two small probe programs. code-learn installs the packages with [micromamba](https://mamba.readthedocs.io) into `~/.code-learn/envs/<track>@<version>/`, then installs the track only if a correct probe passes and a wrong probe fails, with the network off.
+
+## Screenshots
+
+| | |
+|---|---|
+| ![The course path: mastered topics, the current topic with Continue, and the topics still to come](docs/screenshots/learn.png) | ![The same course path in the dark theme](docs/screenshots/learn-dark.png) |
+| The course path, with Sprig on the topic to do now | The dark theme follows the desktop, or set it in the sidebar |
+| ![A lesson, with the topic's outline on the left and code-learn's tutor on the right](docs/screenshots/lesson.png) | ![An exercise after Check: 4 of 4 tests passed](docs/screenshots/practice.png) |
+| A lesson, with the topic's outline and the tutor | An exercise, checked in the sandbox |
+| ![The roadmap your agent proposes, which you can edit before approving](docs/screenshots/roadmap.png) | ![Connect an agent: Claude Code, Codex, Cursor or pi](docs/screenshots/connect.png) |
+| The roadmap your agent proposes, editable before you approve it | Connect the agent you already use |
 
 ## How it works
 
@@ -33,7 +53,18 @@ The desktop app bundles micromamba. From a terminal you also need Node.js 22 or 
 
 ## Install
 
-code-learn has no published release yet, so you build it from source:
+Download the AppImage from the [latest release](https://github.com/shourovrm/code-learn/releases) (a pre-release for now), make it executable and run it:
+
+```bash
+chmod +x code-learn-*.AppImage
+./code-learn-*.AppImage
+```
+
+Running an AppImage needs FUSE 2 (`fuse2` on Arch).
+
+### From source
+
+The command-line core:
 
 ```bash
 git clone https://github.com/shourovrm/code-learn.git
