@@ -33,7 +33,7 @@ function whatOf(p: JobProgress, course: Course): string {
     case 'lesson':
       return topic ? `Writing a lesson on ${topic}` : 'Writing a lesson';
     default:
-      return topic ? `Writing an activity on ${topic}` : 'Writing an activity';
+      return topic ? `Writing an exercise on ${topic}` : 'Writing an exercise';
   }
 }
 

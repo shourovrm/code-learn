@@ -11,20 +11,11 @@ the tokens, and `styles/design.test.ts` fails on a raw size or colour anywhere e
 Faces: Schibsted Grotesk (`--display`) for headings, Atkinson Hyperlegible Next (`--sans`) for body and controls,
 JetBrains Mono (`--mono`) for code, output and measurements only. All bundled woff2.
 
-| Token | Value | Use |
-|---|---|---|
-| `--type-heading-xxlarge` | 700 32px/36px display | welcome hero |
-| `--type-heading-xlarge` | 700 28px/32px display | screen title |
-| `--type-heading-large` | 700 24px/28px display | exercise or lesson title |
-| `--type-heading-medium` | 700 20px/24px display | section title, current topic |
-| `--type-heading-small` | 700 16px/20px display | card title, topic name |
-| `--type-heading-xsmall` | 700 14px/20px display | small heading |
-| `--type-heading-xxsmall` | 700 12px/16px display | group label in the sidebar |
-| `--type-body-large` | 400 16px/24px sans | lesson and task prose |
-| `--type-body` | 400 14px/20px sans | default, inputs, buttons |
-| `--type-body-small` | 400 12px/16px sans | metadata, helper text |
-| `--type-code` | 400 14px/24px mono | editor, code blocks |
-| `--type-code-small` | 400 12px/16px mono | file tabs, diffs, terminal |
+Tokens are `--type-<name>`, used as `font: var(--type-body)`. Headings (700, display): `heading-xxlarge` 32/36
+welcome hero, `xlarge` 28/32 screen title, `large` 24/28 exercise or lesson title, `medium` 20/24 section or current
+topic, `small` 16/20 card or topic name, `xsmall` 14/20, `xxsmall` 12/16 sidebar group label. Body (400, sans):
+`body-large` 16/24 prose, `body` 14/20 default, inputs and buttons, `body-small` 12/16 metadata. Code (400, mono):
+`code` 14/24 editor and code blocks, `code-small` 12/16 file tabs, diffs and terminal.
 
 Weights 400, 500, 600, 700 (Atlassian's 653 needs a variable face; the bundled faces stop at 700). Headings
 track at -0.02em. Body measure at most 72ch.
@@ -89,9 +80,9 @@ under the code) | tutor (`--tutor-w` 304px, ground). Below 1440px the side colum
 
 ## Layout of the Learn screen
 
-Sidebar (`--sidebar-w` 240px, garden: navigation, your courses, jobs, theme) | the course path (topics as rows on a
-2px ink rule, each with its seed, shoot or sprout; the current topic open to its lessons and exercises) | a 288px
-side column (next up with Continue, rebuild, usage).
+Sidebar (`--sidebar-w` 240px, garden) | the course path (topics on a 2px ink rule, each with its seed, shoot or
+sprout; the current topic is a card with Sprig and Continue, so the action sits on the topic it opens) | a 288px
+side column (mastery, activities, usage).
 
 ## Gates
 
@@ -101,10 +92,5 @@ rules still switch on at 200% zoom on a 1080p screen); no hex, `rgb()` or `hsl()
 Not gated: colours drawn in code (the terminal palette, the mermaid palette, Sprig's art), which set their own
 values from these tokens by hand.
 
-## Not yet followed
 
-- The exercise statement doesn't list the topic's lessons and exercises with their growth stages (the mockup's
-  "This topic" strip): Practice has no such list yet, so it needs new markup and data, not a restyle.
-- On the Learn screen, Continue stays on the current topic's card rather than in the side column; the side column
-  holds Mastery, Activities and Usage.
-- Copy has not had its pass (docs/copy.md): wording is unchanged.
+Copy: `docs/copy.md`.

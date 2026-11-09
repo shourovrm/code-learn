@@ -35,7 +35,7 @@ describe('JobBar (§4.11)', () => {
     // Stage 1 of 3 reached fills 2 of 4 shares; half its steps add half a share.
     expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '63');
     const gate = job({ kind: 'author', stage: 2, part: { done: 2, total: 3 }, steps: [{ kind: 'step', label: "code-learn is checking that the exercise isn't solved yet" }] });
-    rerender(<JobBar job={{ progress: gate, at: Date.now() }} label="Writing the activity" />);
+    rerender(<JobBar job={{ progress: gate, at: Date.now() }} label="Writing the exercise" />);
     expect(screen.getByText("code-learn is checking that the exercise isn't solved yet (step 2 of 3)")).toBeInTheDocument();
   });
 
@@ -95,7 +95,7 @@ describe('JobBar (§4.11)', () => {
     expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuetext', 'Taking a little longer, 0:00');
     // A gate's own sentence would wrap to lines here: the stage and the real fraction say it.
     const gate = job({ kind: 'author', stage: 2, part: { done: 3, total: 3 }, steps: [{ kind: 'step', label: 'code-learn is checking that the tests catch mistakes' }] });
-    rerender(<JobBar job={{ progress: gate, at: Date.now() }} label="Writing the activity" compact />);
+    rerender(<JobBar job={{ progress: gate, at: Date.now() }} label="Writing the exercise" compact />);
     expect(document.querySelector('.job-step')).toHaveTextContent(/^Checking the exercise \(step 3 of 3\)$/);
   });
 });

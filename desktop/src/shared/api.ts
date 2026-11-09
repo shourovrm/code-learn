@@ -34,7 +34,7 @@ export const NOT_COUNTED = {
 } as const;
 /** Run and lesson examples have no recovery screen, so their line says what to do next (§4.10). */
 export const RUN_AGAIN: Record<string, string> = {
-  [NOT_COUNTED.sandbox]: 'Check this computer under Settings, then run again.',
+  [NOT_COUNTED.sandbox]: 'Check this computer, then run again.',
   [NOT_COUNTED['sandbox-busy']]: 'Wait a moment, then run again.',
   [NOT_COUNTED.disk]: 'Free some space, then run again.',
   [NOT_COUNTED.offline]: 'Connect to the internet, then run again.',

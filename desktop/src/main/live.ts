@@ -917,7 +917,7 @@ export function createLive(d: LiveDeps): Live {
     async activity(concept) {
       const course = core.getRoadmap(ws, approved()).course;
       const slug = exerciseFor(concept, course);
-      if (!slug) throw new SafeError('This activity isn’t ready yet.');
+      if (!slug) throw new SafeError('This exercise isn’t ready yet.');
       openedIn.set(slug, course);
       const exercise = await core.getExercise(ws, slug, course);
       return activityView(exercise, core.readLearnerFiles(ws, slug, course), concept);

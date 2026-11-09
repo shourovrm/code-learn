@@ -59,14 +59,14 @@ function Waiting({ topic, course, stale, retry }: { topic: TopicView; course: Co
   const { go } = useRouter();
   const why = topic.lessons.some((l) => l.state !== 'read') ? 'Practice opens after you finish the lessons.'
     : course.setup !== 'ready' ? 'Practice opens once setup is done.'
-    : 'Practice opens here once your activity is written.';
+    : 'Practice opens here once your exercise is written.';
   return (
     <main className="center">
       {/* Laid out as the topic page is, so the heading stays put on the way to the lessons. */}
       <div className="topic-page">
         <h1 className="h1 a-up">{topic.title}</h1>
         <p className="sub a-up" style={stagger(1)}>{why}</p>
-        {course.setup === 'ready' && topic.activity === 'writing' && <Writing kind="author" concept={topic.id} label={topic.review ? 'Writing the review' : 'Writing the activity'} />}
+        {course.setup === 'ready' && topic.activity === 'writing' && <Writing kind="author" concept={topic.id} label={topic.review ? 'Writing the review' : 'Writing the exercise'} />}
         <div className="actions a-up" style={stagger(2)}>
           <Button onClick={() => go({ to: 'topic', topicId: topic.id })}>Go to the lessons</Button>
         </div>

@@ -156,7 +156,7 @@ describe('live CodeLearnApi: setup consent and install (§4.1)', () => {
       throw coreError('bwrap: Creating new namespace failed: Operation not permitted', 'sandbox', 'sandbox-blocked');
     };
     // This computer's problem reaches the learner as code-learn's words and a next step, not core's.
-    await expect(t.api.rebuild('react@1')).rejects.toThrow("code-learn's sandbox couldn't run that. Check this computer under Settings, then try again.");
+    await expect(t.api.rebuild('react@1')).rejects.toThrow("code-learn's sandbox couldn't run that. Check this computer, then try again.");
     expect(heard.map((p) => [p.kind, p.ended ?? false])).toEqual([['rebuild', false], ['rebuild', true]]);
     expect(await t.api.jobProgress()).toEqual([]);
   });

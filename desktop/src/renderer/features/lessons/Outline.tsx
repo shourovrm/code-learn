@@ -31,18 +31,18 @@ export function Outline({ topic, current }: { topic: TopicView; current: string 
       {topic.activity !== 'none' && (open ? (
         <button type="button" className="item link" onClick={() => go({ to: 'practice', concept: topic.id })}>
           <Growth stage={topic.activity === 'passed' ? 'sprout' : 'seed'} size={20} />
-          Activity
+          Exercise
         </button>
       ) : topic.activity === 'writing' ? (
         <div className="item writing">
-          <span className="item-head"><Growth stage="seed" size={20} />Activity</span>
-          <Writing kind="author" concept={topic.id} label="Writing the activity" compact waiting={lessonWriting ? 'Waiting for the lesson' : undefined} />
+          <span className="item-head"><Growth stage="seed" size={20} />Exercise</span>
+          <Writing kind="author" concept={topic.id} label="Writing the exercise" compact waiting={lessonWriting ? 'Waiting for the lesson' : undefined} />
         </div>
       ) : (
         <>
           <span className="item">
             <Growth stage="seed" size={20} />
-            <span className="fill">Activity</span>
+            <span className="fill">Exercise</span>
           </span>
           {topic.activity === 'locked' && <span className="locked">Opens after you finish the lessons</span>}
         </>

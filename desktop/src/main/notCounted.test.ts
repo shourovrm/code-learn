@@ -39,7 +39,7 @@ describe('not counted (§5)', () => {
   it("says a failed rebuild in plain words: this computer's problem and its next step, or that nothing was accepted", () => {
     const say = (e: unknown) => (rebuildFailure(e) as Error).message;
     // Core's own messages carry commands and installer output: none reaches the learner.
-    expect(say(coreError('bwrap: Creating new namespace failed: Operation not permitted', 'sandbox', 'sandbox-blocked'))).toBe("code-learn's sandbox couldn't run that. Check this computer under Settings, then try again.");
+    expect(say(coreError('bwrap: Creating new namespace failed: Operation not permitted', 'sandbox', 'sandbox-blocked'))).toBe("code-learn's sandbox couldn't run that. Check this computer, then try again.");
     expect(say(coreError('Could not resolve host conda.anaconda.org', 'offline'))).toBe("code-learn couldn't reach the network. Connect to the internet, then try again.");
     expect(say(Object.assign(new Error('full'), { code: 'ENOSPC' }))).toBe('This computer is out of disk space. Free some space, then try again.');
     expect(say(coreError('Gate "build" failed: the toolchain didn\'t install.'))).toBe("The rebuilt environment wasn't accepted, so nothing changed.");

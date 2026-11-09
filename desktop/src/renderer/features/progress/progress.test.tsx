@@ -362,17 +362,17 @@ it('shows lessons read and an Activities switch, with no activity on topic pages
   renderApp({ to: 'learn' }, api);
   expect(await screen.findByRole('heading', { name: 'Lessons read' })).toBeInTheDocument();
   expect(screen.queryByRole('heading', { name: 'Mastery' })).not.toBeInTheDocument();
-  const toggle = screen.getByRole('switch', { name: 'Activities' });
+  const toggle = screen.getByRole('switch', { name: 'Exercises' });
   expect(toggle).not.toBeChecked();
   await user.click(screen.getByRole('button', { name: 'Continue' }));
-  expect(screen.queryByText('Activity')).not.toBeInTheDocument();
+  expect(screen.queryByText('Exercise')).not.toBeInTheDocument();
 });
 
 it('switches Activities on and off from the course map', async () => {
   const user = userEvent.setup();
   const { api } = await mockWithCourse();
   renderApp({ to: 'learn' }, api);
-  const toggle = await screen.findByRole('switch', { name: 'Activities' });
+  const toggle = await screen.findByRole('switch', { name: 'Exercises' });
   expect(toggle).toBeChecked();
   // A switch, not a button: an "On" or "Off" button reads as the action it would take.
   expect(toggle).not.toHaveClass('btn');
@@ -390,23 +390,23 @@ it('says why the Activities switch waits while it changes', async () => {
   const { api } = await mockWithCourse();
   const set = api.setActivities.bind(api);
   let finish = () => {};
-  // Turning activities on can run a roadmap job, and off waits for setup to stop: both take a while.
+  // Turning exercises on can run a roadmap job, and off waits for setup to stop: both take a while.
   api.setActivities = (on) => new Promise<void>((r) => (finish = r)).then(() => set(on));
   renderApp({ to: 'learn' }, api);
-  const toggle = await screen.findByRole('switch', { name: 'Activities' });
+  const toggle = await screen.findByRole('switch', { name: 'Exercises' });
   expect(toggle).not.toHaveAccessibleDescription();
   await user.click(toggle);
   expect(toggle).toBeDisabled();
-  expect(toggle).toHaveAccessibleDescription('Turning activities off');
+  expect(toggle).toHaveAccessibleDescription('Turning exercises off');
   finish();
   await screen.findByRole('heading', { name: 'Lessons read' });
   expect(toggle).not.toHaveAccessibleDescription();
   await user.click(toggle);
-  expect(toggle).toHaveAccessibleDescription('Turning activities on');
-  expect(screen.getByText('Turning activities on')).toBeVisible();
+  expect(toggle).toHaveAccessibleDescription('Turning exercises on');
+  expect(screen.getByText('Turning exercises on')).toBeVisible();
   finish();
   await screen.findByRole('heading', { name: 'Mastery' });
-  expect(screen.queryByText('Turning activities on')).not.toBeInTheDocument();
+  expect(screen.queryByText('Turning exercises on')).not.toBeInTheDocument();
 });
 
 it('finishes a lessons-only topic from the reader and returns to the map', async () => {
@@ -415,7 +415,7 @@ it('finishes a lessons-only topic from the reader and returns to the map', async
   await api.setActivities(false);
   renderApp({ to: 'lesson', lessonId: course.topics[0].lessons[0].id }, api);
   await screen.findByRole('button', { name: 'Next' });
-  expect(screen.queryByText('Activity')).not.toBeInTheDocument();
+  expect(screen.queryByText('Exercise')).not.toBeInTheDocument();
   await user.click(screen.getByRole('button', { name: 'Next' }));
   await screen.findByRole('heading', { name: 'useState' });
   await user.click(screen.getByRole('button', { name: 'Next' }));

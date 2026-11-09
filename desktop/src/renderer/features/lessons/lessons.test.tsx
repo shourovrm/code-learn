@@ -97,7 +97,7 @@ describe('lesson examples', () => {
     const real = await api.lesson(first.id);
     api.lesson = async () => ({ ...real, markdown: '```example\n1\n```', examples: [{ files: [{ path: 'main.js', text: 'console.log(1)' }] }] });
     const reasons = [NOT_COUNTED.sandbox, NOT_COUNTED['sandbox-busy'], NOT_COUNTED.disk, NOT_COUNTED.offline];
-    const next = ['Check this computer under Settings, then run again.', 'Wait a moment, then run again.', 'Free some space, then run again.', 'Connect to the internet, then run again.'];
+    const next = ['Check this computer, then run again.', 'Wait a moment, then run again.', 'Free some space, then run again.', 'Connect to the internet, then run again.'];
     let i = 0;
     api.runExample = async () => ({ kind: 'not-run', reason: reasons[i] });
     renderApp({ to: 'lesson', lessonId: first.id }, api);
@@ -625,7 +625,7 @@ describe('the activity while the agent writes it', () => {
     const writing = { ...course, topics: course.topics.map((t, i) => (i === 0 ? { ...t, activity: 'writing' as const } : t)) };
     api.course = async () => writing;
     renderApp({ to: 'topic', topicId: course.topics[0].id }, api);
-    expect(await screen.findByText('Writing the activity')).toBeInTheDocument();
+    expect(await screen.findByText('Writing the exercise')).toBeInTheDocument();
     expect(screen.queryByText('Opens after you finish the lessons')).not.toBeInTheDocument();
   });
 

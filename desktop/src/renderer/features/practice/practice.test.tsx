@@ -394,8 +394,8 @@ describe('Practice in the sidebar', () => {
     const tell = jobBus(api);
     tell(jobAt('author-1', 'author', { concept: topic }));
     renderApp({ to: 'practice', concept: topic }, api);
-    expect(await screen.findByText('Practice opens here once your activity is written.')).toBeInTheDocument();
-    expect(await screen.findByRole('progressbar', { name: 'Writing the activity' })).toBeInTheDocument();
+    expect(await screen.findByText('Practice opens here once your exercise is written.')).toBeInTheDocument();
+    expect(await screen.findByRole('progressbar', { name: 'Writing the exercise' })).toBeInTheDocument();
     expect(activity).not.toHaveBeenCalled();
     written = true;
     tell(jobAt('author-1', 'author', { concept: topic, ended: true }));
@@ -457,8 +457,8 @@ describe('Continue after a pass', () => {
   it("waits on Practice while the next activity is written, with its progress, and opens it by itself", async () => {
     const { user } = await pass({ later: { after: 'check', set: { slow: 4 } } });
     await user.click(within(results()).getByRole('button', { name: 'Continue' }));
-    expect(await screen.findByText('Practice opens here once your activity is written.')).toBeInTheDocument();
-    expect(await screen.findByRole('progressbar', { name: 'Writing the activity' })).toBeInTheDocument();
+    expect(await screen.findByText('Practice opens here once your exercise is written.')).toBeInTheDocument();
+    expect(await screen.findByRole('progressbar', { name: 'Writing the exercise' })).toBeInTheDocument();
     await opensNext(5000);
     await vi.waitFor(() => expect(screen.getByRole('heading', { name: 'Click Counter 2', level: 1 })).toHaveFocus());
   });
@@ -514,7 +514,7 @@ describe('Continue to a review', () => {
     const { user, tell, first, review } = await pass();
     tell(jobAt('author-1', 'author', { concept: first.id }));
     await user.click(within(results()).getByRole('button', { name: 'Continue' }));
-    expect(await screen.findByText('Practice opens here once your activity is written.')).toBeInTheDocument();
+    expect(await screen.findByText('Practice opens here once your exercise is written.')).toBeInTheDocument();
     expect(await screen.findByRole('progressbar', { name: 'Writing the review' })).toBeInTheDocument();
     review.state = 'due';
     tell(jobAt('author-1', 'author', { concept: first.id, ended: true }));
@@ -651,7 +651,7 @@ describe('Run', () => {
     const { api, user } = await openIo();
     api.runProgram = async () => ({ kind: 'not-run', reason: NOT_COUNTED.sandbox });
     await user.click(screen.getByRole('button', { name: 'Run' }));
-    await vi.waitFor(() => expect(mirror()).toHaveTextContent(`${NOT_COUNTED.sandbox} Check this computer under Settings, then run again.`));
+    await vi.waitFor(() => expect(mirror()).toHaveTextContent(`${NOT_COUNTED.sandbox} Check this computer, then run again.`));
   });
 
   it('shows test results in Results alone: Try it and Check leave the pane to Run', async () => {

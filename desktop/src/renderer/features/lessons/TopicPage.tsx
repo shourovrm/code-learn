@@ -95,12 +95,12 @@ function Items({ topic, onRetry }: { topic: TopicView; onRetry: () => void }) {
       ))}
       {topic.activity !== 'none' && <div className={`row a-up${open ? '' : ' off'}${topic.activity === 'writing' ? ' writing' : ''}`} style={stagger(topic.lessons.length, 300)}>
         <Icon name="code" color="var(--faint)" size={18} />
-        <span className="fill">{topic.review ? 'Review' : 'Activity'}</span>
+        <span className="fill">{topic.review ? 'Review' : 'Exercise'}</span>
         {open ? (
           <Button onClick={() => go({ to: 'practice', concept: topic.id })}>{topic.activity === 'passed' ? 'Again' : 'Start'}</Button>
         ) : topic.activity === 'writing' ? (
           <Writing
-            kind="author" concept={topic.id} label={topic.review ? 'Writing the review' : 'Writing the activity'}
+            kind="author" concept={topic.id} label={topic.review ? 'Writing the review' : 'Writing the exercise'}
             waiting={topic.lessons.some((l) => l.state === 'writing') ? 'Waiting for the lesson' : undefined}
           />
         ) : (

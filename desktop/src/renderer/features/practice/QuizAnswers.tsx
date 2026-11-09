@@ -21,7 +21,7 @@ export function QuizAnswers({ questions, text, disabled, onChange }: {
     if (!answers || typeof answers !== 'object' || Array.isArray(answers) || Object.entries(answers).some(([n, choice]) =>
       !/^[1-9][0-9]*$/.test(n) || !questions[Number(n) - 1] || (choice !== null && (!Number.isInteger(choice) || choice < 1 || choice > questions[Number(n) - 1].choices.length)))) throw new Error();
   } catch {
-    return <p role="alert">Fix answers.yaml to use question and choice numbers, then reopen this activity.</p>;
+    return <p role="alert">Fix answers.yaml to use question and choice numbers, then reopen this exercise.</p>;
   }
   return <div className="quiz-questions stack loose">
     {questions.map((q, i) => <fieldset className="stack" key={i} disabled={disabled}>

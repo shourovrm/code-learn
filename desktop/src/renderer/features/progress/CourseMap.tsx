@@ -89,7 +89,7 @@ export function CourseMap() {
       )}
       <Aside course={course} usage={usage ?? null}>
         <div className="card activities">
-          <h2 className="h3 fill" id="activities-label">Activities</h2>
+          <h2 className="h3 fill" id="activities-label">Exercises</h2>
           <button type="button" className="switch" role="switch" aria-labelledby="activities-label" aria-describedby={changing.busy ? 'activities-why' : undefined} aria-checked={course.activities} disabled={changing.busy} onClick={() => changing.guard(async () => {
             setTurning(course.activities ? 'off' : 'on');
             try {
@@ -99,7 +99,7 @@ export function CourseMap() {
               fail(e);
             }
           })}><span className="thumb" /></button>
-          {changing.busy && <p className="quiet-text why" id="activities-why" role="status">Turning activities {turning}</p>}
+          {changing.busy && <p className="quiet-text why" id="activities-why" role="status">Turning exercises {turning}</p>}
         </div>
       </Aside>
       {course.stalled && <Stalled stalled={course.stalled} work={course.stalledWork} later={course.later} retry={reload} />}
