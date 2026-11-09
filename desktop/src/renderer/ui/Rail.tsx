@@ -50,7 +50,7 @@ export function Rail({ messages, onAsk, busy = false, answering, name, children 
         {children}
         <form className="composer" onSubmit={submit}>
           <Field aria-label="Ask code-learn" placeholder="Ask code-learn" value={text} maxLength={LIMITS.words} onChange={(e) => setText(e.target.value)} />
-          <Button type="submit" disabled={busy}>Send</Button>
+          <Button variant="ghost" type="submit" disabled={busy}>Send</Button>
         </form>
         <Limit value={text} max={LIMITS.words} />
       </div>

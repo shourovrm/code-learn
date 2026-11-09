@@ -52,7 +52,7 @@
 /* An exercise that has a passed check (DESIGN E): a card at the top of its statement. */
 .solved { padding: var(--space-150) var(--space-200); border: var(--border) solid var(--stmt-line, var(--green-line)); border-radius: var(--radius-card); background: var(--stmt-code, var(--green-soft)); color: var(--stmt-text, var(--ink)); }
 .solved p { margin: 0; }
-.solved p + p { margin-top: var(--space-050); font: var(--type-body); color: var(--stmt-muted, var(--muted)); }
+.solved p + p { margin-top: var(--space-050); font: var(--type-body); color: var(--stmt-text, var(--ink)); }
 /* Previous and Next between exercises, at the foot of the statement (DESIGN D). */
 .solution-note { margin: 0; padding: var(--space-100) var(--space-250); border-bottom: var(--border) solid var(--line); }
 .exnav { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-100); margin-top: auto; padding-top: var(--space-200); border-top: var(--border) solid var(--stmt-line); color: var(--stmt-muted); }
@@ -139,7 +139,7 @@
   .res.quiet { animation: none; }
 }
 .res .idle { flex: 1; display: grid; place-items: center; color: var(--muted); font: var(--type-body-large); }
-.rhead { display: flex; align-items: center; gap: var(--space-150); }
+.rhead { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-150); }
 .rhead .h3 { font: var(--type-heading-small); color: var(--orange-ink); }
 .tline { display: flex; gap: var(--space-150); align-items: center; font: var(--type-body); font-weight: 600; }
 .cmp { display: inline-flex; gap: var(--space-100); margin-left: var(--space-075); font: var(--type-code-small); font-variant-ligatures: none; }
