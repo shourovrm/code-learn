@@ -49,7 +49,6 @@ Each item is verified by an automated test unless marked *journey*. Journeys run
 
 - The full cross-host model bench, including the desktop's per-job flow.
 - Independent-solve gate, placement quiz, per-test concept tags.
-- Mixing code and quizzes in one course (Both), and per-concept activity styles.
 - Practice hooks for Codex and Cursor in the terminal; protection is advisory there.
 - Multi-container tracks, course sharing, watch mode.
 - For heavy tests: per-exercise time limits (the track's `time_ms` applies to every exercise), running a check's test sets in parallel, a runner that stays warm across io cases (each case starts `run` afresh), and a unit `build` step timed apart from `test`.
@@ -75,7 +74,7 @@ $CODE_LEARN_HOME (default ~/.code-learn)
 ```
 
 - **Ids.** Track ids, versions, courses, slugs and concept ids match `^[a-z0-9][a-z0-9._-]{0,63}$`, and versions are positive integers. No path is ever built from an unvalidated id.
-- **Format versions.** Only the files code-learn writes (`course.json`, `exercise.json`, `track.json`, `lesson.json`, `proposal.json`, `events.jsonl` records, `code-learn.json`) carry `format_version: 1`. Loaders reject unknown versions.
+- **Format versions.** Only the files code-learn writes (`course.json`, `exercise.json`, `track.json`, `lesson.json`, `proposal.json`, `events.jsonl` records, `code-learn.json`) carry `format_version: 1`, except a mixed course's `course.json`, which carries 2 so that a version 1 app refuses it. Loaders reject unknown versions.
 - **File maps.** Author input is a file map: `{ "relative/path": "text" }` over MCP, or a directory for the CLI.
   - Paths must be relative, `/`-separated, with no `.` or `..` parts.
   - Track and exercise paths may not contain `:` or have a name ending in `.` or a space (`assertPortablePaths`). These are the cases that break a checkout on Windows; other names Windows rejects are not checked.
@@ -338,7 +337,7 @@ The learner's home folder, `$CODE_LEARN_HOME` and the rest of the computer are n
 title: "React"              # optional: the course's name in a few plain words, at most 60 characters
 goal: "Components and state in React"
 track: react@1              # absent for quiz, optional for none; may not be installed yet
-style: unit                 # io or unit offered by the track, quiz, or none for lessons only
+style: unit                 # io or unit offered by the track, quiz, both (code and quizzes), or none for lessons only
 concepts:
   - { id: react.jsx, title: "JSX", requires: [] }
   - id: react.state
@@ -356,8 +355,9 @@ sources:                    # optional: the roadmaps and docs the agent used, at
 - **Sources** are optional: at most 10, each a `title` of at most 120 characters and an https `url` with no credentials. The app shows them and opens them only in the learner's browser.
 - **Practice and pitfalls** are optional on each concept: `practice` is trimmed, 1 to 300 characters; `pitfalls` has at most 5 strings, each 1 to 200 characters. They are checked for structure only.
 - **Refs** are optional on each concept: at most 10 distinct nonnegative integer indexes into `sources`, starting at 0. Every ref must be in range. When sources are nonempty, a concept with `practice` or nonempty `pitfalls` must have at least one ref.
-- **Lessons only.** `style: none` needs no track. `CourseStyle` is `ExerciseStyle | "none"`; `ExerciseStyle` is `Style | "quiz"`. `Style` stays `io | unit` for tracks and lesson examples. A course may keep its track when activities are off. Exercise saves, `get_exercise`, `check` and `test` are refused; lessons, notes and reads still work. Examples need an installed track.
+- **Lessons only.** `style: none` needs no track. `CourseStyle` is `ExerciseStyle | "none" | "both"`; `ExerciseStyle` is `Style | "quiz"`. `Style` stays `io | unit` for tracks and lesson examples. A course may keep its track when activities are off. Exercise saves, `get_exercise`, `check` and `test` are refused; lessons, notes and reads still work. Examples need an installed track.
 - **Quiz.** `style: quiz` has no track. It needs no setup, Docker or WASI. Tracks cannot offer quiz. Quiz and lessons only can switch both ways without changing history. A quiz course with exercises cannot become a code course, since that would change its track.
+- **Mixed.** `style: both` needs a track, like io or unit, and holds code exercises and quizzes. A code exercise's `exercise.yaml` leaves `style` out (or repeats the track's style); a quiz says `style: quiz`. Code runs in the track's first style (`codeStyleOf`), so a track offering both io and unit gives io. Each exercise is gated and graded in its own style. Its `course.json` is format 2. A mixed course can't become io or unit while it has quiz exercises. Like a quiz course, a stuck concept starts fresh when its lesson is read. Examples in its lessons run in the track's first style.
 - **A draft track.** The track may not be installed yet. Then `next_step` returns `setup` until it is. Proposing or installing a track that a course names but whose styles lack that course's coding style is refused, so a course can't be stranded; an install checks this under the track lock, which roadmap saves also take (after the course lock). `next_step` fails with "Edit the roadmap's style" if an installed track still doesn't offer it. Exercises, `get_exercise` and `check` need the installed track.
 - **Re-saving** an existing course may change `title`, `goal`, concept titles and order, add concepts, and change `requires` while staying acyclic. Edits keep concept ids, so renaming changes only the title. It may change `track` while the course has no exercises. Switching activities off or on is an ordinary re-save of `style`; turning them off keeps the track. The event log, exercises, mastery and lesson reads stay unchanged. Without a track, a save takes only the course lock; with one, it also takes the track lock.
 - **Re-saving is rejected** if it changes `track` after exercises exist, or removes a concept that an exercise, event or lesson uses.
@@ -469,7 +469,7 @@ Checks before the due time are ordinary checks. A concept that drops below maste
 2. If a mastered concept's review is due, the earliest due first: return `review` with the concept, its difficulty and an exercise of that concept at that difficulty the learner has never checked; if there is none, return `author` with `review: true`.
 3. Candidates are concepts that aren't mastered and whose prerequisites are each mastered or deferred (skipped since a check of an exercise written for them), in topological order with ties broken by roadmap order.
 4. Among candidates that aren't deferred, take the lowest mastery; the first in order wins ties. If every candidate is deferred, take the first in order.
-5. If that concept is stuck, return `stuck`. The tutor re-teaches; in a quiz course, acknowledging a lesson for that concept (including re-acknowledging an older lesson) appends the existing `retry` event under the course lock, the smallest way to reset its streak without changing learner rules or recording another check on a quiz.
+5. If that concept is stuck, return `stuck`. The tutor re-teaches; in a quiz or mixed course, acknowledging a lesson for that concept (including re-acknowledging an older lesson) appends the existing `retry` event under the course lock, the smallest way to reset its streak without changing learner rules or recording another check on a quiz.
 6. Otherwise, if an exercise exists for that concept at its current difficulty with no perfect check, return `practice`. The earliest-created such exercise wins. Before applying these rules, `pickFor` leaves out every quiz with a recorded check, including failed ones. It therefore asks for a new quiz rather than offering an unrecordable retry forever. Two failed quizzes at difficulty 1 make the concept stuck, just like two failed code checks.
 7. Otherwise return `author` with the concept, difficulty and the course style.
 8. If there are no candidates, return `done`. A review can still come due later.

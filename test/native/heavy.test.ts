@@ -6,7 +6,7 @@ import { type FileMap, readFileMap, subMap } from "../../src/files.js";
 import { verifyExercise, verifyTrack } from "../../src/gates.js";
 import { gradeIoRun, recordOutput } from "../../src/grading.js";
 import { type JudgeTrack, judgeSets, runIo } from "../../src/judge.js";
-import { type CourseRecord, parseRoadmapYaml, type TrackRecord } from "../../src/schemas.js";
+import { courseRecord, parseRoadmapYaml, type TrackRecord } from "../../src/schemas.js";
 import { judgeTrack, readTrack } from "../../src/store.js";
 import { fakeMicromamba } from "../fake-micromamba.js";
 import { installFixtureTrack } from "../installed-track.js";
@@ -19,7 +19,7 @@ import { FIXTURES, fixtureTrackFiles } from "./helpers.js";
 // MB), so it runs only when asked (CODE_LEARN_REAL_MICROMAMBA=1) and uses the real micromamba on this computer.
 const realMicromamba = process.env.CODE_LEARN_REAL_MICROMAMBA === "1";
 
-const course = (name: string): CourseRecord => ({ format_version: 1, course: "demo", ...parseRoadmapYaml(readFileSync(join(FIXTURES, "roadmaps", `${name}.yaml`), "utf8")) });
+const course = (name: string) => courseRecord("demo", parseRoadmapYaml(readFileSync(join(FIXTURES, "roadmaps", `${name}.yaml`), "utf8")));
 const exercise = (name: string): FileMap => readFileMap(join(FIXTURES, "exercises", name));
 async function timed<T>(label: string, work: () => Promise<T>): Promise<T> {
   const started = performance.now();

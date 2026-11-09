@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { type FileMap, readFileMap, subMap } from "../../src/files.js";
 import { verifyExercise, verifyTrack } from "../../src/gates.js";
-import { type CourseRecord, parseRoadmapYaml, type TrackRecord } from "../../src/schemas.js";
+import { courseRecord, parseRoadmapYaml, type TrackRecord } from "../../src/schemas.js";
 import { envDir, envsDir } from "../../src/store.js";
 import { commitToolchain } from "../../src/toolchain.js";
 import { fakeMicromamba } from "../fake-micromamba.js";
@@ -11,11 +11,7 @@ import { installFixtureTrack } from "../installed-track.js";
 import { sandboxReady } from "../sandbox-ready.js";
 import { FIXTURES, fixtureTrackFiles } from "./helpers.js";
 
-const course = (name: string): CourseRecord => ({
-  format_version: 1,
-  course: "demo",
-  ...parseRoadmapYaml(readFileSync(join(FIXTURES, "roadmaps", `${name}.yaml`), "utf8")),
-});
+const course = (name: string) => courseRecord("demo", parseRoadmapYaml(readFileSync(join(FIXTURES, "roadmaps", `${name}.yaml`), "utf8")));
 const exercise = (name: string): FileMap => readFileMap(join(FIXTURES, "exercises", name));
 describe.runIf(sandboxReady())("gates (native sandbox)", () => {
   let ioTrack: TrackRecord;

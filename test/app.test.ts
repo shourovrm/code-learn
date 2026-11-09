@@ -7,6 +7,7 @@ import { readFileMap } from "../src/files.js";
 import type { LearnerEvent } from "../src/learner.js";
 import * as store from "../src/store.js";
 import { fixtureTrackFiles, installFixtureTrack, installTrack } from "./installed-track.js";
+import { quizFiles } from "./quiz-fixture.js";
 import { sandboxReady } from "./sandbox-ready.js";
 import { tempDir } from "./temp.js";
 
@@ -611,6 +612,60 @@ describe("lessons only", () => {
     expect(app.progress(ws).concepts[0]).toMatchObject({ mastery, covered: true });
     expect(app.listLessons(ws)[0]!.read).toBe(true);
     expect(app.nextStep(ws)).not.toHaveProperty("lesson");
+  });
+});
+
+describe("mixed course", () => {
+  const mixed = () => roadmap().replace("style: io", "style: both");
+  /** A quiz on sh.basics, for the mixed course (quizFiles names concept "a"). */
+  const quizOn = (slug: string) => ({ ...quizFiles(slug), "exercise.yaml": JSON.stringify({ slug, style: "quiz", concepts: ["sh.basics"], difficulty: 1 }) });
+
+  it("is written as format 2, authors in the track's code style, and accepts a track proposal", async () => {
+    await app.saveRoadmap(ws, "shell", mixed());
+    expect(store.readCourse("shell")).toMatchObject({ format_version: 2, style: "both", track: "shell-io@1" });
+    expect(await app.proposeTrack(readFileMap(join(import.meta.dirname, "fixtures", "tracks", "shell-io")))).toMatchObject({ proposed: "shell-io@1" });
+    installFake();
+    expect(app.nextStep(ws)).toMatchObject({ kind: "author", style: "both", track: "shell-io@1", concept: "sh.basics", contract: { run: "sh main.sh" } });
+  });
+
+  it("saves a quiz exercise into the mixed course, and checks it as a quiz", async () => {
+    await app.saveRoadmap(ws, "shell", mixed());
+    await app.saveExercise(ws, quizOn("first"));
+    expect(store.listExercises("shell")).toMatchObject([{ slug: "first", style: "quiz" }]);
+    expect(await app.getExercise(ws, "first")).toMatchObject({ style: "quiz", questions: expect.any(Array) });
+    const answers = Object.fromEntries([1, 2, 3, 4, 5].map((n) => [n, 1]));
+    const file = app.readLearnerFiles(ws, "first")["answers.yaml"]!;
+    await app.writeLearnerFile(ws, "first", "answers.yaml", JSON.stringify(answers), file.digest);
+    expect(await app.checkExercise(ws, "first")).toMatchObject({ total: 5, recorded: true });
+  });
+
+  it("retries a stuck concept once its lesson is read, as a quiz course does", async () => {
+    installFake();
+    await app.saveRoadmap(ws, "shell", mixed());
+    for (const slug of ["first", "second"]) {
+      await app.saveExercise(ws, quizOn(slug));
+      await app.writeLearnerFile(ws, slug, "answers.yaml", JSON.stringify({ 1: 1, 2: 1, 3: 1, 4: 1, 5: 1 }), app.readLearnerFiles(ws, slug)["answers.yaml"]!.digest);
+      await app.checkExercise(ws, slug);
+    }
+    expect(app.nextStep(ws)).toEqual({ kind: "stuck", concept: "sh.basics" });
+    await app.saveLesson(ws, { id: "intro", concept: "sh.basics", title: "Intro", markdown: "Read this." });
+    await app.markLessonRead(ws, "intro");
+    expect(app.nextStep(ws)).toMatchObject({ kind: "author", concept: "sh.basics" });
+  });
+
+  it("saves a code exercise in the track's style", async () => {
+    installFixtureTrack("shell-io");
+    await app.saveRoadmap(ws, "shell", mixed());
+    await app.saveExercise(ws, readFileMap(join(import.meta.dirname, "fixtures", "exercises", "io-max")));
+    expect(store.listExercises("shell")).toMatchObject([{ slug: "max-of-line", style: "io", track: "shell-io@1" }]);
+  });
+
+  it("refuses to become a code course while it has quiz exercises", async () => {
+    installFake();
+    await app.saveRoadmap(ws, "shell", mixed());
+    await app.saveExercise(ws, quizOn("first"));
+    await expect(app.saveRoadmap(ws, "shell", roadmap())).rejects.toThrow(/quiz exercises/);
+    expect(store.readCourse("shell")).toMatchObject({ style: "both" });
   });
 });
 

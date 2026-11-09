@@ -1,6 +1,6 @@
 import { CodeLearnError } from "../errors.js";
 import { type LearnerEvent, replay } from "../learner.js";
-import { type CourseRecord, parseRoadmapYaml } from "../schemas.js";
+import { codeStyleOf, courseRecord, parseRoadmapYaml } from "../schemas.js";
 import * as store from "../store.js";
 import { activeCourse, trackContract } from "./shared.js";
 
@@ -16,17 +16,20 @@ const eventConcepts = (e: LearnerEvent): string[] => (e.kind === "check" ? e.con
 export async function saveRoadmap(ws: string, course: string, yaml: string, bound?: string, activate = true): Promise<{ course: string; concepts: number }> {
   if (bound && course !== bound) throw new CodeLearnError(`This job saves only course "${bound}".`);
   const roadmap = parseRoadmapYaml(yaml);
-  const record: CourseRecord = { format_version: 1, course, ...roadmap };
+  const record = courseRecord(course, roadmap);
   // Course lock, then the track's lock (as saveExercise does), so an install can't land between this check and the save.
   const save = async () => {
     const track = roadmap.track ? store.readTrack(roadmap.track) : undefined;
-    if (track && roadmap.style !== "none" && roadmap.style !== "quiz" && !track.styles.includes(roadmap.style)) throw new CodeLearnError(`Track ${roadmap.track} offers ${track.styles.join(", ")}, not style "${roadmap.style}".`);
+    if (track && (roadmap.style === "io" || roadmap.style === "unit") && !track.styles.includes(roadmap.style)) throw new CodeLearnError(`Track ${roadmap.track} offers ${track.styles.join(", ")}, not style "${roadmap.style}".`);
     let retries: string[] = [];
     const existing = store.readCourse(course);
     if (existing) {
       const exercises = store.listExercises(course);
       if (existing.track !== roadmap.track && exercises.length > 0) {
         throw new CodeLearnError(`Course "${course}" has exercises for ${existing.track}, so it can't switch tracks. Start a new course instead.`);
+      }
+      if ((roadmap.style === "io" || roadmap.style === "unit") && exercises.some((e) => e.style === "quiz")) {
+        throw new CodeLearnError(`Course "${course}" has quiz exercises, which a ${roadmap.style} course doesn't take. Keep style both.`);
       }
       const events = store.readEvents(course);
       const kept = new Set(roadmap.concepts.map((c) => c.id));
@@ -62,5 +65,5 @@ export async function saveRoadmap(ws: string, course: string, yaml: string, boun
 export function getRoadmap(ws: string, bound?: string, withContract = false) {
   const { course, title, goal, track, style, concepts, sources } = activeCourse(ws, bound);
   const installed = withContract && style !== "quiz" && track ? store.readTrack(track) : undefined;
-  return { course, ...(title ? { title } : {}), goal, track, style, concepts, ...(sources ? { sources } : {}), ...(installed && style !== "quiz" ? { contract: trackContract(installed, style === "none" ? installed.styles[0]! : style) } : {}) };
+  return { course, ...(title ? { title } : {}), goal, track, style, concepts, ...(sources ? { sources } : {}), ...(installed && style !== "quiz" ? { contract: trackContract(installed, codeStyleOf(style, installed)) } : {}) };
 }

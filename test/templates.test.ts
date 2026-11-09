@@ -203,6 +203,13 @@ describe("the 1.0 learning flow in the tutor instructions", () => {
     expect(AGENTS_SECTION).toMatch(/On `practice`, `author` and `learn`, a `lesson` field means teach first/);
     for (const text of [AGENTS_SECTION, JOB_BRIEFS.research, JOB_BRIEFS.roadmap]) expect(text).toMatch(/`none` when they want lessons only; `quiz` and `none` have no `track`/);
   });
+
+  // Mixed course (style `both`): code and quizzes in one course, with a track.
+  it("teaches a mixed course: the roadmap names both, and the author chooses per concept", () => {
+    for (const text of [AGENTS_SECTION, JOB_BRIEFS.research, JOB_BRIEFS.roadmap]) expect(text).toMatch(/`both` when they want code and quizzes together/);
+    expect(JOB_BRIEFS.research).toMatch(/set `style: both` and `track`/);
+    expect(JOB_BRIEFS.author).toMatch(/A mixed course \(`style: both`\) takes both kinds: choose per concept/);
+  });
 });
 
 describe("desktop job briefs (docs/desktop/DESIGN.md §3.2, §8)", () => {

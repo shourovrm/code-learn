@@ -7,7 +7,7 @@ import { type CaseFrames, expectedText, gradeIo, gradeQuiz, redact, type ShownRe
 import { judgeSets } from "../judge.js";
 import { type ProgramOptions, type ProgramRun, runProgram } from "../program.js";
 import { type CheckEvent, lastCheck, nextLesson, nextStep as pickNext, type LessonStep, type Step } from "../learner.js";
-import { parseQuizYaml, parseAnswersYaml, type CourseRecord, type ExerciseRecord, type TrackRecord } from "../schemas.js";
+import { codeStyleOf, parseExerciseYaml, parseQuizYaml, parseAnswersYaml, type CourseRecord, type ExerciseRecord, type TrackRecord } from "../schemas.js";
 import * as store from "../store.js";
 import { activeCourse, ensureToolchain, installedTrack, learnerDir, noteAssistLocked, quietly, trackContract } from "./shared.js";
 
@@ -81,10 +81,11 @@ export function nextStep(ws: string, bound?: string): NextStep {
   if (course.style !== "quiz") {
     const track = store.readTrack(course.track);
     if (!track) return { kind: "setup", track: course.track };
-    if (!track.styles.includes(course.style)) {
-      throw new CodeLearnError(`Track ${course.track} offers ${track.styles.join(", ")}, not style "${course.style}". Edit the roadmap's style.`);
+    const style = codeStyleOf(course.style, track);
+    if (!track.styles.includes(style)) {
+      throw new CodeLearnError(`Track ${course.track} offers ${track.styles.join(", ")}, not style "${style}". Edit the roadmap's style.`);
     }
-    contract = { track: course.track, contract: trackContract(track, course.style) };
+    contract = { track: course.track, contract: trackContract(track, style) };
   }
   const step = pickFor(course);
   if (step.kind !== "author") return step;
@@ -105,7 +106,7 @@ export async function saveExercise(ws: string, files: FileMap, bound?: string, o
     // Re-read under the course lock, then lock that course's current track: a draft's track can change.
     const course = store.readCourse(courseId)!;
     assertActivities(course);
-    if (course.style === "quiz") {
+    if (course.style === "quiz" || (course.style === "both" && parseExerciseYaml(files["exercise.yaml"] ?? "").style === "quiz")) {
       const existing = store.listExercises(courseId);
       const verified = verifyQuiz(course, files, new Set(existing.map((e) => e.slug)),
         existing.filter((e) => e.style === "quiz").map((e) => store.readExercise(courseId, e.slug).files["quiz.yaml"]!));

@@ -108,7 +108,7 @@ This project uses code-learn, an open-source practice harness. You are the learn
 1. ${NO_SOLUTION} Instead, first call \`get_exercise\` yourself (don't ask which exercise) and read their code. Then ${HINT} In Claude Code, code-learn blocks edits under \`exercises/\` unless the learner runs \`code-learn assist on\`; assisted attempts count for less.
 2. Only \`save_track\` and \`save_exercise\` go through the \`code-learn-author\` subagent. You call every other tool yourself. Never ask the subagent for the solution, and never read course files under \`~/.code-learn\`.
 3. Start with \`progress\`. With no course yet, agree on a goal with the learner and call \`list_tracks\`. If the language or framework isn't installed, have the subagent install a track first. Installing runs code with network access, so tell the learner what's being installed.
-4. Save a roadmap with \`save_roadmap\`. It is YAML: \`goal\`, \`track\` (an installed track exactly as \`list_tracks\` shows it, like \`name@1\`), \`style\` (\`io\`, \`unit\`, \`quiz\` when the learner wants multiple-choice questions instead of code, or \`none\` when they want lessons only; \`quiz\` and \`none\` have no \`track\`), \`concepts\` (each with \`id\`, \`title\`, \`requires\`, \`practice\`, \`pitfalls\` and \`refs\`) and \`sources\` (up to 10, each with a \`title\` and an https \`url\`). ${QUALITY} Order concepts from basic to advanced. ${GRANULARITY} ${CONCEPT_FIELDS} ${COURSE_SIZE}
+4. Save a roadmap with \`save_roadmap\`. It is YAML: \`goal\`, \`track\` (an installed track exactly as \`list_tracks\` shows it, like \`name@1\`), \`style\` (\`io\`, \`unit\`, \`quiz\` when the learner wants multiple-choice questions instead of code, \`both\` when they want code and quizzes together, or \`none\` when they want lessons only; \`quiz\` and \`none\` have no \`track\`, and \`both\` needs one), \`concepts\` (each with \`id\`, \`title\`, \`requires\`, \`practice\`, \`pitfalls\` and \`refs\`) and \`sources\` (up to 10, each with a \`title\` and an https \`url\`). ${QUALITY} Order concepts from basic to advanced. ${GRANULARITY} ${CONCEPT_FIELDS} ${COURSE_SIZE}
 5. Call \`next_step\`:
    - \`setup\`: the roadmap's track isn't installed yet. Have the subagent install it, then call \`next_step\` again.
    - \`practice\`: call \`get_exercise\` and present the statement and the file to edit.
@@ -150,7 +150,7 @@ export type JobKind = "research" | "review" | "roadmap" | "setup" | "lesson" | "
 // briefs name only their own job's tools.
 
 const ROADMAP_YAML =
-  "The roadmap is YAML: \`title\` (the course's name in a few plain words, at most 60 characters), \`goal\`, \`track\` (\`id@version\`), \`style\` (\`io\`, \`unit\`, \`quiz\` when the learner wants multiple-choice questions instead of code, or \`none\` when they want lessons only; \`quiz\` and \`none\` have no \`track\`), \`concepts\` (each with \`id\`, \`title\`, \`requires\`, \`practice\`, \`pitfalls\` and \`refs\`) and \`sources\` (up to 10, each with a \`title\` and an https \`url\`).";
+  "The roadmap is YAML: \`title\` (the course's name in a few plain words, at most 60 characters), \`goal\`, \`track\` (\`id@version\`), \`style\` (\`io\`, \`unit\`, \`quiz\` when the learner wants multiple-choice questions instead of code, \`both\` when they want code and quizzes together, or \`none\` when they want lessons only; \`quiz\` and \`none\` have no \`track\`, and \`both\` needs one), \`concepts\` (each with \`id\`, \`title\`, \`requires\`, \`practice\`, \`pitfalls\` and \`refs\`) and \`sources\` (up to 10, each with a \`title\` and an https \`url\`).";
 
 /** One short, single-purpose brief per job. The app adds the job's own details: the goal, request, concept or track. */
 export const JOB_BRIEFS: Record<JobKind, string> = {
@@ -158,7 +158,7 @@ export const JOB_BRIEFS: Record<JobKind, string> = {
 
 1. Research the topic first. ${QUALITY}
 2. Unless the course is \`quiz\` or \`none\`, call \`list_tracks\`. If an installed track fits, use it exactly as listed. Otherwise name a new one, like \`name@1\`; code-learn sets it up after the learner agrees.
-3. Save the roadmap with \`save_roadmap\` under the course id you were given. ${ROADMAP_YAML} Order concepts from basic to advanced. List the sources you used as \`sources\`. For a framework, prefer \`unit\`, so its activities are tested through the framework's own test client, unless an installed track you use offers only \`io\`.
+3. Save the roadmap with \`save_roadmap\` under the course id you were given. ${ROADMAP_YAML} Order concepts from basic to advanced. List the sources you used as \`sources\`. For a mixed course, set \`style: both\` and \`track\` as for a code course: its code exercises run in the track's first style, and its quizzes need no track. For a framework, prefer \`unit\`, so its activities are tested through the framework's own test client, unless an installed track you use offers only \`io\`.
    ${GRANULARITY}
    ${CONCEPT_FIELDS}
    ${COURSE_SIZE}
@@ -203,7 +203,7 @@ ${TRACK_RULES}`,
 
 **When you finish, reply with only the exercise id.** ${SECRECY}
 
-${FILE_MAP} Call \`next_step\` first. Its author step is your target and your only source: the concept id and title, its \`practice\` and \`pitfalls\`, the difficulty, the style, the track's contract (none for a quiz), the course's earlier exercises, the concept's lesson text and the learner's last result. \`contract.files\` are the learner files; the build, run or test command shows how they're checked; \`contract.examples\` is a passing solution with its tests. Use those file names, and write tests in the same format as the example tests.
+${FILE_MAP} Call \`next_step\` first. Its author step is your target and your only source: the concept id and title, its \`practice\` and \`pitfalls\`, the difficulty, the style, the track's contract (none for a quiz), the course's earlier exercises, the concept's lesson text and the learner's last result. \`contract.files\` are the learner files; the build, run or test command shows how they're checked; \`contract.examples\` is a passing solution with its tests. Use those file names, and write tests in the same format as the example tests. A mixed course (\`style: both\`) takes both kinds: choose per concept, a code exercise as above with \`style\` left out of \`exercise.yaml\`, or a quiz as below with \`style: quiz\`, and mix both kinds across the course.
 
 ${EXERCISE_RULES}`,
 

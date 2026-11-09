@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { readFileMap } from "../src/files.js";
 import { checkTrackFiles, comparedEarlier, GateError, probeFastMs, toolchainFiles, unitReferenceFailure, verifyExercise } from "../src/gates.js";
 import type { UnitRun } from "../src/grading.js";
-import { type CourseRecord, parseRoadmapYaml, type TrackRecord } from "../src/schemas.js";
+import { courseRecord, parseRoadmapYaml, type TrackRecord } from "../src/schemas.js";
 
 
 describe("comparedEarlier", () => {
@@ -112,7 +112,7 @@ describe("verifyExercise's io test files", () => {
     format_version: 1, id: "shell-io", version: 1, styles: ["io"], files: ["main.sh"], run: "sh main.sh",
     limits: { time_ms: 2000, memory_mb: 128 }, toolchain: { packages: ["coreutils"], env: {}, resolved: [] }, installedAt: "now",
   };
-  const course: CourseRecord = { format_version: 1, course: "demo", ...parseRoadmapYaml(readFileSync(join(fixtures, "roadmaps", "shell-io.yaml"), "utf8")) };
+  const course = courseRecord("demo", parseRoadmapYaml(readFileSync(join(fixtures, "roadmaps", "shell-io.yaml"), "utf8")));
   const files = () => readFileMap(join(fixtures, "exercises", "io-max"));
   // These are refused before anything runs, so no sandbox is needed.
   const verify = (extra: Record<string, string>) => verifyExercise(track, course, { ...files(), ...extra }, new Set());

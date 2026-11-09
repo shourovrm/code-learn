@@ -6,7 +6,7 @@ import { type FileMap, subMap, validateFileMap } from "./files.js";
 import { CASE_OUTPUT_MB, caseDigest, type Expected, gradeRuns, type IoRun, type RawCase, recordOutput, redact, type Runs, type TestResult, type UnitRun } from "./grading.js";
 import { GENERATOR_SECONDS, generatorFailed, type JudgeTrack, runSets, type ToolchainFolders } from "./judge.js";
 import {
-  type CourseRecord, type ExerciseRecord, type ExerciseSpec, LIMITS, parseQuizYaml, parseExerciseYaml, parseTrackYaml, type Style, type TrackRecord, type TrackSpec,
+  codeStyleOf, type CourseRecord, type ExerciseRecord, type ExerciseSpec, LIMITS, parseQuizYaml, parseExerciseYaml, parseTrackYaml, type Style, type TrackRecord, type TrackSpec,
 } from "./schemas.js";
 import { type InstallStep, type StagedToolchain, stageToolchain } from "./toolchain.js";
 
@@ -234,7 +234,7 @@ function pickFiles(files: FileMap, folder: string, names: string[], label: strin
   return src;
 }
 
-function validate(track: TrackRecord, course: CourseRecord, files: FileMap, taken: Set<string>) {
+function validate(track: TrackRecord, course: Pick<CourseRecord, "style" | "concepts" | "track">, files: FileMap, taken: Set<string>) {
   validateFileMap(files);
   if (!files["exercise.yaml"]) throw new GateError("valid", "exercise.yaml is missing.");
   if (!files["README.md"]?.trim()) throw new GateError("valid", "README.md (the statement) is missing or empty.");
@@ -247,7 +247,7 @@ function validate(track: TrackRecord, course: CourseRecord, files: FileMap, take
   if (taken.has(spec.slug)) throw new GateError("valid", `the slug "${spec.slug}" is already used in this course. Pick a new one.`);
   // Never reached from the app: saveExercise refuses first, and a rebuild re-checks each exercise in its own style.
   if (course.style === "none") throw new GateError("valid", "This course has lessons only. Turn activities on to practise.");
-  const style = spec.style ?? course.style;
+  const style = spec.style ?? codeStyleOf(course.style, track);
   if (style === "quiz" || !track.styles.includes(style)) throw new GateError("valid", `the track offers ${track.styles.join(", ")}, not style "${style}".`);
   const known = new Set(course.concepts.map((c) => c.id));
   for (const c of spec.concepts) if (!known.has(c)) throw new GateError("valid", `concept "${c}" isn't in the roadmap.`);
@@ -327,7 +327,7 @@ export function comparedEarlier(earlier: EarlierSolution[], style: Style, concep
 
 /** Runs exercise gates 1-7 (DESIGN §6). Returns the record to store, with io expected outputs or the unit inventory. */
 export async function verifyExercise(
-  trackRecord: TrackRecord, course: CourseRecord, files: FileMap, taken: Set<string>, onGate?: (gate: ExerciseGate) => void,
+  trackRecord: TrackRecord, course: Pick<CourseRecord, "style" | "concepts" | "track">, files: FileMap, taken: Set<string>, onGate?: (gate: ExerciseGate) => void,
   earlier: EarlierSolution[] = [], folders?: ToolchainFolders,
 ): Promise<ExerciseRecord> {
   const { spec, style, starter, solution, mutants, sets } = validate(trackRecord, course, files, taken);

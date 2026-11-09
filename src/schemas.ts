@@ -10,7 +10,8 @@ const Style = z.enum(["io", "unit"]);
 export type Style = z.infer<typeof Style>;
 const ExerciseStyle = z.enum(["io", "unit", "quiz"]);
 export type ExerciseStyle = z.infer<typeof ExerciseStyle>;
-export type CourseStyle = ExerciseStyle | "none";
+/** `both` is a track's code exercises and quizzes in one course; its code style is the track's first (codeStyleOf). */
+export type CourseStyle = ExerciseStyle | "none" | "both";
 
 /** time_ms is per io case, or for a unit track's whole test command (DESIGN §4.3). */
 export const LIMITS = { time_ms: { min: 100, max: 120_000, default: 2000 }, memory_mb: { min: 64, max: 2048, default: 256 } };
@@ -146,6 +147,7 @@ const RoadmapYaml = z.discriminatedUnion("style", [
   RoadmapBase.extend({ style: Style, track: TrackRef }),
   RoadmapBase.extend({ style: z.literal("none"), track: TrackRef.optional() }),
   RoadmapBase.extend({ style: z.literal("quiz"), track: z.undefined().optional() }),
+  RoadmapBase.extend({ style: z.literal("both"), track: TrackRef }),
 ]);
 export type Roadmap = z.infer<typeof RoadmapYaml>;
 
@@ -257,12 +259,24 @@ export type ToolchainRecord = z.infer<typeof ToolchainRecord>;
 export const TrackRecord = TrackBase.extend({ toolchain: ToolchainRecord });
 export type TrackRecord = z.infer<typeof TrackRecord>;
 
+/** Format 2 is written only for a mixed course, so a version 1 app refuses it rather than misreading it. */
 export const CourseRecord = z.discriminatedUnion("style", [
   RoadmapYaml.options[0].extend({ format_version: z.literal(1), course: Id }),
   RoadmapYaml.options[1].extend({ format_version: z.literal(1), course: Id }),
   RoadmapYaml.options[2].extend({ format_version: z.literal(1), course: Id }),
+  RoadmapYaml.options[3].extend({ format_version: z.literal(2), course: Id }),
 ]);
 export type CourseRecord = z.infer<typeof CourseRecord>;
+
+/** The record a saved roadmap becomes: format 2 for a mixed course, format 1 for every other style. */
+export function courseRecord(course: string, roadmap: Roadmap): CourseRecord {
+  return roadmap.style === "both" ? { format_version: 2, course, ...roadmap } : { format_version: 1, course, ...roadmap };
+}
+
+/** The style a course's code exercises run in: its own io or unit, or else the track's first style (none and both). */
+export function codeStyleOf(style: CourseStyle, track: Pick<TrackRecord, "styles">): Style {
+  return style === "io" || style === "unit" ? style : track.styles[0]!;
+}
 
 const ExerciseBase = z.object({
   format_version: z.literal(1),

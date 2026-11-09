@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { exampleRefs, LearnerEventSchema, parseExerciseYaml, parseLesson, parseQuizYaml, parseRoadmapYaml, parseTrackYaml, TrackRecord } from "../src/schemas.js";
+import { codeStyleOf, CourseRecord, exampleRefs, LearnerEventSchema, parseExerciseYaml, parseLesson, parseQuizYaml, parseRoadmapYaml, parseTrackYaml, TrackRecord } from "../src/schemas.js";
 import { quizQuestions } from "./quiz-fixture.js";
 
 describe("quiz text limits", () => {
@@ -314,5 +314,28 @@ describe("course styles", () => {
   });
   it("keeps none out of exercise styles", () => {
     expect(() => parseExerciseYaml("slug: e\nstyle: none\nconcepts: [a]\ndifficulty: 1")).toThrow();
+  });
+});
+
+describe("mixed course style", () => {
+  const mixed = (track = "track: example@1\n") => `goal: Learn\nstyle: both\n${track}concepts: [{ id: a, title: A }]\n`;
+  const course = (style: string, formatVersion: number, track = "example@1") => ({
+    format_version: formatVersion, course: "c", ...parseRoadmapYaml(`goal: Learn\nstyle: ${style}\ntrack: ${track}\nconcepts: [{ id: a, title: A }]\n`),
+  });
+  it("requires a track, like a code course", () => {
+    expect(parseRoadmapYaml(mixed()).style).toBe("both");
+    expect(() => parseRoadmapYaml(mixed(""))).toThrow(/track/);
+  });
+  it("is written as format 2 and read only as format 2; version 1 courses still load", () => {
+    expect(CourseRecord.parse(course("both", 2))).toMatchObject({ style: "both", track: "example@1" });
+    expect(() => CourseRecord.parse(course("both", 1))).toThrow();
+    expect(() => CourseRecord.parse(course("io", 2))).toThrow();
+    expect(CourseRecord.parse(course("io", 1))).toMatchObject({ style: "io" });
+    expect(CourseRecord.parse(course("none", 1))).toMatchObject({ style: "none" });
+  });
+  it("runs code exercises in the track's first style", () => {
+    expect(codeStyleOf("both", { styles: ["unit", "io"] })).toBe("unit");
+    expect(codeStyleOf("io", { styles: ["unit"] })).toBe("io");
+    expect(codeStyleOf("none", { styles: ["io"] })).toBe("io");
   });
 });

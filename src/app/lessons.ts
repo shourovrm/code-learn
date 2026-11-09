@@ -4,7 +4,7 @@ import { CASE_OUTPUT_MB, expectedText } from "../grading.js";
 import { runIo, runUnit } from "../judge.js";
 import { replay } from "../learner.js";
 import { type ProgramOptions, type ProgramRun, runProgram } from "../program.js";
-import { assertNotes, parseLesson, type TrackRecord } from "../schemas.js";
+import { assertNotes, codeStyleOf, parseLesson, type TrackRecord } from "../schemas.js";
 import * as store from "../store.js";
 import { activeCourse, ensureToolchain, installedTrack } from "./shared.js";
 
@@ -60,7 +60,7 @@ export async function saveLesson(ws: string, input: unknown, bound?: string): Pr
     if (!course.concepts.some((c) => c.id === lesson.concept)) throw new CodeLearnError(`"${lesson.concept}" is not in the roadmap for ${courseId}.`);
     if (store.listLessons(courseId).some((l) => l.id === lesson.id)) throw new CodeLearnError(`Lesson id "${lesson.id}" is already used in ${courseId}. Pick a new id.`);
     const track = examples.length > 0 && course.track ? store.readTrack(course.track) : undefined;
-    const style = course.style === "quiz" ? undefined : course.style === "none" ? track?.styles[0] : course.style;
+    const style = track && codeStyleOf(course.style, track);
     if (examples.length > 0) {
       if (!track || !style) throw new CodeLearnError(course.track ? `Examples run in ${course.track}, which isn't set up yet. Save the lesson without examples.` : "Examples need an installed track. Save the lesson without examples.");
       examples.forEach((files, i) => assertExampleFits(i + 1, files, track, style));
@@ -152,7 +152,9 @@ export async function markLessonRead(ws: string, id: string, bound?: string): Pr
   await store.withLock(store.courseLockPath(course), async () => {
     const { record } = store.readLesson(course, id);
     const events = store.readEvents(course);
-    if (store.readCourse(course)!.style === "quiz" && replay(events).get(record.concept)?.stuck) {
+    const style = store.readCourse(course)!.style;
+    // A quiz can't be checked again, so a stuck concept starts fresh once its lesson is read; a mixed course can offer one too.
+    if ((style === "quiz" || style === "both") && replay(events).get(record.concept)?.stuck) {
       store.appendEvent(course, { format_version: 1, kind: "retry", at: new Date().toISOString(), concept: record.concept });
     }
     if (events.some((e) => e.kind === "read" && e.lesson === id)) return;
