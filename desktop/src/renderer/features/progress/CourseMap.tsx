@@ -6,10 +6,12 @@ import { useApi } from '../../app/api';
 import { Failed, Stale, Stalled } from '../../app/Problems';
 import { useCourse } from '../../app/useCourse';
 import { useLoad } from '../../app/useLoad';
+import { Button } from '../../ui/Button';
 import { stagger } from '../../ui/motion';
 import { Goal } from '../learn/Goal';
 import { Complete } from './Complete';
 import { Path } from './Path';
+import { RebuildBar, RebuildDialog } from './Rebuild';
 import { SetupProgress } from './SetupProgress';
 
 /** The course as a path the learner moves along, with mastery so far and what the agent used beside it. */
@@ -24,20 +26,67 @@ export function CourseMap() {
   const [viewing, setViewing] = useState(false);
   // Which way the Activities switch is going: it can take a while (a roadmap job on, setup stopping off).
   const [turning, setTurning] = useState<'on' | 'off'>('on');
+  // Rebuild's select mode: the topics ticked so far, and the confirmation once Rebuild is pressed.
+  const [picking, setPicking] = useState(false);
+  const [chosen, setChosen] = useState<ReadonlySet<string>>(new Set());
+  const [confirming, setConfirming] = useState(false);
   if (error) return <Failed error={error} retry={reload} />;
   if (course === undefined) return null;
   if (course === null) return <Goal />;
   if (course.done && !viewing) return <Complete course={course} onView={() => setViewing(true)} />;
+  const topics = course.topics;
+  const toggle = (id: string) => setChosen((ids) => {
+    const next = new Set(ids);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    return next;
+  });
+  const endPicking = () => {
+    setPicking(false);
+    setChosen(new Set());
+  };
+  // Leaves select mode first, then asks core; the map is read again either way, so it shows what core did.
+  async function rebuild(replace: boolean) {
+    const ids = [...chosen];
+    setConfirming(false);
+    endPicking();
+    try {
+      await api.rebuildTopics(ids, replace);
+    } catch (e) {
+      fail(e);
+    }
+    reload();
+  }
   return (
     <main className="main map">
       <div className="map-main">
         <div className="map-head a-up">
-          <h1 className="h2">{course.title}</h1>
+          <div className="map-title">
+            <h1 className="h2">{course.title}</h1>
+            {!picking && <Button variant="ghost" onClick={() => setPicking(true)}>Rebuild…</Button>}
+          </div>
           {course.goal !== course.title && <p className="sub">{course.goal}</p>}
         </div>
         <SetupProgress course={course} />
-        <Path course={course} />
+        {picking && (
+          <RebuildBar
+            topics={topics}
+            chosen={chosen}
+            onSelectAll={(all) => setChosen(new Set(all ? topics.map((t) => t.id) : []))}
+            onCancel={endPicking}
+            onRebuild={() => setConfirming(true)}
+          />
+        )}
+        <Path course={course} picking={picking ? { chosen, toggle } : undefined} />
       </div>
+      {confirming && (
+        <RebuildDialog
+          topics={topics.filter((t) => chosen.has(t.id))}
+          everything={chosen.size === topics.length}
+          onClose={() => setConfirming(false)}
+          onConfirm={rebuild}
+        />
+      )}
       <Aside course={course} usage={usage ?? null}>
         <div className="card activities">
           <h2 className="h3 fill" id="activities-label">Activities</h2>

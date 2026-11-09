@@ -506,3 +506,13 @@ describe('mock: Run', () => {
     expect(activity.run).toBeUndefined();
   });
 });
+
+describe('mock: rebuilding topics', () => {
+  it('writes a chosen topic again, and refuses a topic the course does not have', async () => {
+    const { api, activity } = await practising();
+    await expect(api.rebuildTopics(['nope'], true)).rejects.toThrow(/Unknown topic/);
+    await api.rebuildTopics([activity.concept], true);
+    const course = await settled(api, (c) => c.topics[0].lessons.every((l) => l.state !== 'writing'));
+    expect(course.topics[0].lessons.length).toBeGreaterThan(0);
+  });
+});

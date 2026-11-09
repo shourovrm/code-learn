@@ -294,6 +294,16 @@ textarea.field { height: auto; padding: 12px 16px; line-height: 1.5; resize: ver
 .switch:disabled { opacity: 0.6; cursor: default; }
 @media (prefers-reduced-motion: no-preference) { .switch .thumb { transition: transform 0.15s ease; } }
 .map-head { max-width: 760px; display: flex; flex-direction: column; gap: 6px; }
+/* Rebuild (Rebuild.tsx): the button beside the title, the select mode's bar, and a tick at each topic's left edge. */
+.map-title { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; }
+.rebuild-bar { max-width: 760px; display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin: 0 0 14px; padding: 10px 14px; }
+.rebuild-all { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; }
+.rebuild-bar .quiet-text { flex: 1 1 auto; margin: 0; }
+.path.picking { padding-left: 34px; }
+.pick { position: absolute; left: -34px; top: 50%; width: 20px; height: 20px; margin: 0; transform: translateY(-50%); accent-color: var(--green-ink); }
+.rebuild-list { margin: 0; padding: 0; list-style: none; font-size: 14px; }
+.rebuild-replace { display: flex; align-items: flex-start; gap: 8px; font-size: 14px; text-align: left; }
+.rebuild-replace input, .rebuild-all input { accent-color: var(--green-ink); }
 .tally { margin: -4px 0 4px; color: var(--muted); font-size: 14px; }
 .tally b { margin-right: 2px; color: var(--ink); font: 600 34px/1 var(--display); }
 /* The path (Path.tsx): topics as leaves on Sprig's branch, green as far as the learner has come. Each stop's --d times

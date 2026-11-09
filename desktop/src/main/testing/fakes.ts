@@ -85,6 +85,8 @@ export function fakeCore() {
     checks: [] as string[],
     /** Exercises Run started. */
     runs: [] as string[],
+    /** Each rebuild core was asked for. */
+    rebuilt: [] as { course: string; concepts: string[]; replace: boolean }[],
     down: false,
   };
   /** A bound call's course, else the active one (core's activeCourse). */
@@ -232,6 +234,10 @@ export function fakeCore() {
     },
     saveNotes: async (_ws, id, text, bound) => void (c.bound.push(bound), (c.lessons.find((l) => l.id === id)!.notes = text)),
     markLessonRead: async (_ws, id, bound) => void (c.bound.push(bound), c.reads.add(id)),
+    rebuildTopics: async (_ws, course, concepts, { replace }) => {
+      c.rebuilt.push({ course, concepts, replace });
+      if (replace) c.lessons = c.lessons.filter((l) => !concepts.includes(l.concept));
+    },
     readLearnerFiles: (_ws, slug, bound) => (c.bound.push(bound), { 'main.c': { text: c.exercises.get(slug)!.file, digest: c.exercises.get(slug)!.digest } }),
     writeLearnerFile: async (_ws, slug, _path, text, digest, bound) => {
       c.bound.push(bound);

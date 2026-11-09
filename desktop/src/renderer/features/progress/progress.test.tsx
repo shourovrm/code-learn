@@ -422,3 +422,65 @@ it('finishes a lessons-only topic from the reader and returns to the map', async
   expect(await screen.findByRole('heading', { name: 'Lessons read' })).toBeInTheDocument();
   expect((await api.course())!.topics[0].state).toBe('covered');
 });
+
+describe('rebuilding topics', () => {
+  /** Records what the Learn page asks core to rebuild. */
+  async function recordRebuilds(api: CodeLearnApi) {
+    const calls: unknown[][] = [];
+    const rebuild = api.rebuildTopics.bind(api);
+    api.rebuildTopics = (...args) => (calls.push(args), rebuild(...args));
+    return calls;
+  }
+
+  it('rebuilds the ticked topics after confirming, with the old ones replaced by default', async () => {
+    const user = userEvent.setup();
+    const { api } = await mockWithCourse();
+    const calls = await recordRebuilds(api);
+    const topics = (await api.course())!.topics;
+    renderApp({ to: 'learn' }, api);
+    await user.click(await screen.findByRole('button', { name: 'Rebuild…' }));
+    await user.click(screen.getByRole('checkbox', { name: topics[1].title }));
+    expect(screen.getByText(`1 of ${topics.length} selected`)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Rebuild selected' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByRole('heading', { name: 'Rebuild 1 topic?' })).toBeInTheDocument();
+    expect(within(dialog).getByText(topics[1].title)).toBeInTheDocument();
+    expect(within(dialog).getByRole('checkbox', { name: /Replace the existing lessons and exercises/ })).toBeChecked();
+    await user.click(within(dialog).getByRole('button', { name: 'Rebuild 1 topic' }));
+    await waitFor(() => expect(calls).toEqual([[[topics[1].id], true]]));
+    expect(screen.queryByRole('checkbox', { name: topics[1].title })).not.toBeInTheDocument();
+  });
+
+  it('selects every topic with Select all, and keeps the old ones when Replace is unticked', async () => {
+    const user = userEvent.setup();
+    const { api } = await mockWithCourse();
+    const calls = await recordRebuilds(api);
+    const topics = (await api.course())!.topics;
+    renderApp({ to: 'learn' }, api);
+    await user.click(await screen.findByRole('button', { name: 'Rebuild…' }));
+    expect(screen.getByRole('button', { name: 'Rebuild selected' })).toBeDisabled();
+    await user.click(screen.getByRole('checkbox', { name: 'Select all' }));
+    await user.click(screen.getByRole('button', { name: `Rebuild all ${topics.length}` }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByRole('heading', { name: `Rebuild all ${topics.length} topics?` })).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('checkbox', { name: /Replace the existing lessons and exercises/ }));
+    await user.click(within(dialog).getByRole('button', { name: `Rebuild ${topics.length} topics` }));
+    await waitFor(() => expect(calls).toEqual([[topics.map((t) => t.id), false]]));
+  });
+
+  it('cancels the dialog, then select mode, without calling core', async () => {
+    const user = userEvent.setup();
+    const { api } = await mockWithCourse();
+    const calls = await recordRebuilds(api);
+    const topics = (await api.course())!.topics;
+    renderApp({ to: 'learn' }, api);
+    await user.click(await screen.findByRole('button', { name: 'Rebuild…' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Select all' }));
+    await user.click(screen.getByRole('button', { name: `Rebuild all ${topics.length}` }));
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('button', { name: 'Rebuild…' })).toBeInTheDocument();
+    expect(calls).toEqual([]);
+  });
+});

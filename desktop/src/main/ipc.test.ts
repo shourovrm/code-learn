@@ -47,6 +47,7 @@ const GOOD: Record<Exclude<keyof CodeLearnApi, 'onCheckProgress' | 'onJobProgres
   ask: [{ activityId: 'values-easy-1' }, 'Why?'],
   skip: ['values'],
   easier: ['values'],
+  rebuildTopics: [['values'], true],
   rebuild: ['react@1'],
   removeTrack: ['react@1'],
   usage: [],
@@ -96,6 +97,13 @@ describe('dispatch', () => {
     for (const practice of ['code', 'quiz', 'both', 'none']) expect(() => dispatch(echo, 'research', [{ topic: 'React', known: '', depth: 'standard', practice }])).not.toThrow();
     expect(() => dispatch(echo, 'research', [{ topic: 'React', known: '', instructions: 'x'.repeat(500), depth: 'standard', practice: 'code' }])).not.toThrow();
     expect(() => dispatch(echo, 'research', [{ topic: 'React', known: '', instructions: 'x'.repeat(501), depth: 'standard', practice: 'code' }])).toThrow('Bad input');
+  });
+
+  it('rejects a rebuild with no topics, bad topic ids, or a replace flag that is not a boolean', () => {
+    expect(() => dispatch(echo, 'rebuildTopics', [[], true])).toThrow('Bad input');
+    expect(() => dispatch(echo, 'rebuildTopics', [['../values'], true])).toThrow('Bad input');
+    expect(() => dispatch(echo, 'rebuildTopics', [['values'], 'yes'])).toThrow('Bad input');
+    expect(() => dispatch(echo, 'rebuildTopics', [['values']])).toThrow('Bad input');
   });
 
   it('rejects goals and roadmaps with the wrong shape', () => {

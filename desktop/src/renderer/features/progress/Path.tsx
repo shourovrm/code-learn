@@ -22,16 +22,19 @@ function currentIndex(topics: TopicView[]): number {
  * The course as a path along Sprig's branch: each topic is a leaf, the branch is green between topics the learner has
  * reached, and Sprig sits on the topic code-learn offers now. A finished course has Sprig at the branch's end.
  */
-export function Path({ course }: { course: CourseView }) {
+/** The select mode's ticks: which topics are chosen, and the toggle for one (Rebuild.tsx). */
+export type Picking = { chosen: ReadonlySet<string>; toggle: (id: string) => void };
+
+export function Path({ course, picking }: { course: CourseView; picking?: Picking }) {
   const { topics } = course;
   const at = currentIndex(topics);
   // Reached: mastered, or the current topic. A topic passed over (skipped, or locked behind the current one) sits on grey.
   const reached = topics.map((t, i) => t.state === 'mastered' || t.state === 'covered' || i === at);
   return (
     <div className="path-wrap">
-      <ol className="path" aria-label="Topics">
+      <ol className={picking ? 'path picking' : 'path'} aria-label="Topics">
         {topics.map((t, i) => (
-          <Stop key={t.id} topic={t} index={i} current={i === at} track={course.track} up={i > 0 && reached[i - 1] && reached[i]} down={i < topics.length - 1 && reached[i] && reached[i + 1]} last={i === topics.length - 1} />
+          <Stop key={t.id} topic={t} index={i} current={i === at} track={course.track} up={i > 0 && reached[i - 1] && reached[i]} down={i < topics.length - 1 && reached[i] && reached[i + 1]} last={i === topics.length - 1} picking={picking} />
         ))}
       </ol>
       {at < 0 && course.done && (
@@ -46,13 +49,14 @@ export function Path({ course }: { course: CourseView }) {
 /** When a stop's part of the sequence starts: the CSS times the branch, leaf, title and Sprig from it. */
 const timing = (i: number): CSSProperties => ({ '--d': `${Math.min(i, STAGGERED) * STEP_MS}ms` }) as CSSProperties;
 
-type StopProps = { topic: TopicView; index: number; current: boolean; track: string; up: boolean; down: boolean; last: boolean };
+type StopProps = { topic: TopicView; index: number; current: boolean; track: string; up: boolean; down: boolean; last: boolean; picking?: Picking };
 
 /** One topic on the path: its leaf on the branch, then its title, or the current topic's card with Sprig on it. */
-function Stop({ topic, index, current, track, up, down, last }: StopProps) {
+function Stop({ topic, index, current, track, up, down, last, picking }: StopProps) {
   const { go } = useRouter();
   return (
     <li className={`stop ${topic.state}${current ? ' current' : ''}`} style={timing(index)} aria-current={current ? 'step' : undefined}>
+      {picking && <input type="checkbox" className="pick" aria-label={topic.title} checked={picking.chosen.has(topic.id)} onChange={() => picking.toggle(topic.id)} />}
       <span className="vine" aria-hidden="true">
         {index > 0 && <i className={`seg up${up ? ' on' : ''}`} />}
         {!last && <i className={`seg down${down ? ' on' : ''}`} />}

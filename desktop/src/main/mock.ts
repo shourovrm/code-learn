@@ -967,6 +967,20 @@ export function createMock(options: MockOptions = {}): CodeLearnApi {
       advance();
     },
 
+    async rebuildTopics(concepts, replace) {
+      agentJob();
+      for (const concept of concepts) topicOf(concept);
+      if (!replace) return;
+      for (const concept of concepts) {
+        const roadmapConcept = approved!.concepts.find((x) => x.id === concept)!;
+        for (const [key, lesson] of lessons) if (lesson.concept === concept) lessons.delete(key);
+        for (const [key, entry] of activities) if (entry.activity.concept === concept) activities.delete(key);
+        deferred.delete(concept);
+        Object.assign(topicOf(concept), addConcept(roadmapConcept));
+      }
+      advance();
+    },
+
     async easier(concept) {
       agentJob();
       const stuck = topicOf(concept);

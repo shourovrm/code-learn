@@ -492,6 +492,11 @@ export interface CodeLearnApi {
   skip(concept: string): Promise<void>;
   /** "Try an easier one": a roadmap-change job that adds a prerequisite topic (§3.2). */
   easier(concept: string): Promise<void>;
+  /**
+   * Rebuilds the chosen topics of the open course: their lessons and exercises are written again. `replace` removes the
+   * old ones and resets their progress; without it the new ones sit beside the old (core §5, desktop §4.3).
+   */
+  rebuildTopics(concepts: string[], replace: boolean): Promise<void>;
 
   rebuild(trackRef: string): Promise<void>;
 

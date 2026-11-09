@@ -132,6 +132,8 @@ export interface CoreApp {
   runExampleLive(ws: string, lessonId: string, index: number, bound: string | undefined, output: (text: string, stream: 'stdout' | 'stderr') => void, options?: { onStart?: (stage: 'build' | 'run', limitMs: number) => void }): Promise<CoreProgramRun>;
   /** Runs a saved lesson example in the sandbox; output and errors are capped. Never recorded. */
   runExample(ws: string, lessonId: string, index: number, bound?: string): Promise<{ exit: number; output: string; errors: string }>;
+  /** Rebuilds the chosen topics: with `replace`, their lessons and the exercises only they cover go, and progress resets (core §5). */
+  rebuildTopics(ws: string, course: string, concepts: string[], options: { replace: boolean }): Promise<void>;
   listLessons(ws: string, bound?: string): { id: string; concept: string; title: string; read: boolean }[];
   listExercises(ws: string, bound?: string): { exercise: string; concepts: string[]; difficulty: number; created: string }[];
   saveNotes(ws: string, id: string, text: string, bound?: string): Promise<void>;

@@ -1007,6 +1007,19 @@ export function createLive(d: LiveDeps): Live {
       schedule(course);
     },
 
+    async rebuildTopics(concepts, replace) {
+      const course = core.getRoadmap(ws, approved()).course;
+      // A job still writing a chosen topic would save its old content back, so it stops first.
+      await cancel((key) => concepts.some((c) => key === `lesson:${course}:${c}` || key.startsWith(`author:${course}:${c}:`)));
+      await core.rebuildTopics(ws, course, concepts, { replace });
+      const lessonsOf = (concept: string) => core.listLessons(ws, course).filter((l) => l.concept === concept).length;
+      for (const concept of core.getRoadmap(ws, course).concepts.filter((c) => concepts.includes(c.id))) {
+        const saved = lessonsOf(concept.id);
+        background(`lesson:${course}:${concept.id}`, 'lesson', briefs.lesson(concept.id, concept.title), course, () => lessonsOf(concept.id) > saved, { concept: concept.id });
+      }
+      schedule(course);
+    },
+
     async rebuild(ref) {
       // A job of its own (§4.11), heard whatever course is on screen, since Tracks isn't a course's. Core reports no
       // steps, so it has the one stage; it starts when its turn comes and ends with the rebuild, failed or not.

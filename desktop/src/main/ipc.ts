@@ -39,6 +39,7 @@ const digest: Valid = (v) => typeof v === 'string' && /^[a-f0-9]{64}$/.test(v);
 const goal = shape({ topic: text(LIMITS.topic, 1), known: text(LIMITS.known), instructions: optional(text(LIMITS.instructions)), depth: oneOf('overview', 'standard', 'in-depth'), practice: oneOf('code', 'quiz', 'both', 'none') });
 const concept = shape({ id, title: text(LIMITS.title, 1), requires: list(id, 200) });
 const concepts = list(concept, 200, 1);
+const topicIds = list(id, 200, 1);
 const place: Valid = (v) => shape({ lessonId: id })(v) || shape({ activityId: id })(v);
 const words = text(LIMITS.words, 1);
 /** A lesson example's number: core keeps at most 5. */
@@ -87,6 +88,7 @@ const ARGS: { [K in Exclude<keyof CodeLearnApi, 'onCheckProgress' | 'onJobProgre
   ask: [place, words],
   skip: [id],
   easier: [id],
+  rebuildTopics: [topicIds, (v) => typeof v === 'boolean'],
   rebuild: [trackRef],
   removeTrack: [trackRef],
   usage: [],
