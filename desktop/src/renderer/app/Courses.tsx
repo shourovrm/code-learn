@@ -1,7 +1,7 @@
 // The learner's courses at the sidebar's foot (§4.13): the one on screen is marked, choosing another puts it on screen,
 // and New course opens the goal screen. In the slim sidebar each course is its badge, named by its title.
 import type { CourseSummary } from '../../shared/api';
-import { hueColor } from '../ui/Emm';
+import { hueColor } from '../ui/Sprig';
 import { Icon } from '../ui/Icon';
 import { useApi } from './api';
 import { cacheFor, lessonCache } from './cache';

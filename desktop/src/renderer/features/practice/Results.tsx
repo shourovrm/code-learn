@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { REBUILD, type CheckProgress, type CheckResult, type TestView, type TryResult, type VisibleTest } from '../../../shared/api';
 import { Button } from '../../ui/Button';
-import { Emm } from '../../ui/Emm';
+import { Sprig } from '../../ui/Sprig';
 import { Icon, Status } from '../../ui/Icon';
 import { stagger } from '../../ui/motion';
 import { Busy } from '../../ui/Busy';
@@ -89,7 +89,7 @@ function Body({ shown, name, topic, visibleTests, ways, quiz }: Props) {
   if (result.kind === 'not-counted') {
     return (
       <div className="outcome">
-        <Emm mood="soft" width={130} name={name} />
+        <Sprig mood="soft" width={130} name={name} />
         <div className="stack">
           <h2 className="h2 a-up">{shown.kind === 'try' ? "Try it didn't run" : "This check wasn't counted"}</h2>
           <p className="sub a-up" style={stagger(1)}>{result.reason}</p>
@@ -117,7 +117,7 @@ function Body({ shown, name, topic, visibleTests, ways, quiz }: Props) {
   if (result.passed === result.total) {
     return (
       <div className="outcome">
-        <Emm mood="cheer" width={170} name={name} />
+        <Sprig mood="cheer" width={170} name={name} />
         <div className="stack loose">
           <h2 className="h2 won a-pop" style={stagger(0, 300)}>{result.passed} of {result.total} passed</h2>
           <p className="sub a-up" style={stagger(0, 600)}>{sentence(result.mastered ? `You mastered ${topic}` : `Keep practicing ${topic}`)}</p>
@@ -130,7 +130,7 @@ function Body({ shown, name, topic, visibleTests, ways, quiz }: Props) {
     return (
       <>
       <div className="outcome">
-        <Emm mood="soft" width={130} name={name} />
+        <Sprig mood="soft" width={130} name={name} />
         <div className="stack snug">
           <h2 className="h2 a-up">Try another way</h2>
           <button type="button" className="way a-up" style={stagger(1, 150)} onClick={ways.reread}>Reread the lesson</button>
@@ -154,7 +154,7 @@ function Failing({ result, name, visibleTests }: { result: Extract<CheckResult, 
     <>
       <div className="rhead">
         {/* Under the ways forward, code-learn is already there. */}
-        {name && <Emm mood="think" width={56} name={name} />}
+        {name && <Sprig mood="think" width={56} name={name} />}
         <h2 className="h3">{result.passed} of {result.total} passed</h2>
         {!result.recorded && <span className="quiet-text">This is the starter code, so this check wasn't counted. Edit it, then check again.</span>}
       </div>

@@ -6,7 +6,7 @@ import { useBusy } from '../../app/useBusy';
 import { useJob } from '../../app/useJob';
 import { useCourse } from '../../app/useCourse';
 import { Button } from '../../ui/Button';
-import { Emm } from '../../ui/Emm';
+import { Sprig } from '../../ui/Sprig';
 import { Icon } from '../../ui/Icon';
 import { JobBar } from '../../ui/JobBar';
 import { stagger } from '../../ui/motion';
@@ -137,7 +137,7 @@ function SetupFailed({ course, topicId, onRetry }: { course: CourseView; topicId
     });
 
   return (
-    <Panel art={<Emm mood="think" width={150} name={course.track} perch />} title={say.title} level={2} text={say.text}>
+    <Panel art={<Sprig mood="think" width={150} name={course.track} perch />} title={say.title} level={2} text={say.text}>
       {(problem === 'gates' || problem === 'sandbox') && <Button variant="ghost" size="lg" onClick={() => go({ to: 'goal' })}>Stop</Button>}
       {problem === 'sandbox' && <Button variant="ghost" size="lg" onClick={() => go({ to: 'computer', then: { to: 'topic', topicId } })}>Check this computer</Button>}
       <Button size="lg" disabled={retrying.busy} onClick={retry}>Try again</Button>

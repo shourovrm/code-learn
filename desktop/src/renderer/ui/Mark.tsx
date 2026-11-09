@@ -3,18 +3,21 @@ import { useTheme } from '../app/theme';
 import logo from '../../../../docs/brand/code-learn-logo.svg';
 import logoOnNavy from '../../../../docs/brand/code-learn-logo-dark.svg';
 
-/** The code-learn chevron alone. */
-export function Mark({ size = 24 }: { size?: number }) {
+/** The code-learn mark alone: a sprout growing from a cursor. `ink` colors the cursor for the ground it sits on. */
+export function Mark({ size = 24, ink = '#0E2754' }: { size?: number; ink?: string }) {
   const id = useId();
   return (
-    <svg width={size} height={size} viewBox="0 0 600 600" aria-hidden="true">
+    <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden="true">
       <defs>
-        <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={id} x1="0" y1="8" x2="0" y2="55" gradientUnits="userSpaceOnUse">
           <stop offset="0" stopColor="#3DDB6C" />
           <stop offset="1" stopColor="#17B04B" />
         </linearGradient>
       </defs>
-      <polyline points="520,60 80,300 520,540" fill="none" stroke={`url(#${id})`} strokeWidth="124" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="13" y="47" width="38" height="8" rx="4" fill={ink} />
+      <path d="M32 47V24" fill="none" stroke={`url(#${id})`} strokeWidth="5" strokeLinecap="round" />
+      <path d="M32 33C21 33 14 26 14 16C25 16 32 23 32 33Z" fill={`url(#${id})`} />
+      <path d="M32 26C32 15 39 8 50 8C50 19 43 26 32 26Z" fill={`url(#${id})`} />
     </svg>
   );
 }

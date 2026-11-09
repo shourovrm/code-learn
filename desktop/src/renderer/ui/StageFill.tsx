@@ -1,7 +1,7 @@
-import { EmmFill } from './EmmFill';
+import { SprigFill } from './SprigFill';
 
 /**
- * An install's progress (§6.1) as Emm filling up, like every other long step: one share per stage reached, the
+ * An install's progress (§6.1) as Sprig filling up, like every other long step: one share per stage reached, the
  * download filling its own share with its real fraction (`part`, 0 to 1), beside the stage's words. Compact, for a
  * card. It shows no time: code-learn doesn't know when an install began.
  */
@@ -11,7 +11,7 @@ export function StageFill({ label, stages, stage, part = 0, text }: { label: str
   return (
     <div className="job compact install-fill">
       <span role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(fill * 100)} aria-valuetext={text}>
-        <EmmFill value={fill} width={32} />
+        <SprigFill value={fill} width={32} />
       </span>
       <span className="job-step">{text}</span>
     </div>

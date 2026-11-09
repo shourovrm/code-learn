@@ -80,8 +80,8 @@ describe('narrow windows', () => {
     try {
       renderApp({ to: 'tracks' });
       expect(await screen.findByRole('navigation', { name: 'Main' })).toHaveClass('slim');
-      // Its logo is Emm: the wordmark's "<" alone looks like a Back button.
-      expect(sidebar().querySelector('.lg .emm')).not.toBeNull();
+      // Its logo is Sprig, the mascot: there is no room for the wordmark.
+      expect(sidebar().querySelector('.lg .sprig')).not.toBeNull();
       expect(within(sidebar()).getByRole('button', { name: 'Tracks' })).not.toHaveTextContent('Tracks');
       // Wider again: the full sidebar comes back.
       wide();
@@ -131,7 +131,7 @@ describe('narrow windows', () => {
     }
   });
 
-  it('keeps a running job in reach in the slim sidebar: Emm alone, named for what it is and its stage', async () => {
+  it('keeps a running job in reach in the slim sidebar: Sprig alone, named for what it is and its stage', async () => {
     const wide = narrowWindow();
     try {
       const api = createMock();

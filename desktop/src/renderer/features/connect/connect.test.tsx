@@ -32,7 +32,7 @@ describe('connect journey', () => {
     const agents = api.agents;
     api.agents = () => new Promise((done) => (found = () => done(agents())));
     renderApp({ to: 'welcome' }, api);
-    // Not a blank window: code-learn says what it is doing, beside Emm asleep.
+    // Not a blank window: code-learn says what it is doing, beside Sprig asleep.
     expect(screen.getByText('code-learn is starting')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Connect an agent' })).not.toBeInTheDocument();
     found();

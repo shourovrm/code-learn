@@ -6,7 +6,7 @@ import { useRouter } from '../../app/router';
 import { useBusy } from '../../app/useBusy';
 import { Button } from '../../ui/Button';
 import { Dialog } from '../../ui/Dialog';
-import { Emm } from '../../ui/Emm';
+import { Sprig } from '../../ui/Sprig';
 import { Banner } from '../../ui/Banner';
 
 /** The one consent before setup: exactly the files code-learn will build (§4.1). */
@@ -19,7 +19,7 @@ export function SetupConsent({ track, proposal, error, busy = false, onClose, on
     <Dialog
       title={proposal.retry ? `code-learn has another way to set up ${track}.` : `Set up ${track} on this computer?`}
       text={`${proposal.retry && proposal.why ? `${proposal.why} ` : ''}Setup runs code your agent wrote, with internet access. Graded runs are offline.`}
-      art={<Emm mood="look" width={150} name={track} perch />}
+      art={<Sprig mood="look" width={150} name={track} perch />}
       body={
         <>
         {error && <p className="alert" role="alert">{error}</p>}

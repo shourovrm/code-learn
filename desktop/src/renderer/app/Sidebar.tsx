@@ -2,7 +2,7 @@
 import { useEffect, useRef, useSyncExternalStore, type ReactNode } from 'react';
 import type { CourseView } from '../../shared/api';
 import { Button } from '../ui/Button';
-import { Emm } from '../ui/Emm';
+import { Sprig } from '../ui/Sprig';
 import { Icon, type IconName } from '../ui/Icon';
 import { Logo } from '../ui/Mark';
 import { useApi } from './api';
@@ -91,8 +91,8 @@ export function Sidebar({ slim: slimHere = false }: { slim?: boolean }) {
   if (slim) {
     return (
       <nav className="slim" aria-label="Main" ref={slimNav}>
-        {/* Emm, not the wordmark's "<" on its own: that reads as a Back button. */}
-        <div className="lg"><Emm width={44} name={course?.track} /></div>
+        {/* Sprig, the mascot: the slim sidebar has no room for the wordmark. */}
+        <div className="lg"><Sprig width={44} name={course?.track} /></div>
         {backButton}
         {nav}
         <WorkNow course={course} slim />

@@ -48,14 +48,14 @@ describe('JobBar (§4.11)', () => {
     expect(time()).toBe('1:15');
   });
 
-  it('is a progressbar: Emm fills to the stages reached, named for screen readers by stage and time', () => {
+  it('is a progressbar: Sprig fills to the stages reached, named for screen readers by stage and time', () => {
     vi.useFakeTimers();
     show(job({ stage: 1, elapsedMs: 7000 }));
     const bar = screen.getByRole('progressbar', { name: 'Writing the lesson' });
     expect(bar).toHaveAttribute('aria-valuenow', '50');
     expect(bar).toHaveAttribute('aria-valuetext', 'Writing the lesson, 0:07');
-    expect(bar.querySelector('.emm-fill')).toHaveAttribute('aria-hidden', 'true');
-    expect((bar.querySelector('.emm-fill') as HTMLElement).style.getPropertyValue('--fill')).toBe('50%');
+    expect(bar.querySelector('.sprig-fill')).toHaveAttribute('aria-hidden', 'true');
+    expect((bar.querySelector('.sprig-fill') as HTMLElement).style.getPropertyValue('--fill')).toBe('50%');
   });
 
   it('a retry on a gate says only that it takes longer, with no counts', () => {
@@ -64,9 +64,9 @@ describe('JobBar (§4.11)', () => {
     expect(document.body.textContent).not.toMatch(/\d of \d/);
   });
 
-  it('dims Emm while it tries again, and says so', () => {
+  it('dims Sprig while it tries again, and says so', () => {
     show(job({ stage: 1, retry: { attempt: 2, of: 3 } }));
-    expect(document.querySelector('.emm-fill')).toHaveClass('dim');
+    expect(document.querySelector('.sprig-fill')).toHaveClass('dim');
     expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuetext', 'Taking a little longer, 0:00');
   });
 
@@ -83,7 +83,7 @@ describe('JobBar (§4.11)', () => {
     expect(screen.queryByText('Still working: the agent is thinking.')).not.toBeInTheDocument();
   });
 
-  it('compact: a small Emm and one line, the latest step (or the stage) and the time, with no stage list', () => {
+  it('compact: a small Sprig and one line, the latest step (or the stage) and the time, with no stage list', () => {
     const { rerender } = show(job({ stage: 1, steps: [{ kind: 'step', label: 'Reading the roadmap' }] }), { compact: true });
     expect(screen.queryByRole('list')).not.toBeInTheDocument();
     expect(document.querySelector('.job-step')).toHaveTextContent('Reading the roadmap');

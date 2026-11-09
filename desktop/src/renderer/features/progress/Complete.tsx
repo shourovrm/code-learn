@@ -1,7 +1,7 @@
 import type { CourseView } from '../../../shared/api';
 import { useRouter } from '../../app/router';
 import { Button } from '../../ui/Button';
-import { Emm } from '../../ui/Emm';
+import { Sprig } from '../../ui/Sprig';
 import { Icon } from '../../ui/Icon';
 import { stagger } from '../../ui/motion';
 import { reviewText } from '../../app/course';
@@ -12,7 +12,7 @@ export function Complete({ course, onView }: { course: CourseView; onView: () =>
   return (
     <main className="center">
       <div className="complete">
-        <Emm mood="cheer" width={240} name={course.track} perch />
+        <Sprig mood="cheer" width={240} name={course.track} perch />
         <h1 className="h1 a-up" style={stagger(0, 200)}>{course.title} complete</h1>
         <ul className="pills" style={{ listStyle: 'none', margin: 0, padding: 0 }} aria-label={course.activities ? 'Mastered' : 'Read'}>
           {course.topics.map((t, i) => (

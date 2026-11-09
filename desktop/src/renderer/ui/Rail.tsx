@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'rea
 import type { Message } from '../../shared/api';
 import type { HeardJob } from '../app/useJob';
 import { Button } from './Button';
-import { Emm } from './Emm';
+import { Sprig } from './Sprig';
 import { Field } from './Field';
 import { JobBar } from './JobBar';
 import { Markdown } from './Markdown';
@@ -36,7 +36,7 @@ export function Rail({ messages, onAsk, busy = false, answering, name, children 
   }
   return (
     <aside className="coach" aria-label="code-learn">
-      <div className="chead"><Emm width={40} name={name} />code-learn</div>
+      <div className="chead"><Sprig width={40} name={name} />code-learn</div>
       <div className="cbody" role="log" aria-busy={busy} ref={log}>
         {messages.map((m, i) => <Entry key={i} m={m} />)}
         {busy && (

@@ -6,8 +6,8 @@ import { SAY, problemOf, repairDetail } from '../../app/errors';
 import { useJob } from '../../app/useJob';
 import { useLoad } from '../../app/useLoad';
 import { Button } from '../../ui/Button';
-import { Emm } from '../../ui/Emm';
-import { EmmFill } from '../../ui/EmmFill';
+import { Sprig } from '../../ui/Sprig';
+import { SprigFill } from '../../ui/SprigFill';
 import { fillOf, JobBar, sayStep } from '../../ui/JobBar';
 import { Panel } from '../../ui/Panel';
 import { shownTopic } from '../../../shared/topic';
@@ -33,13 +33,13 @@ export function Research({ goal }: { goal: Goal }) {
   return (
     <main className="main page">
       <div className="page-head">
-        {/* While research runs, the heading's Emm is its progress, filling as it goes (§4.11). */}
-        {job ? <EmmFill value={fillOf(job.progress)} width={110} dim={Boolean(job.progress.retry)} /> : <Emm mood="think" width={110} />}
+        {/* While research runs, the heading's Sprig is its progress, filling as it goes (§4.11). */}
+        {job ? <SprigFill value={fillOf(job.progress)} width={110} dim={Boolean(job.progress.retry)} /> : <Sprig mood="think" width={110} />}
         <h1 className="h1 a-up">Researching {topic}</h1>
       </div>
       {job && (
         <section className="looking" aria-label="Research progress">
-          <JobBar job={job} label={`Researching ${topic}`} noLine emm={false} />
+          <JobBar job={job} label={`Researching ${topic}`} noLine sprig={false} />
           {steps.length > 0 && (
             <ol aria-label="What code-learn is looking at">
               {steps.map((step, i) => (
@@ -81,7 +81,7 @@ function NotFinished({ goal, error, retry }: { goal: Goal; error?: unknown; retr
           : SAY[problem];
   return (
     <main className="center">
-      <Panel art={<Emm mood="soft" width={130} />} title="code-learn couldn't finish the research." text={why}>
+      <Panel art={<Sprig mood="soft" width={130} />} title="code-learn couldn't finish the research." text={why}>
         {/* Offline isn't the agent's doing. */}
         {problem !== 'offline' && <Button variant="ghost" size="lg" onClick={() => go({ to: 'connect', then: { to: 'research', goal } })}>Check your agent</Button>}
         <Button size="lg" onClick={retry}>Try again</Button>

@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import type { CodeLearnApi, CourseView, Goal, JobProgress } from '../../shared/api';
 import { JOB_STAGES } from '../../shared/progress';
-import { EmmFill } from '../ui/EmmFill';
+import { SprigFill } from '../ui/SprigFill';
 import { fillOf, QUIET_MS, RETRYING, useNow } from '../ui/JobBar';
 import { useShownJobs } from '../ui/shownJobs';
 import { shownTopic } from '../../shared/topic';
@@ -88,7 +88,7 @@ function listed(jobs: HeardJob[], shown: ReadonlySet<string>): HeardJob[] {
   return [...groups.values()].filter((g) => !g.shown).map((g) => g.best);
 }
 
-/** The running jobs that no screen shows. Wide: Emm filling, what it is and its stage. Slim: Emm alone, named for screen readers. */
+/** The running jobs that no screen shows. Wide: Sprig filling, what it is and its stage. Slim: Sprig alone, named for screen readers. */
 export function WorkNow({ course, slim = false }: { course: Course; slim?: boolean }) {
   const { route } = useRouter();
   useEffect(() => {
@@ -131,7 +131,7 @@ function WorkJob({ job, course, slim }: { job: HeardJob; course: Course; slim: b
   // The name holds the visible words (WCAG 2.5.3); the slim one shows none, so the slim sidebar's tooltip shows it.
   return (
     <button ref={button} type="button" className="work-job" aria-label={label} onClick={() => void open()}>
-      <EmmFill value={fillOf(p)} width={slim ? 32 : 28} dim={Boolean(p.retry) || quiet} />
+      <SprigFill value={fillOf(p)} width={slim ? 32 : 28} dim={Boolean(p.retry) || quiet} />
       {!slim && (
         <span className="work-text">
           <span className="work-what">{what}</span>{' '}

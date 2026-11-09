@@ -151,7 +151,7 @@ export function InstallProgress({ agent }: { agent: Agent }) {
   const install = agent.install;
   if (!install || install.phase === 'done') return null;
   if (install.phase === 'failed') return <p className="alert" role="alert">{PROBLEM[install.problem ?? 'failed'](agent)}</p>;
-  // Emm filling through the download (its real fraction), the check and the vendor's installer.
+  // Sprig filling through the download (its real fraction), the check and the vendor's installer.
   const stage = (['downloading', 'checking', 'installing'] as const).indexOf(install.phase);
   const part = install.phase === 'downloading' ? (install.progress ?? 0) : 0;
   const label = install.phase === 'downloading' ? `Downloading ${agent.name}` : install.phase === 'checking' ? `Checking it's from ${VENDOR[agent.id]}…` : `Installing ${agent.name}…`;

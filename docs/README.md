@@ -8,6 +8,6 @@
 | [architecture.md](architecture.md) | How code-learn is built, with diagrams: the parts, the data model, use cases and flows |
 | [SECURITY.md](SECURITY.md) | Trust boundaries and known limitations |
 | [proposals/](proposals/) | Design proposals not yet built |
-| [brand/](brand/README.md) | Logo, Emm the chameleon, and colors |
+| [brand/](brand/README.md) | Logo, Sprig the mascot, and colors |
 
 For an overview and install steps, see the [main README](../README.md). To contribute, see [CONTRIBUTING.md](../CONTRIBUTING.md) and [AGENTS.md](../AGENTS.md).

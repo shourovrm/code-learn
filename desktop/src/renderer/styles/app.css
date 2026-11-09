@@ -289,8 +289,8 @@ textarea.field { height: auto; padding: 12px 16px; line-height: 1.5; resize: ver
 .map-head { max-width: 760px; display: flex; flex-direction: column; gap: 6px; }
 .tally { margin: -4px 0 4px; color: var(--muted); font-size: 14px; }
 .tally b { margin-right: 2px; color: var(--ink); font: 600 34px/1 var(--display); }
-/* The path (Path.tsx): topics as leaves on Emm's branch, green as far as the learner has come. Each stop's --d times
-   its part of the sequence: the branch draws, the leaf lands, the title rises, and Emm lands on the current card. */
+/* The path (Path.tsx): topics as leaves on Sprig's branch, green as far as the learner has come. Each stop's --d times
+   its part of the sequence: the branch draws, the leaf lands, the title rises, and Sprig lands on the current card. */
 .path-wrap { max-width: 760px; display: flex; flex-direction: column; }
 .path { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .stop { --lead: 0px; position: relative; display: grid; grid-template-columns: 56px minmax(0, 1fr); column-gap: 12px; align-items: center; }
@@ -318,10 +318,10 @@ button.stop-name.link:hover { background: var(--soft); }
 .stop-row .soon { padding: 0 14px; }
 .soon { font-size: 13px; color: var(--muted); }
 .map-main > .setup-progress { max-width: 760px; }
-/* The current topic: its card, with Emm landed on its top edge, facing the topic. */
+/* The current topic: its card, with Sprig landed on its top edge, facing the topic. */
 .stop-card { grid-column: 2; grid-row: 1; position: relative; padding: 18px 20px; display: flex; align-items: center; gap: 18px; background: var(--card); border: 2px solid var(--green-ink); border-radius: 16px; box-shadow: 0 8px 24px rgba(14, 124, 53, .1); animation: up .5s var(--ease) backwards; animation-delay: calc(var(--d) + 140ms); }
-.perch { position: absolute; left: 22px; bottom: calc(100% - 11px); line-height: 0; transform-origin: 50% 100%; animation: land .6s var(--ease) backwards; animation-delay: calc(var(--d) + 520ms); }
-.perch .emm.ready, .perch .emm.look { animation: none; }
+.perch { position: absolute; left: 22px; bottom: calc(100% - 4px); line-height: 0; transform-origin: 50% 100%; animation: land .6s var(--ease) backwards; animation-delay: calc(var(--d) + 520ms); }
+.perch .sprig.ready, .perch .sprig.look { animation: none; }
 .stop-main { flex: 1 1 200px; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
 .stop-title { font: 600 19px/1.3 var(--display); overflow-wrap: anywhere; }
 button.stop-title.link { align-self: flex-start; padding: 0; border: none; background: transparent; color: inherit; text-align: left; cursor: pointer; text-decoration: underline transparent; text-underline-offset: 4px; transition: text-decoration-color .2s; }
@@ -334,7 +334,7 @@ button.stop-title.link:hover { text-decoration-color: currentColor; }
 .step-bar i.act.open { background: var(--green-soft); box-shadow: inset 0 0 0 2px var(--green-ink); }
 .step-bar i.writing { background: linear-gradient(90deg, var(--shim-a) 0, var(--shim-b) 50%, var(--shim-a) 100%); background-size: 200px 100%; animation: shimmer 1.4s linear 2; }
 .steps .done { display: flex; align-items: center; gap: 6px; color: var(--green-ink); font-weight: 600; }
-/* A finished course: Emm cheers where the branch ends. */
+/* A finished course: Sprig cheers where the branch ends. */
 .path-end { padding: 6px 0 0 4px; line-height: 0; animation: land .6s var(--ease) backwards; animation-delay: calc(var(--d) + 200ms); transform-origin: 30% 100%; }
 .bar { position: relative; height: 8px; border-radius: 4px; background: var(--track); overflow: hidden; }
 .bar > i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: var(--green-ink); animation: grow 1.1s var(--ease) backwards; animation-delay: var(--d, .35s); }
@@ -368,12 +368,12 @@ button.stop-title.link:hover { text-decoration-color: currentColor; }
 @keyframes land { 0% { opacity: 0; transform: translateY(-28px); } 55% { opacity: 1; transform: translateY(0) scale(1.05, .92); } 78% { transform: scale(.98, 1.03); } }
 .a-up { animation: up .5s var(--ease) backwards; animation-delay: calc(var(--i, 0) * 120ms + var(--d, 0ms)); }
 .a-pop { animation: pop .45s var(--ease) backwards; animation-delay: calc(var(--i, 0) * 120ms + var(--d, 0ms)); }
-.emm { overflow: visible; flex-shrink: 0; transform-origin: 50% 100%; animation: bob 3.4s ease-in-out 2; }
-.emm .eye { transform-box: fill-box; transform-origin: center; animation: blink 3.5s 1s 2; }
-.emm.cheer { animation: cheer 1.3s ease-in-out .3s 2; }
-.emm.think { transform-origin: 60% 92%; animation: sway 3s ease-in-out 2; }
-.emm .spark, .emm .zz { transform-box: fill-box; transform-origin: center; animation: twinkle 1.6s ease-in-out 2; }
-.emm .lid { transform-box: fill-box; transform-origin: top; transform: scaleY(0); animation: lid .4s .5s ease-out backwards; }
+.sprig { overflow: visible; flex-shrink: 0; transform-origin: 50% 100%; animation: bob 3.4s ease-in-out 2; }
+.sprig .eye { transform-box: fill-box; transform-origin: center; animation: blink 3.5s 1s 2; }
+.sprig.cheer { animation: cheer 1.3s ease-in-out .3s 2; }
+.sprig.think { transform-origin: 60% 92%; animation: sway 3s ease-in-out 2; }
+.sprig .spark, .sprig .zz { transform-box: fill-box; transform-origin: center; animation: twinkle 1.6s ease-in-out 2; }
+.sprig .lid { transform-box: fill-box; transform-origin: top; transform: scaleY(0); animation: lid .4s .5s ease-out backwards; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
@@ -466,29 +466,29 @@ a.inline:hover { color: var(--ink); }
 .theme-switch button { flex: 1; min-width: 0; height: 30px; padding: 0 6px; border: none; border-radius: 7px; background: transparent; color: var(--navy-muted); display: inline-flex; align-items: center; justify-content: center; gap: 5px; font-size: 12px; cursor: pointer; transition: background .2s, color .2s; }
 .theme-switch button:hover { color: #fff; background: rgba(255, 255, 255, .06); }
 .theme-switch button[aria-checked="true"] { background: var(--navy-2); color: #fff; font-weight: 600; }
-/* code-learn's running jobs under the navigation (§4.11): Emm filling, what it is, and its stage. */
+/* code-learn's running jobs under the navigation (§4.11): Sprig filling, what it is, and its stage. */
 .work { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .work-job { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 6px 10px; border: 1px solid var(--navy-line); border-radius: 10px; background: transparent; color: var(--navy-text); text-align: left; cursor: pointer; transition: background .2s; }
 .work-job:hover { background: rgba(255, 255, 255, .1); }
-/* Emm's unfilled part is grey: on navy it needs more body to be seen. */
-.work-job .emm-fill .emm-base { opacity: .6; }
+/* Sprig's unfilled part is grey: on navy it needs more body to be seen. */
+.work-job .sprig-fill .sprig-base { opacity: .6; }
 .work-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; line-height: 1.3; }
 .work-what { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; color: #fff; font-weight: 600; font-size: 13px; }
 .work-stage { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--navy-muted); }
 .slim .work { align-items: center; margin-top: 6px; }
 .slim .work-job { width: 44px; height: 44px; padding: 0; justify-content: center; }
-/* Job progress (§4.11): Emm fills from grey to green, tail to head, as the job reaches each stage. */
-.emm-fill { position: relative; display: inline-block; flex-shrink: 0; line-height: 0; }
-.emm-fill .emm { animation: none; }
-.emm-fill .emm .eye { animation: none; }
-.emm-fill .zz { display: none; }
-.emm-fill .emm-base { display: block; filter: grayscale(1); opacity: .35; }
-.emm-fill .emm-color, .emm-fill .emm-edge { position: absolute; inset: 0; }
-.emm-fill .emm-color { clip-path: inset(0 calc(100% - var(--fill)) 0 0); transition: clip-path .6s var(--ease); }
+/* Job progress (§4.11): Sprig fills from grey to color, from the pot up to the leaves, as the job reaches each stage. */
+.sprig-fill { position: relative; display: inline-block; flex-shrink: 0; line-height: 0; }
+.sprig-fill .sprig { animation: none; }
+.sprig-fill .sprig .eye { animation: none; }
+.sprig-fill .zz { display: none; }
+.sprig-fill .sprig-base { display: block; filter: grayscale(1); opacity: .35; }
+.sprig-fill .sprig-color, .sprig-fill .sprig-edge { position: absolute; inset: 0; }
+.sprig-fill .sprig-color { clip-path: inset(calc(100% - var(--fill)) 0 0 0); transition: clip-path .6s var(--ease); }
 /* A thin band at the fill edge, lighter, breathing while the stage runs. */
-.emm-fill .emm-edge { clip-path: inset(0 calc(100% - var(--fill)) 0 max(0%, calc(var(--fill) - 8%))); filter: brightness(1.35); animation: edge 1.6s ease-in-out infinite; transition: clip-path .6s var(--ease); }
-.emm-fill.dim { opacity: .55; }
-.emm-fill.dim .emm-edge { display: none; }
+.sprig-fill .sprig-edge { clip-path: inset(calc(100% - var(--fill)) 0 max(0%, calc(var(--fill) - 8%)) 0); filter: brightness(1.35); animation: edge 1.6s ease-in-out infinite; transition: clip-path .6s var(--ease); }
+.sprig-fill.dim { opacity: .55; }
+.sprig-fill.dim .sprig-edge { display: none; }
 @keyframes edge { 0%, 100% { opacity: .15; } 50% { opacity: .85; } }
 .job { display: flex; align-items: center; min-width: 0; color: var(--muted); }
 .job.full { gap: 18px; width: 100%; }

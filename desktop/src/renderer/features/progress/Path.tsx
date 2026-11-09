@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react';
 import type { CourseView, TopicView } from '../../../shared/api';
 import { useRouter } from '../../app/router';
 import { Button } from '../../ui/Button';
-import { Emm } from '../../ui/Emm';
+import { Sprig } from '../../ui/Sprig';
 import { Icon } from '../../ui/Icon';
 import { continueRoute, offeredTopic, reviewText } from '../../app/course';
 import { Writing } from '../lessons/Writing';
@@ -19,8 +19,8 @@ function currentIndex(topics: TopicView[]): number {
 }
 
 /**
- * The course as a path along Emm's branch: each topic is a leaf, the branch is green between topics the learner has
- * reached, and Emm sits on the topic code-learn offers now. A finished course has Emm at the branch's end.
+ * The course as a path along Sprig's branch: each topic is a leaf, the branch is green between topics the learner has
+ * reached, and Sprig sits on the topic code-learn offers now. A finished course has Sprig at the branch's end.
  */
 export function Path({ course }: { course: CourseView }) {
   const { topics } = course;
@@ -36,19 +36,19 @@ export function Path({ course }: { course: CourseView }) {
       </ol>
       {at < 0 && course.done && (
         <div className="path-end" aria-hidden="true" style={timing(topics.length)}>
-          <Emm mood="cheer" width={96} name={course.track} />
+          <Sprig mood="cheer" width={96} name={course.track} />
         </div>
       )}
     </div>
   );
 }
 
-/** When a stop's part of the sequence starts: the CSS times the branch, leaf, title and Emm from it. */
+/** When a stop's part of the sequence starts: the CSS times the branch, leaf, title and Sprig from it. */
 const timing = (i: number): CSSProperties => ({ '--d': `${Math.min(i, STAGGERED) * STEP_MS}ms` }) as CSSProperties;
 
 type StopProps = { topic: TopicView; index: number; current: boolean; track: string; up: boolean; down: boolean; last: boolean };
 
-/** One topic on the path: its leaf on the branch, then its title, or the current topic's card with Emm on it. */
+/** One topic on the path: its leaf on the branch, then its title, or the current topic's card with Sprig on it. */
 function Stop({ topic, index, current, track, up, down, last }: StopProps) {
   const { go } = useRouter();
   return (
@@ -89,14 +89,14 @@ function Leaf({ state, flip, reading }: { state: TopicView['state']; flip: boole
   );
 }
 
-/** The topic code-learn offers now, with Emm perched on its card: Continue, or a due review. */
+/** The topic code-learn offers now, with Sprig perched on its card: Continue, or a due review. */
 function Current({ topic, track }: { topic: TopicView; track: string }) {
   const { go } = useRouter();
   const mood = topic.review ? 'look' : topic.stuck ? 'think' : 'ready';
   return (
     <div className="stop-card">
       <span className="perch" aria-hidden="true">
-        <Emm mood={mood} width={84} name={track} />
+        <Sprig mood={mood} width={84} name={track} />
       </span>
       <div className="stop-main">
         {/* The topic page lists its lessons, so one already read opens again from here. */}

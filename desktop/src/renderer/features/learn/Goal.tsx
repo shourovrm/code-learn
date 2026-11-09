@@ -4,7 +4,7 @@ import { useApi } from '../../app/api';
 import { useRouter } from '../../app/router';
 import { useLoad } from '../../app/useLoad';
 import { Button } from '../../ui/Button';
-import { Emm } from '../../ui/Emm';
+import { Sprig } from '../../ui/Sprig';
 import { Field } from '../../ui/Field';
 import { stagger } from '../../ui/motion';
 import { Banner } from '../../ui/Banner';
@@ -81,7 +81,7 @@ export function Goal() {
           </Banner>
         )}
         {isNew && practice === 'code' && (
-          <Banner art={<Emm mood="look" width={56} />}><b>{shown} isn't set up yet.</b> code-learn will set it up.</Banner>
+          <Banner art={<Sprig mood="look" width={56} />}><b>{shown} isn't set up yet.</b> code-learn will set it up.</Banner>
         )}
       </form>
     </main>

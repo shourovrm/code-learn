@@ -5,7 +5,7 @@ import { Failed } from '../../app/Problems';
 import { timing, useLoad } from '../../app/useLoad';
 import { Busy } from '../../ui/Busy';
 import { Button } from '../../ui/Button';
-import { Emm } from '../../ui/Emm';
+import { Sprig } from '../../ui/Sprig';
 import { Status } from '../../ui/Icon';
 import { Logo, Mark } from '../../ui/Mark';
 import { stagger } from '../../ui/motion';
@@ -20,14 +20,14 @@ function Starting() {
         <Busy>code-learn is starting</Busy>
       </div>
       <div className="welcome-art bw">
-        <div className="bg" aria-hidden="true"><Mark size={440} /></div>
-        <Emm mood="sleep" width={360} perch />
+        <div className="bg" aria-hidden="true"><Mark size={440} ink="#F3F6FB" /></div>
+        <Sprig mood="sleep" width={360} perch />
       </div>
     </main>
   );
 }
 
-/** Monochrome with Emm asleep until an agent is connected; then color comes in. */
+/** Monochrome with Sprig asleep until an agent is connected; then color comes in. */
 export function Welcome() {
   const api = useApi();
   const { go } = useRouter();
@@ -68,8 +68,8 @@ export function Welcome() {
         </div>
       </div>
       <div className={`welcome-art ${fx}`}>
-        <div className="bg" aria-hidden="true"><Mark size={440} /></div>
-        <Emm mood={on ? 'wake' : 'sleep'} width={360} perch />
+        <div className="bg" aria-hidden="true"><Mark size={440} ink="#F3F6FB" /></div>
+        <Sprig mood={on ? 'wake' : 'sleep'} width={360} perch />
         {on && (
           <div className="card connected a-pop" style={stagger(0, 600)}>
             <Status kind="ok" decorative />

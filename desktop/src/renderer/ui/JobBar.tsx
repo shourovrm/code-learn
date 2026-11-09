@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useState } from 'react';
 import type { JobProgress, JobStep } from '../../shared/api';
 import { JOB_STAGES } from '../../shared/progress';
 import type { HeardJob } from '../app/useJob';
-import { EmmFill } from './EmmFill';
+import { SprigFill } from './SprigFill';
 import { showJob } from './shownJobs';
 
 /** After this long with no event while the agent holds the turn, a quiet line says it is still working (§4.11). */
@@ -25,7 +25,7 @@ export const clock = (ms: number) => {
 };
 
 /**
- * How far Emm fills: each stage reached fills its share, a real fraction (a build's steps, the exercise's gates) fills
+ * How far Sprig fills: each stage reached fills its share, a real fraction (a build's steps, the exercise's gates) fills
  * within it, and the last share is the job done (a tutor turn, with one stage, is half full while it answers). Never
  * a percentage the job doesn't have.
  */
@@ -54,19 +54,19 @@ type Props = {
   job: HeardJob;
   /** The progress's accessible name, for example "Writing the lesson". */
   label: string;
-  /** Narrow places (the outline): a small Emm and one line, the step and the time. */
+  /** Narrow places (the outline): a small Sprig and one line, the step and the time. */
   compact?: boolean;
   /** Hides the latest-step line, for a screen that lists the steps itself (research). */
   noLine?: boolean;
-  /** False when the screen's own Emm shows the fill (research's heading). */
-  emm?: boolean;
+  /** False when the screen's own Sprig shows the fill (research's heading). */
+  sprig?: boolean;
 };
 
 /**
- * A job's progress as Emm filling up, from grey to code-learn green, as the job reaches each stage (§4.11). Full: the
+ * A job's progress as Sprig filling up, from grey to code-learn green, as the job reaches each stage (§4.11). Full: the
  * named stages, the latest step or retry, the time so far, and a quiet line after 90 seconds. Compact: one line.
  */
-export function JobBar({ job, label, compact = false, noLine = false, emm = true }: Props) {
+export function JobBar({ job, label, compact = false, noLine = false, sprig = true }: Props) {
   const { progress: p, at } = job;
   const now = useNow();
   // This bar is the job's progress on screen: the sidebar stands down. Before paint, so it never shows both.
@@ -88,7 +88,7 @@ export function JobBar({ job, label, compact = false, noLine = false, emm = true
       aria-valuenow={Math.round(fill * 100)}
       aria-valuetext={`${p.retry ? line : stages[stage]}, ${elapsed}`}
     >
-      {emm && <EmmFill value={fill} width={compact ? 32 : 84} dim={dim} />}
+      {sprig && <SprigFill value={fill} width={compact ? 32 : 84} dim={dim} />}
     </span>
   );
   if (compact) {
@@ -102,7 +102,7 @@ export function JobBar({ job, label, compact = false, noLine = false, emm = true
     );
   }
   return (
-    <div className={`job full${emm ? '' : ' bare'}`} role="group" aria-label={label}>
+    <div className={`job full${sprig ? '' : ' bare'}`} role="group" aria-label={label}>
       {meter}
       <div className="job-body">
         <div className="job-line">

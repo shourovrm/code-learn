@@ -7,7 +7,7 @@ import { useJobs } from '../../app/useJob';
 import { useLoad } from '../../app/useLoad';
 import { Button } from '../../ui/Button';
 import { Dialog } from '../../ui/Dialog';
-import { Emm } from '../../ui/Emm';
+import { Sprig } from '../../ui/Sprig';
 import { Field } from '../../ui/Field';
 import { JobBar } from '../../ui/JobBar';
 import { stagger } from '../../ui/motion';
@@ -96,7 +96,7 @@ export function Tracks() {
             const job = rebuilds.find((j) => j.progress.track === t.name);
             return (
               <li key={t.ref} className="card track a-up" style={stagger(i + 1)} aria-label={t.name}>
-                <Emm width={140} name={t.name} perch />
+                <Sprig width={140} name={t.name} perch />
                 <b>{t.name}</b>
                 {job && <JobBar job={job} label={`Rebuilding ${t.name}`} compact />}
                 <Button variant="ghost" disabled={rebuilding === t.ref || Boolean(job)} onClick={() => rebuild(t.ref, t.name)}>Rebuild</Button>
