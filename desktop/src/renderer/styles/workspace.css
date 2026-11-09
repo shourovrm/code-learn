@@ -1,75 +1,115 @@
-/* The workspace: lessons, the exercise screen, the editor, results, the terminal and diagrams. */
+/* The workspace: lessons, the exercise screen, the editor, results, the terminal and diagrams (docs/design-system.md). */
+:root {
+  --topic-page-w: 620px;
+  --term-h: 200px;
+  --results-h: 280px;
+  --stacked-mid-h: 560px;
+  --stacked-coach-h: 420px;
+  --diagram-wait-h: 120px;
+  --example-max-h: 320px;
+  --lnum-w: 48px;
+  --code-min-w: 480px;
+}
 
 /* ---------- Lessons ---------- */
-.topic-page { width: min(620px, 100%); display: flex; flex-direction: column; gap: 18px; }
-.topic-page .card { padding: 4px 22px; }
-.topic-page .card.panel { width: auto; padding: 28px; }
+.topic-page { width: min(var(--topic-page-w), 100%); display: flex; flex-direction: column; gap: var(--space-200); }
+.topic-page .card { padding: var(--space-050) var(--space-300); }
+.topic-page .card.panel { width: auto; padding: var(--space-400); }
 /* One row as tall as the window: a column that outgrows it (a long chat) scrolls inside itself, never the page. */
-.ws { flex: 1; min-height: 0; min-width: 0; display: grid; grid-template-columns: 340px minmax(0, 1fr) 340px; grid-template-rows: minmax(0, 1fr); }
-.ws.quiz { grid-template-columns: minmax(0, 1fr) 340px; }
+.ws { flex: 1; min-height: 0; min-width: 0; display: grid; grid-template-columns: var(--column-w) minmax(0, 1fr) var(--tutor-w); grid-template-rows: minmax(0, 1fr); }
+.ws.quiz { grid-template-columns: minmax(0, 1fr) var(--tutor-w); }
 .ws.quiz .mid { overflow: auto; }
 .quiz-form { overflow: visible; flex-shrink: 0; border-right: 0; }
 .quiz-questions fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
-.quiz-questions legend { margin-bottom: 16px; }
+.quiz-questions legend { margin-bottom: var(--space-200); }
 .quiz-questions .opt { white-space: normal; }
-.quiz-results { padding: 24px; }
-.ws.lesson { grid-template-columns: 270px minmax(0, 1fr) 340px; }
-.stmt { min-width: 0; padding: 28px; display: flex; flex-direction: column; gap: 18px; background: var(--card); border-right: 1px solid var(--line); overflow: auto; }
-/* An exercise that has a passed check (DESIGN E): a green card at the top of its statement. */
-.solved { padding: 12px 16px; border: 1px solid var(--green-line); border-radius: 12px; background: var(--green-soft); color: var(--ink); }
+.quiz-results { padding: var(--space-300); }
+.ws.lesson { grid-template-columns: var(--column-w) minmax(0, 1fr) var(--tutor-w); }
+
+/* The statement column is the seed packet's field: garden green, light text, outlined buttons. The quiz form is the
+   same column on paper, so it names the same colours from the paper. */
+.stmt {
+  --stmt-bg: var(--packet);
+  --stmt-text: var(--packet-text);
+  --stmt-muted: var(--packet-muted);
+  --stmt-line: var(--packet-line);
+  --stmt-code: var(--packet-code);
+  --leaf: var(--leaf-on-packet);
+  min-width: 0; padding: var(--space-300); display: flex; flex-direction: column; gap: var(--space-200);
+  background: var(--stmt-bg); color: var(--stmt-text); border-right: var(--border) solid var(--stmt-line); overflow: auto;
+}
+.stmt.quiz-form { --stmt-bg: var(--card); --stmt-text: var(--ink); --stmt-muted: var(--muted); --stmt-line: var(--line); --stmt-code: var(--soft); --leaf: var(--ok); }
+.stmt:not(.quiz-form) :focus-visible { outline-color: var(--focus-on-garden); }
+.stmt .h2 { font: var(--type-heading-large); letter-spacing: var(--heading-track); }
+.stmt .h3 { font: var(--type-heading-small); letter-spacing: var(--heading-track); }
+.stmt .md { font: var(--type-body-large); }
+.stmt .md a { color: inherit; }
+.stmt .md :not(pre) > code { background: var(--stmt-code); }
+.stmt .md pre { background: var(--stmt-code); color: var(--stmt-text); }
+.stmt:not(.quiz-form) .md pre [class*="hljs-"] { color: inherit; }
+/* A small label cut like a plant stake: a pointed left end, marigold, dark green text. */
+.stmt .pill { height: var(--control-h-compact); padding: 0 var(--space-100) 0 var(--space-200); border-radius: var(--radius-tag); background: var(--primary); color: var(--on-primary); font: var(--type-heading-xxsmall); clip-path: polygon(var(--space-100) 0, 100% 0, 100% 100%, var(--space-100) 100%, 0 50%); }
+/* An exercise that has a passed check (DESIGN E): a card at the top of its statement. */
+.solved { padding: var(--space-150) var(--space-200); border: var(--border) solid var(--stmt-line, var(--green-line)); border-radius: var(--radius-card); background: var(--stmt-code, var(--green-soft)); color: var(--stmt-text, var(--ink)); }
 .solved p { margin: 0; }
-.solved p + p { margin-top: 4px; font-size: 14px; color: var(--muted); }
+.solved p + p { margin-top: var(--space-050); font: var(--type-body); color: var(--stmt-muted, var(--muted)); }
 /* Previous and Next between exercises, at the foot of the statement (DESIGN D). */
-.solution-note { margin: 0; padding: 8px 20px; border-bottom: 1px solid var(--line); }
-.exnav .btn { padding: 0 12px; }
-.exnav { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: auto; padding-top: 8px; }
-.outline { gap: 6px; }
-.outline .h3 { padding: 0 14px 8px; }
-.outline .item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: none; border-radius: 10px; background: transparent; color: var(--faint); text-align: left; }
+.solution-note { margin: 0; padding: var(--space-100) var(--space-250); border-bottom: var(--border) solid var(--line); }
+.exnav { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-100); margin-top: auto; padding-top: var(--space-200); border-top: var(--border) solid var(--stmt-line); color: var(--stmt-muted); }
+.exnav .quiet-text { color: var(--stmt-muted); }
+.exnav .btn { height: var(--control-h); padding: 0 var(--space-150); }
+.exnav .btn.ghost { background: transparent; border-color: var(--stmt-line); color: var(--stmt-text); }
+.outline { gap: var(--space-050); }
+.outline .h3 { padding: 0 var(--space-100) var(--space-100); }
+.outline .item { display: flex; align-items: center; gap: var(--space-150); min-height: var(--space-500); padding: var(--space-050) var(--space-100); border: none; border-left: var(--border-bold) solid transparent; border-radius: var(--radius-ctl); background: transparent; color: var(--stmt-muted); font: var(--type-body); text-align: left; }
 /* Why a locked activity is locked, in words (the lock alone says nothing). */
-.locked { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
-.outline .locked { margin-top: -8px; padding: 0 14px 0 44px; }
-.outline .link { color: var(--ink); cursor: pointer; }
-.outline .link:hover { background: var(--soft); }
-.outline .link[aria-current="page"] { background: var(--green-soft); font-weight: 600; }
-.reader { min-width: 0; padding: 44px 56px; display: flex; flex-direction: column; gap: 20px; background: var(--card); overflow: auto; }
-.reader .head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.reader .h1 { font-size: 38px; }
-.reader .sub { font-size: 18px; max-width: 580px; }
-.pre { margin: 0; padding: 18px 20px; border-radius: 10px; background: var(--soft); font: 15px/1.65 var(--mono); font-variant-ligatures: none; white-space: pre; overflow-x: auto; }
-.my-note { display: flex; gap: 12px; align-items: center; max-width: 600px; padding: 12px 16px; border-radius: 10px; background: var(--note); font-size: 14.5px; }
+.locked { display: inline-flex; align-items: center; gap: var(--space-075); font: var(--type-body-small); color: var(--muted); }
+.outline .locked { margin-top: calc(-1 * var(--space-100)); padding: 0 var(--space-100) 0 calc(var(--icon) + var(--space-150) + var(--space-100)); color: var(--stmt-muted); }
+.outline .link { color: var(--stmt-text); cursor: pointer; }
+.outline .link:hover { background: var(--stmt-code); }
+.outline .link[aria-current="page"] { background: var(--stmt-code); border-left-color: var(--primary); font-weight: 700; }
+.reader { min-width: 0; padding: var(--space-500) var(--space-600); display: flex; flex-direction: column; gap: var(--space-250); background: var(--card); overflow: auto; }
+.reader .head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-200); }
+.reader .h1 { font: var(--type-heading-xlarge); letter-spacing: var(--heading-track); }
+.reader .sub { font: var(--type-body-large); max-width: var(--measure); }
+.reader .md { max-width: var(--measure); font: var(--type-body-large); }
+.reader .md :is(h1, h2, h3) { letter-spacing: var(--heading-track); }
+.reader .md h1 { font: var(--type-heading-xlarge); }
+.reader .md :is(h2, h3) { font: var(--type-heading-medium); }
+.pre { margin: 0; padding: var(--space-200) var(--space-250); border-radius: var(--radius-card); background: var(--soft); font: var(--type-code); font-variant-ligatures: none; white-space: pre; overflow-x: auto; }
+.my-note { display: flex; gap: var(--space-150); align-items: center; max-width: var(--measure); padding: var(--space-150) var(--space-200); border-radius: var(--radius-card); background: var(--note); color: var(--note-ink); font: var(--type-body); }
 .my-note span { min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .reader .actions { margin-top: auto; }
 
-/* ---------- code-learn rail ---------- */
-.coach { min-width: 0; display: flex; flex-direction: column; background: var(--card); border-left: 1px solid var(--line); }
-.chead { height: 64px; flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: 0 18px; border-bottom: 1px solid var(--line); font: 600 16px var(--display); }
-.cbody { flex: 1; min-height: 0; padding: 18px; display: flex; flex-direction: column; gap: 14px; overflow: auto; }
-.you { min-width: 0; margin: 0; font-size: 14px; color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; }
+/* ---------- code-learn tutor rail ---------- */
+.coach { min-width: 0; display: flex; flex-direction: column; background: var(--ground); border-left: var(--border) solid var(--line); }
+.chead { height: var(--space-600); flex-shrink: 0; display: flex; align-items: center; gap: var(--space-100); padding: 0 var(--space-200); border-bottom: var(--border) solid var(--line); font: var(--type-heading-small); letter-spacing: var(--heading-track); }
+.cbody { flex: 1; min-height: 0; padding: var(--space-200); display: flex; flex-direction: column; gap: var(--space-150); overflow: auto; }
+.you { min-width: 0; margin: 0; font: var(--type-body); color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; }
 .you b { color: var(--ink); font-weight: 600; }
-.note { display: flex; gap: 12px; align-items: flex-start; padding: 14px; border-radius: 12px; border: 1px solid var(--line); font-size: 14.5px; line-height: 1.5; }
-.cfoot { flex-shrink: 0; padding: 14px 18px 18px; display: flex; flex-direction: column; gap: 12px; border-top: 1px solid var(--line); }
-.cfoot .actions .btn { flex: 1; height: 40px; }
+.note { display: flex; gap: var(--space-150); align-items: flex-start; padding: var(--space-150); border-radius: var(--radius-card); border: var(--border) solid var(--line); background: var(--card); font: var(--type-body); }
+.cfoot { flex-shrink: 0; padding: var(--space-150) var(--space-200) var(--space-200); display: flex; flex-direction: column; gap: var(--space-150); border-top: var(--border) solid var(--line); }
+.cfoot .actions .btn { flex: 1; height: var(--control-h); }
 
 /* ---------- Practice ---------- */
 .mid { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
 .ed { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 /* When the tabs and buttons don't fit on one row, the buttons wrap to a second row instead of squeezing the tabs. */
-.etool { min-height: 56px; flex-shrink: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; padding-right: 12px; background: var(--surface-2); border-bottom: 1px solid var(--line); }
-.etabs { display: flex; height: 56px; max-width: 100%; overflow-x: auto; }
-.etool > .actions { min-height: 56px; margin-left: auto; }
-.etab { height: 100%; padding: 0 20px; border: none; border-right: 1px solid var(--line); background: transparent; color: var(--muted); font: 500 13.5px var(--mono); font-variant-ligatures: none; white-space: nowrap; cursor: pointer; }
-.etab[aria-selected="true"] { background: var(--card); color: var(--ink); font-weight: 600; }
+.etool { min-height: var(--space-600); flex-shrink: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-100); padding: 0 var(--space-200) 0 var(--space-100); background: var(--surface-2); border-bottom: var(--border) solid var(--line); }
+.etabs { display: flex; align-items: center; gap: var(--space-050); max-width: 100%; overflow-x: auto; }
+.etool > .actions { min-height: var(--space-600); margin-left: auto; gap: var(--space-100); }
+.etab { height: var(--control-h); padding: 0 var(--space-150); border: none; border-radius: var(--radius-ctl); background: transparent; color: var(--muted); font: var(--type-code-small); font-variant-ligatures: none; white-space: nowrap; cursor: pointer; }
+.etab[aria-selected="true"] { background: var(--soft); color: var(--ink); font-weight: 700; box-shadow: inset 0 calc(-1 * var(--border-bold)) 0 var(--ink); }
 .ebody { flex: 1; min-height: 0; overflow: auto; background: var(--card); }
-.code { position: relative; display: grid; grid-template-columns: 56px minmax(0, 1fr); padding: 16px 0; font: 14px/1.8 var(--mono); font-variant-ligatures: none; min-width: max-content; }
-.lnum { display: flex; flex-direction: column; align-items: flex-end; padding-right: 16px; color: var(--faint); user-select: none; }
-.code textarea { display: block; width: 100%; min-width: 480px; margin: 0; padding: 0 16px 0 0; border: none; background: transparent; font: inherit; white-space: pre; resize: none; overflow: hidden; outline: none; position: relative; z-index: 1; }
+.code { position: relative; display: grid; grid-template-columns: var(--lnum-w) minmax(0, 1fr); padding: var(--space-200) 0; font: var(--type-code); font-variant-ligatures: none; min-width: max-content; }
+.lnum { display: flex; flex-direction: column; align-items: flex-end; padding-right: var(--space-200); color: var(--faint); user-select: none; }
+.code textarea { display: block; width: 100%; min-width: var(--code-min-w); margin: 0; padding: 0 var(--space-200) 0 0; border: none; background: transparent; font: inherit; white-space: pre; resize: none; overflow: hidden; outline: none; position: relative; z-index: 1; }
 /* The colored copy lies under the textarea, which keeps its caret and a see-through selection (§4.10). */
 .etext { position: relative; min-width: 0; }
-.code .hl { position: absolute; inset: 0; margin: 0; padding: 0 16px 0 0; font: inherit; white-space: pre; overflow: hidden; pointer-events: none; color: var(--ink); }
+.code .hl { position: absolute; inset: 0; margin: 0; padding: 0 var(--space-200) 0 0; font: inherit; white-space: pre; overflow: hidden; pointer-events: none; color: var(--ink); }
 .code textarea.lit { color: transparent; caret-color: var(--ink); }
 .code textarea.lit::selection { color: transparent; background: color-mix(in srgb, var(--blue) 22%, transparent); }
-/* highlight.js's classes in the editor and in agent text's code blocks (§2.1, §4.3), each AA on white and on --soft,
+/* highlight.js's classes in the editor and in agent text's code blocks (§2.1, §4.3), each AA on --card and on --soft,
    with no bold or italic so the copy lines up with the textarea's text. */
 :is(.hl, .md pre) :is(.hljs-keyword, .hljs-selector-tag, .hljs-doctag) { color: var(--blue); }
 :is(.hl, .md pre) :is(.hljs-string, .hljs-regexp, .hljs-template-tag, .hljs-addition) { color: var(--green-ink); }
@@ -79,92 +119,97 @@
 :is(.hl, .md pre) :is(.hljs-built_in, .hljs-type, .hljs-attr, .hljs-attribute, .hljs-meta, .hljs-tag, .hljs-variable, .hljs-template-variable) { color: var(--blue-ink); }
 /* High contrast forces its own colors: the textarea shows its own text, and the copy steps aside. */
 @media (forced-colors: active) { .code .hl { display: none; } }
-.code:focus-within { box-shadow: inset 0 0 0 3px var(--focus); }
+.code:focus-within { box-shadow: inset 0 0 0 var(--space-050) var(--focus); }
 /* The terminal pane (§4.9): dark and monospace, between the editor and the results. */
-.term { flex-shrink: 0; height: 200px; display: flex; flex-direction: column; background: var(--garden-3); border-top: 1px solid var(--garden-line); }
-.term-head { height: 32px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; border-bottom: 1px solid var(--garden-line); color: var(--garden-text); font-size: 12px; font-weight: 600; }
-.term-status { color: var(--garden-muted); font: 500 12px var(--mono); font-variant-ligatures: none; font-variant-numeric: tabular-nums; }
-.term-hint { margin: 0; padding: 6px 14px 8px; background: var(--garden); color: var(--garden-text); font-size: 12.5px; }
-.term-screen { flex: 1; min-height: 0; padding: 8px 4px 8px 16px; }
-.term-screen:focus-within { outline: 3px solid var(--focus-on-garden); outline-offset: -3px; }
-.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: pre-wrap; border: 0; }
-.res { flex-shrink: 0; height: 280px; display: flex; flex-direction: column; gap: 14px; padding: 18px 24px; border-top: 1px solid var(--line); background: var(--card); overflow: auto; animation: slide .55s var(--ease) backwards; }
-.res.nok { background: var(--res-nok); border-top: 2px solid var(--orange-line); }
-.res.ok { background: var(--res-ok); border-top: 2px solid var(--green-line); }
-.res.off { background: var(--res-off); border-top: 2px solid var(--line); }
-.res.quiet { animation: none; }
-.res .idle { flex: 1; display: grid; place-items: center; color: var(--muted); font-size: 15px; }
-.rhead { display: flex; align-items: center; gap: 14px; }
-.rhead .h3 { color: var(--orange-ink); }
-.tline { display: flex; gap: 12px; align-items: center; font-size: 15px; font-weight: 600; }
-.cmp { display: inline-flex; gap: 8px; margin-left: 6px; font: 500 13px var(--mono); font-variant-ligatures: none; }
-.cmp span { padding: 4px 10px; border-radius: 6px; white-space: pre-wrap; max-height: 12em; overflow: auto; }
+.term { flex-shrink: 0; height: var(--term-h); display: flex; flex-direction: column; background: var(--garden-3); border-top: var(--border) solid var(--garden-line); }
+.term-head { height: var(--control-h); flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 var(--space-200); border-bottom: var(--border) solid var(--garden-line); color: var(--garden-text); font: var(--type-code-small); font-variant-ligatures: none; font-weight: 600; }
+.term-status { color: var(--garden-muted); font: var(--type-code-small); font-variant-ligatures: none; font-variant-numeric: tabular-nums; }
+.term-hint { margin: 0; padding: var(--space-075) var(--space-150) var(--space-100); background: var(--garden); color: var(--garden-text); font: var(--type-body-small); }
+.term-screen { flex: 1; min-height: 0; padding: var(--space-100) var(--space-050) var(--space-100) var(--space-200); }
+.term-screen:focus-within { outline: var(--space-050) solid var(--focus-on-garden); outline-offset: calc(-1 * var(--space-050)); }
+.sr-only { position: absolute; width: var(--border); height: var(--border); margin: calc(-1 * var(--border)); padding: 0; overflow: hidden; clip-path: inset(50%); white-space: pre-wrap; border: 0; }
+/* Results sit under the code on a 2px ink rule, and rise from it when they appear. */
+.res { flex-shrink: 0; height: var(--results-h); display: flex; flex-direction: column; gap: var(--space-150); padding: var(--space-200) var(--space-300); border-top: var(--border-bold) solid var(--ink); background: var(--card); overflow: auto; }
+.res.nok { background: var(--res-nok); }
+.res.ok { background: var(--res-ok); }
+.res.off { background: var(--res-off); }
+@keyframes rise { from { clip-path: inset(100% 0 0 0); } to { clip-path: inset(0 0 0 0); } }
+@media (prefers-reduced-motion: no-preference) {
+  .res { animation: rise 320ms var(--ease); }
+  .res.quiet { animation: none; }
+}
+.res .idle { flex: 1; display: grid; place-items: center; color: var(--muted); font: var(--type-body-large); }
+.rhead { display: flex; align-items: center; gap: var(--space-150); }
+.rhead .h3 { font: var(--type-heading-small); color: var(--orange-ink); }
+.tline { display: flex; gap: var(--space-150); align-items: center; font: var(--type-body); font-weight: 600; }
+.cmp { display: inline-flex; gap: var(--space-100); margin-left: var(--space-075); font: var(--type-code-small); font-variant-ligatures: none; }
+.cmp span { padding: var(--space-050) var(--space-100); border-radius: var(--radius-ctl); white-space: pre-wrap; max-height: 12em; overflow: auto; }
 .cmp .e { background: var(--green-soft); color: var(--green-ink); }
 .cmp .f { background: var(--orange-soft); color: var(--orange-ink); }
 /* An error's reason keeps its lines, so a traceback's caret still points at the mistake. */
 .cmp .why { white-space: pre-wrap; }
-.hid { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
+.hid { display: flex; align-items: center; gap: var(--space-100); font: var(--type-body); color: var(--muted); }
 .hid b { color: var(--ink); font-weight: 600; }
-.hid .x { width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; }
+.hid .x { width: var(--icon-lg); height: var(--icon-lg); border-radius: var(--radius-ctl); display: grid; place-items: center; }
 .hid .x.pass { background: var(--green-soft); }
 .hid .x.fail { background: var(--orange-soft); }
-.outcome { flex: 1; display: flex; align-items: center; gap: 28px; }
+.outcome { flex: 1; display: flex; align-items: center; gap: var(--space-400); }
 .outcome .stack { flex: 1; min-width: 0; }
-.outcome .h2 { font-size: 24px; }
-.outcome .won { color: var(--green-ink); white-space: nowrap; font-size: 28px; transform-origin: left; }
-.way { padding: 13px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); font: 600 15px var(--sans); text-align: left; cursor: pointer; }
-.way:first-of-type { border: 2px solid var(--green-ink); }
+.outcome .h2 { font: var(--type-heading-large); letter-spacing: var(--heading-track); }
+.outcome .won { color: var(--green-ink); white-space: nowrap; font: var(--type-heading-xlarge); letter-spacing: var(--heading-track); transform-origin: left; }
+.way { padding: var(--space-150) var(--space-200); border: var(--border) solid var(--ctl); border-radius: var(--radius-ctl); background: var(--card); font: var(--type-body); font-weight: 600; text-align: left; cursor: pointer; }
+.way:first-of-type { border: var(--border-bold) solid var(--green-ink); }
 
-@media (max-width: 1280px) {
-  .ws, .ws.lesson { grid-template-columns: 280px minmax(0, 1fr) 280px; }
+@media (max-width: 1440px) {
+  .ws, .ws.lesson { grid-template-columns: var(--column-narrow-w) minmax(0, 1fr) var(--column-narrow-w); }
 }
 
-@media (max-width: 1000px) {
+@media (max-width: 1024px) {
   .ws, .ws.lesson, .ws.quiz { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; overflow-y: auto; }
-  .stmt, .reader { overflow: visible; border-right: none; border-bottom: 1px solid var(--line); }
-  .mid { min-height: 560px; }
-  .coach { min-height: 420px; border-left: none; border-top: 1px solid var(--line); }
+  .stmt, .reader { overflow: visible; border-right: none; border-bottom: var(--border) solid var(--line); }
+  .stmt:not(.quiz-form) { border-bottom-color: var(--packet-line); }
+  .mid { min-height: var(--stacked-mid-h); }
+  .coach { min-height: var(--stacked-coach-h); border-left: none; border-top: var(--border) solid var(--line); }
 }
 
-.example { margin: 14px 0; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
-.example .file { font-size: 13px; color: var(--muted); }
-.example pre { margin: 0; padding: 10px 12px; border-radius: 8px; background: var(--soft); font-family: var(--mono); font-variant-ligatures: none; font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 320px; overflow: auto; }
+.example { margin: var(--space-200) 0; padding: var(--space-200); display: flex; flex-direction: column; gap: var(--space-100); }
+.example .file { font: var(--type-code-small); font-variant-ligatures: none; color: var(--muted); }
+.example pre { margin: 0; padding: var(--space-100) var(--space-150); border-radius: var(--radius-card); background: var(--soft); font: var(--type-code-small); font-variant-ligatures: none; white-space: pre-wrap; overflow-wrap: anywhere; max-height: var(--example-max-h); overflow: auto; }
 .example .run { display: flex; justify-content: flex-end; }
 .example pre.err { color: var(--orange-ink); }
 
 /* A lesson's diagram (§4.3): an image at its own size, never wider than the page; while it draws, the room it will take. */
-.diagram { margin: 14px 0; }
+.diagram { margin: var(--space-200) 0; }
 .diagram img { display: block; max-width: 100%; height: auto; }
 /* A diagram is drawn in the light palette as an image (drawDiagram.ts), so in the dark theme it sits on a light panel. */
-:root[data-theme="dark"] .diagram img { background: #FFFFFF; border-radius: 12px; padding: 12px; }
-.diagram.wait { min-height: 120px; }
+:root[data-theme="dark"] .diagram img { background: var(--on-garden); border-radius: var(--radius-card); padding: var(--space-150); }
+.diagram.wait { min-height: var(--diagram-wait-h); }
 /* Mermaid measures a diagram's text in a box it adds to the page, and the CSP keeps out the styles it sets there; this is the text's size and font. */
-div[id^="ddiagram-"] { font: 16px var(--sans); }
+div[id^="ddiagram-"] { font: var(--type-body-large); }
 /* A diagram that didn't draw (§4.3): its source sits in the lesson's flow, in theme colours, and can be hidden. */
-.diagram-chip { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 8px; padding: 6px 12px; border: 1px dashed var(--line); border-radius: 8px; background: transparent; color: var(--muted); font: 500 13px var(--sans); cursor: pointer; }
+.diagram-chip { display: inline-flex; align-items: center; gap: var(--space-100); margin: 0 0 var(--space-100); padding: var(--space-075) var(--space-150); border: var(--border) dashed var(--ctl); border-radius: var(--radius-ctl); background: transparent; color: var(--muted); font: var(--type-body); cursor: pointer; }
 .diagram-chip:hover { color: var(--ink); }
 .diagram-chip[aria-pressed="true"] { border-style: solid; color: var(--ink); }
-.diagram-failed { margin: 0 0 14px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: var(--ink); }
-.diagram-failed .head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 14px; color: var(--muted); }
-.diagram-failed .x { margin-left: auto; width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font-size: 18px; cursor: pointer; }
+.diagram-failed { margin: 0 0 var(--space-200); padding: var(--space-200); border: var(--border) solid var(--orange-line); border-radius: var(--radius-card); background: var(--orange-soft); color: var(--ink); }
+.diagram-failed .head { display: flex; align-items: center; gap: var(--space-100); margin-bottom: var(--space-100); font: var(--type-body); color: var(--muted); }
+.diagram-failed .x { margin-left: auto; width: var(--control-h-compact); height: var(--control-h-compact); border: 0; border-radius: var(--radius-ctl); background: transparent; color: var(--muted); font: var(--type-body-large); cursor: pointer; }
 .diagram-failed .x:hover { background: var(--soft); color: var(--ink); }
-.diagram-failed pre { margin: 0; padding: 12px 14px; border-radius: 8px; background: var(--soft); color: var(--ink); font-size: 13px; }
+.diagram-failed pre { margin: 0; padding: var(--space-150); border-radius: var(--radius-card); background: var(--soft); color: var(--ink); font: var(--type-code-small); font-variant-ligatures: none; }
 /* A lesson or activity being written: its icon and label on one line, its progress beneath, at the label's start. */
-.outline .item.writing { position: relative; flex-direction: column; align-items: stretch; gap: 8px; }
+.outline .item.writing { position: relative; flex-direction: column; align-items: stretch; gap: var(--space-100); }
 /* In the outline, the time sits on the label's line, right-aligned, so the step has the whole second line. */
-.outline .item.writing .job-time { position: absolute; top: 12px; right: 14px; line-height: 18px; }
+.outline .item.writing .job-time { position: absolute; top: var(--space-150); right: var(--space-100); line-height: var(--space-250); }
 .outline .item.writing .job.compact .job-step { white-space: normal; overflow: visible; }
-.outline .item-head { display: flex; align-items: center; gap: 12px; }
-.outline .item.writing > .job, .outline .item.writing > .waiting { margin-left: 30px; width: auto; }
-.thinking { flex-direction: column; gap: 8px; color: var(--muted); }
-@media (max-width: 760px) {
-  .reader { padding: 24px 20px; }
+.outline .item-head { display: flex; align-items: center; gap: var(--space-150); }
+.outline .item.writing > .job, .outline .item.writing > .waiting { margin-left: calc(var(--icon) + var(--space-150)); width: auto; }
+.thinking { flex-direction: column; gap: var(--space-100); color: var(--muted); }
+@media (max-width: 768px) {
+  .reader { padding: var(--space-300) var(--space-250); }
   .reader .head { flex-wrap: wrap; }
-  .etool { height: auto; min-height: 56px; flex-wrap: wrap; }
+  .etool { height: auto; min-height: var(--space-600); flex-wrap: wrap; }
   .etool > .actions { flex-shrink: 1; min-width: 0; }
-  .etool .btn { height: auto; min-height: 42px; white-space: normal; }
+  .etool .btn { height: auto; min-height: var(--control-h); white-space: normal; }
   .etabs { height: auto; flex-wrap: wrap; }
-  .etab { height: 44px; }
   .outcome { flex-direction: column; align-items: flex-start; }
   .outcome .won { white-space: normal; }
   .tline, .cmp { flex-wrap: wrap; }

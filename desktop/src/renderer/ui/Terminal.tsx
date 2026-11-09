@@ -27,13 +27,13 @@ export interface TerminalProps {
   onEnd?: () => void;
 }
 
-// Every color reaches WCAG AA (at least 5.7:1) on the pane's navy.
+// Every color reaches WCAG AA (at least 4.5:1) on the pane's garden green (--garden-3).
 const THEME: ITheme = {
-  background: '#0B1F44',
-  foreground: '#E6ECF5',
-  cursor: '#E6ECF5',
-  cursorAccent: '#0B1F44',
-  selectionBackground: '#2A4677',
+  background: '#0F2C20',
+  foreground: '#E6F0E8',
+  cursor: '#E6F0E8',
+  cursorAccent: '#0F2C20',
+  selectionBackground: '#2F6650',
   black: '#8A9BB8',
   red: '#FF8F8F',
   green: '#6EE59A',
@@ -41,7 +41,7 @@ const THEME: ITheme = {
   blue: '#8DB8FF',
   magenta: '#E3A3FF',
   cyan: '#72E4EA',
-  white: '#E6ECF5',
+  white: '#E6F0E8',
   brightBlack: '#A3B3CC',
   brightRed: '#FFB0B0',
   brightGreen: '#9AF0B8',
