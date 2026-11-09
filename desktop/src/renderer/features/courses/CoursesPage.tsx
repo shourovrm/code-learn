@@ -11,7 +11,7 @@ import { Dialog } from '../../ui/Dialog';
 import { Field } from '../../ui/Field';
 import { hueColor } from '../../ui/Sprig';
 
-const PRACTICE: Record<Practice, string> = { code: 'Code', quiz: 'Quiz', none: 'Lessons only' };
+const PRACTICE: Record<Practice, string> = { code: 'Code', quiz: 'Quiz', both: 'Code + Quiz', none: 'Lessons only' };
 
 /** The line under a course's name: how it is practised, and the toolchain it uses. */
 function metaOf(course: CourseSummary): string {
