@@ -27,7 +27,7 @@ const GRANULARITY =
   'One concept is one skill: what one short lesson teaches and a few small graded exercises cover, such as "useEffect dependency arrays" and "useEffect cleanup", not "useEffect". \`requires\` names the specific earlier skills each concept builds on.';
 
 const COURSE_SIZE =
-  "Plan about 15 to 30 concepts for a language or framework course, unless the learner asks for a different depth. Split anything that needs more than one lesson. Check a couple of real curricula or the official docs for the order.";
+  "Plan about 15 to 30 concepts for a course, unless the learner asks for a different depth. Split anything that needs more than one lesson. Check a couple of real curricula or the official docs for the order.";
 
 /** What counts as a primary source, and as a practice code-learn can grade (a live review passed blogs and ungradeable practices). */
 const PRIMARY = "Primary sources are the official docs, standards, papers and engineering write-ups of the people who build and run the thing; vendor marketing, personal blogs and summaries are secondary";
