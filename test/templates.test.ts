@@ -266,7 +266,9 @@ describe("roadmap granularity", () => {
   });
 
   it("sets 15 to 30 concepts as the default for a course, unless the learner asks for another depth, and checks real curricula", () => {
-    expect(JOB_BRIEFS.research).toMatch(/about 15 to 30 concepts for a language or framework course, unless the learner asks for a different depth/);
+    // Any subject: the size rule isn't only for a language or framework.
+    expect(JOB_BRIEFS.research).toMatch(/about 15 to 30 concepts for a course, unless the learner asks for a different depth/);
+    expect(JOB_BRIEFS.research).not.toMatch(/language or framework course/);
     expect(JOB_BRIEFS.research).toMatch(/Split anything that needs more than one lesson/);
     expect(JOB_BRIEFS.research).toMatch(/real curricula or the official docs/);
   });
@@ -456,6 +458,17 @@ describe("research and teaching quality", () => {
       expect(text).toMatch(/In a lessons-only course \(`style: none`\) nothing is graded: there, `practice` says what the learner will be able to do or explain after the lesson, and no concept is folded away for lacking a graded activity/);
     }
     expect(JOB_BRIEFS.review).toMatch(/Skip this check in a lessons-only course \(`style: none`\)/);
+  });
+
+  // A course may be on grammar or a policy, with quizzes or lessons only: the planner isn't told it is about code.
+  it("opens the planner's brief for a course on any subject", () => {
+    expect(JOB_BRIEFS.research.split("\n")[0]).toBe("You plan a code-learn course on any subject. code-learn teaches it with lessons and grades practice, code or quizzes; you write the roadmap.");
+  });
+
+  it("counts laws, regulations, official guidance and standard reference works as primary sources", () => {
+    for (const text of [AGENTS_SECTION, JOB_BRIEFS.research, JOB_BRIEFS.review]) {
+      expect(text).toMatch(/of the people who build and run the thing, and for other subjects the laws, regulations, official guidance and standard reference works; vendor marketing, personal blogs and summaries are secondary/);
+    }
   });
 
   it("asks research for the page a source's facts are on, since lessons list those links", () => {
