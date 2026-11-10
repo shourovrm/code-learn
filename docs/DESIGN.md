@@ -369,7 +369,7 @@ sources:                    # optional: the roadmaps and docs the agent used, at
 
 ### Lessons
 
-- **Saving.** `save_lesson { id, concept, title, markdown, examples? }`: the id is new in the course, the concept is in the roadmap, and the Markdown is at most 64 KB. The text is checked for structure only. A lesson without examples needs the course, not an installed track.
+- **Saving.** `save_lesson { id, concept, title, markdown, examples? }`: the id is new in the course, the concept is in the roadmap, and the Markdown is at most 64 KB. The text is checked for structure only: it holds the line "**You will be able to:**", and its top-level `##` sections include Why it matters, The idea in small steps, Worked example, Common mistakes, Remember, Self-check, Answers and Sources, once each and in that order (`LESSON_SECTIONS`). Other headings are free, such as the optional Try it. `get_roadmap` also lists the course's lessons (id and concept), so a lesson's writer can read the ones its topic requires. A lesson without examples needs the course, not an installed track.
 - **Examples.** A lesson may carry up to 5 runnable examples, each a file map of at most 64 KB:
   - Each holds exactly the installed track's learner files; for a unit course, it adds test files under `tests/`.
   - The Markdown places example N as an unindented fence (``` or ~~~) whose info string is `example`, then one line holding N, then the closing fence. A fence inside another fence (which may be indented up to 3 spaces) is shown, never run. Every example is placed, and every placement names an example. Examples hold at most 250 files in all.
