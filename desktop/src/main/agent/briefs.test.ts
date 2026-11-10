@@ -168,6 +168,19 @@ it('carries the lessons-only choice as a research detail', () => {
   expect(briefs.research('course', 'History', '', 'standard', 'code')).not.toContain('Save style: none');
 });
 
+// Only where Code is off, so a coding course's planner reads nothing about other subjects.
+it('tells the planner of a quiz or lessons-only course what a topic and its practice are when the subject is not programming', () => {
+  for (const practice of ['quiz', 'none'] as const) {
+    const brief = briefs.research('course', 'English grammar', '', 'standard', practice);
+    expect(brief).toContain("If the subject isn't programming");
+    expect(brief).toContain('An example for a subject without code: "subject-verb agreement with collective nouns", not "grammar".');
+    expect(brief).toContain('a decision the learner makes in a concrete case');
+  }
+  for (const practice of ['code', 'both'] as const) {
+    expect(briefs.research('course', 'React', '', 'standard', practice)).not.toContain("If the subject isn't programming");
+  }
+});
+
 it('carries quiz practice to the research brief without a track', () => {
   expect(briefs.research('judgment', 'Judgment', '', 'standard', 'quiz')).toContain('Save style: quiz and no track.');
 });

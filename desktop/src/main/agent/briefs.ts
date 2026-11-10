@@ -56,6 +56,14 @@ export interface LessonTopic {
   depth?: Depth;
 }
 
+/**
+ * What a topic and its practice are when the subject isn't programming. The shared rules give only code examples, and
+ * this is added only where Code is off, so a coding course's planner reads nothing about other subjects.
+ */
+const NOT_PROGRAMMING =
+  'If the subject isn\'t programming, a concept is still one skill, named specifically. An example for a subject without code: "subject-verb agreement with collective nouns", not "grammar". ' +
+  'There, a `practice` line is a decision the learner makes in a concrete case, such as choosing the correct sentence, or deciding which rule applies to a case that is described.';
+
 export function briefsFrom(base: Record<JobKind, string>, platform: NodeJS.Platform = process.platform) {
   const room = platform === 'win32' ? WINDOWS_ROOM : ROOM;
   const brief = (kind: JobKind, ...details: (string | false | undefined)[]) => [base[kind], ...details.filter(Boolean)].join('\n\n');
@@ -68,6 +76,7 @@ export function briefsFrom(base: Record<JobKind, string>, platform: NodeJS.Platf
         known ? `They already know: ${known}` : 'They know nothing about it yet.',
         `Depth: ${DEPTH[depth]}. Each topic is one skill.`,
         STYLE[practice],
+        (practice === 'quiz' || practice === 'none') && NOT_PROGRAMMING,
         instructions && `The learner's instructions for the course: ${instructions}`,
       ),
     /** The reviewer adds missing skills, so it is told the size to keep. */
