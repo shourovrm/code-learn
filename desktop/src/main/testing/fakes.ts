@@ -321,6 +321,8 @@ export function fakeJobs(c: ReturnType<typeof fakeCore>['c'], over: Partial<Reco
   const runJob = async (job: Job): Promise<JobOutcome> => {
     ran.push(job);
     await new Promise((r) => setTimeout(r, 1));
+    // As the real runJob: a job cancelled before it starts runs nothing. A fake that waits for the abort would wait for ever.
+    if (job.signal?.aborted) return { ok: false, text: [] };
     const out = await (over[job.kind] ?? usual[job.kind])(job, () => usual[job.kind](job));
     if (out.ok === false) return { ok: false, text: [], ...out };
     return { ok: await job.done({ ok: true }), text: [], ...out };
