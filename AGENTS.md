@@ -7,7 +7,7 @@ code-learn is a harness: the learner's coding agent writes tracks, roadmaps and 
 - **code-learn ships no languages.** No code may dispatch on a language, runtime or framework name, and no track or toolchain may ship in the package.
 - **code-learn never calls a model** and never reads or stores credentials.
 - **Untrusted code runs only in a sandbox:** bubblewrap inside a systemd user scope, through `src/sandbox.ts` (every sandbox gets the full flag set, DESIGN §4.6), and installs only through `src/toolchain.ts`'s install sandbox. Never add a path that runs agent or learner code on the host.
-- **Hidden data never leaves code-learn through code-learn's own outputs (tools, CLI, IPC and diagnostics).** An agent with file access can read code-learn's files; code-learn removes that access where the agent allows. Hidden inputs, expected outputs, test names, messages and output must not appear in tool output, CLI output, IPC or gate diagnostics. Hidden results show an index and a status only. The one exception: the learner may open a code exercise's solution (its learner files only, never tests or mutants) after three recorded checks or one that passed (DESIGN A5). The agent still never sees it.
+- **Hidden data never leaves code-learn through code-learn's own outputs (tools, CLI, IPC and diagnostics).** An agent with file access can read code-learn's files; code-learn removes that access where the agent allows. Hidden inputs, expected outputs, test names, messages and output must not appear in tool output, CLI output, IPC or gate diagnostics. Hidden results show an index and a status only. Two exceptions: the learner may open a code exercise's solution (its learner files only, never tests or mutants) after three recorded checks or one that passed (DESIGN A5); the agent still never sees it. And GitHub sync copies courses, hidden tests included, to the learner's own private repository, never a public one and never anywhere else (desktop DESIGN "Sync").
 - **Infrastructure failures record nothing.** Learner-caused outcomes (build errors, timeouts, crashes, output floods) are graded as `error` and recorded.
 - **Persistence:**
   - The event log is append-only.
@@ -33,6 +33,7 @@ code-learn is a harness: the learner's coding agent writes tracks, roadmaps and 
   | `program` | Run: the learner's program, interactively |
   | `gates` | verification |
   | `learner` | pure learner rules |
+  | `sync` | what syncs to GitHub, and how synced files merge |
   | `store` | persistence |
   | `app` | use cases (`src/app/`, one file per section behind the `app.ts` barrel) |
 

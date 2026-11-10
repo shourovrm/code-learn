@@ -11,3 +11,4 @@ export * from "./app/lessons.js";
 export * from "./app/exercises.js";
 export * from "./app/progress.js";
 export * from "./app/rebuild.js";
+export * from "./app/sync.js";

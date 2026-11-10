@@ -471,7 +471,7 @@ export function readWorkspace(ws: string): WorkspaceConfig {
  * One lock per workspace, however its path is spelled (symlinks, case, Windows short names). The folder is
  * created first, so the lock's name can't change when it appears.
  */
-function workspaceLock(ws: string): string {
+export function workspaceLock(ws: string): string {
   mkdirSync(ws, { recursive: true });
   const id = realpathSync.native(ws);
   return join(codeLearnHome(), "locks", `ws-${createHash("sha256").update(id).digest("hex").slice(0, 16)}.lock`);
