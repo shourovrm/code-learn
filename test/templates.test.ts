@@ -425,6 +425,16 @@ describe("research and teaching quality", () => {
     expect(JOB_BRIEFS.lesson).toMatch(/Use their words for the same things/);
   });
 
+  // Only the roadmap's planner was told what the learner knows; the goal carries it to every lesson's writer.
+  it("records what the learner already knows in the roadmap's goal, and pitches lessons to it", () => {
+    for (const text of [AGENTS_SECTION, JOB_BRIEFS.research, JOB_BRIEFS.roadmap]) {
+      expect(text).toMatch(/`goal` \(one sentence: what the learner will be able to do, and what they already know\)/);
+    }
+    for (const text of [AGENTS_SECTION, JOB_BRIEFS.lesson]) {
+      expect(text).toMatch(/and what the roadmap's `goal` says they already know/);
+    }
+  });
+
   it("asks research for the page a source's facts are on, since lessons list those links", () => {
     for (const text of [AGENTS_SECTION, JOB_BRIEFS.research]) expect(text).toMatch(/Link the page that covers the topic, not a site's front page/);
   });
