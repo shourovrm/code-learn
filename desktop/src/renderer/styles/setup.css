@@ -30,8 +30,15 @@
 .agent { padding: var(--space-200); display: flex; align-items: center; justify-content: space-between; gap: var(--space-200); }
 .agent b { font: var(--type-heading-small); letter-spacing: var(--heading-track); }
 .agent .state { display: flex; align-items: center; gap: var(--space-100); padding: var(--space-025) var(--space-100); border-radius: var(--radius-tag); background: var(--green-soft); font: var(--type-body); font-weight: 600; color: var(--green-ink); }
-.agent .model { display: flex; align-items: center; gap: var(--space-100); margin-top: var(--space-100); font: var(--type-body); font-weight: 500; }
-.agent .model .field { width: var(--model-w); max-width: 100%; height: var(--input-h); padding: 0 var(--space-100); }
+/* A model for each kind of job: the job and what it is on the left, its menu on the right. */
+.models-card { padding: var(--space-250) var(--space-300); }
+.model-rows { display: flex; flex-direction: column; gap: var(--space-200); }
+/* The menu moves under its label when the two don't fit side by side, as at 400% zoom. */
+.model-row { display: flex; flex-wrap: wrap; gap: var(--space-100) var(--space-200); align-items: center; }
+.model-row label { flex: 1 1 var(--model-w); min-width: 0; }
+.model-row b { display: block; font: var(--type-body); font-weight: 600; }
+.model-row .field { flex: 0 1 var(--model-w); min-width: 0; max-width: 100%; height: var(--input-h); padding: 0 var(--space-100); }
+.connect-foot .actions { display: flex; gap: var(--space-150); }
 .bw { filter: grayscale(1); }
 .colorin { animation: colorin .7s ease-out backwards; }
 

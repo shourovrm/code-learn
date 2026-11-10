@@ -3,7 +3,10 @@ import type { Goal, Roadmap } from '../../shared/api';
 
 export type Route =
   | { to: 'welcome' }
-  | { to: 'connect'; then?: Route }
+  /** `check`: the agent stopped working in the middle of something; once it's connected again the learner goes straight back, with no model step. */
+  | { to: 'connect'; then?: Route; check?: true }
+  /** A model for each kind of job, after Connect, for an agent with more than one model. */
+  | { to: 'models'; then: Route }
   /** `fromConnect`: the check on the way in from Connect, which moves on by itself when the computer is ready. */
   | { to: 'computer'; then: Route; fromConnect?: true }
   | { to: 'setup' }

@@ -16,7 +16,9 @@ test('connect, computer check, goal, course, lesson and practice', async ({ laun
 
   await button('Connect an agent').click();
   await page.getByRole('listitem', { name: 'Claude Code' }).getByRole('button', { name: 'Connect' }).click();
-  // Three clicks: a computer that is ready at the first check passes by itself.
+  // Four clicks: Connect, Continue, Continue past the models, and a computer that is ready at the first check passes by itself.
+  await button('Continue').click();
+  await expect(heading('Choose a model for each job')).toBeVisible();
   await button('Continue').click();
 
   await page.getByRole('textbox', { name: 'What do you want to learn?' }).fill('React');
@@ -53,6 +55,8 @@ test('connect, computer check, goal, course, lesson and practice', async ({ laun
   await codex.getByRole('button', { name: 'Connect' }).click();
   await expect(codex.getByText('Connected')).toBeVisible();
   await button('Continue').click();
+  await expect(heading('Choose a model for each job')).toBeVisible();
+  await button('Continue').click();
   await expect(heading('Settings')).toBeVisible();
   await button('Back').click();
   await expect(heading('Click Counter')).toBeVisible();
@@ -80,6 +84,8 @@ test('no bubblewrap: the command that installs it, a re-check, and Later', async
   await page.getByRole('button', { name: 'Connect an agent', exact: true }).click();
   await page.getByRole('listitem', { name: 'Claude Code' }).getByRole('button', { name: 'Connect' }).click();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Choose a model for each job', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
   const sandbox = page.getByRole('listitem', { name: 'Sandbox' });
   await expect(sandbox.getByText('Needs a step')).toBeVisible();
   // code-learn runs nothing as root: it shows the distribution's command for the learner to run.
@@ -101,6 +107,8 @@ test('the theme follows the desktop, and the switch in Settings overrides it', a
   await expect.poll(theme).toBe('light');
   await page.getByRole('button', { name: 'Connect an agent', exact: true }).click();
   await page.getByRole('listitem', { name: 'Claude Code' }).getByRole('button', { name: 'Connect' }).click();
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Choose a model for each job', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.getByRole('radiogroup', { name: 'Theme' }).getByRole('radio', { name: 'Dark' }).click();

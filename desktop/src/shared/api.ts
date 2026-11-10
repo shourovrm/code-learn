@@ -51,9 +51,12 @@ export type AgentId = 'claude' | 'codex' | 'cursor' | 'pi';
 /** `missing`: not installed. `signed-out`: installed, but its sign-in check failed. */
 export type AgentState = 'connected' | 'not-connected' | 'missing' | 'signed-out';
 
-/** A bench-tested model the learner may choose for an agent (O6). */
+/** The kinds of work the learner chooses a model for (O6): planning is the roadmap, its review, its changes and the toolchain setup. */
+export type ModelJob = 'planning' | 'lessons' | 'exercises' | 'tutor';
+
+/** A model the agent has enabled, which the learner may choose for a job (O6). */
 export interface ModelChoice {
-  /** What the agent's CLI takes: `--model` for Claude Code, `-m` for Codex. */
+  /** What the agent's CLI takes as its model: `-m` for Codex, `--model` for the others. */
   id: string;
   label: string;
   recommended: boolean;
@@ -64,10 +67,10 @@ export interface Agent {
   name: string;
   state: AgentState;
   installUrl: string;
-  /** The bench-tested models, from models.json; empty for an agent with no choice. */
+  /** The models the agent has enabled: the list in its own settings, else the one in models.json. Empty for an agent with no choice. */
   models: ModelChoice[];
-  /** The model every job for this agent runs: the learner's choice, or the recommended one. */
-  model: string | null;
+  /** The model each kind of job runs with: the learner's choice, or the recommended one. Null for an agent with no choice. */
+  jobModels: Record<ModelJob, string | null>;
   /** The installed CLI version isn't one code-learn was tested with. It may still work. */
   untested: boolean;
   experimental: boolean;
@@ -441,8 +444,8 @@ export interface CodeLearnApi {
   installAgent(agent: AgentId): Promise<void>;
   /** Starts the agent's own sign-in where the learner sees it; the next agents() after they sign in shows it. */
   signIn(agent: AgentId): Promise<void>;
-  /** Chooses the model for an agent's jobs, one of its `models`. */
-  chooseModel(agent: AgentId, model: string): Promise<Agent>;
+  /** Chooses the model for one kind of an agent's jobs, one of its `models`. */
+  chooseModel(agent: AgentId, job: ModelJob, model: string): Promise<Agent>;
   /** Hears progress while Try it or Check runs; returns a function that stops listening. An event, not a call. */
   onCheckProgress(listener: (progress: CheckProgress) => void): () => void;
   /** Hears every agent job's progress while it runs; returns a function that stops listening. An event, not a call. */

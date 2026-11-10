@@ -61,10 +61,10 @@ describe('connect (§3.1, §3.3)', () => {
       ['cursor', 'missing', false, true],
       ['pi', 'missing', false, true],
     ]);
-    expect(agents.find((a) => a.id === 'codex')?.model).toBe('gpt-6-luna');
+    expect(agents.find((a) => a.id === 'codex')?.jobModels).toEqual({ planning: 'gpt-6-luna', lessons: 'gpt-6-luna', exercises: 'gpt-6-luna', tutor: 'gpt-6-luna' });
   });
 
-  it('offers only bench-tested models per agent, the recommended one first and chosen by default', async () => {
+  it("offers the models.json list for an agent whose settings enable none, the recommended one chosen for every job", async () => {
     const agents = await connector(lookup(), state(), undefined, tempDir('code-learn-home-')).agents();
     const claude = agents.find((a) => a.id === 'claude')!;
     expect(claude.models).toEqual([
@@ -73,50 +73,57 @@ describe('connect (§3.1, §3.3)', () => {
       { id: 'fable', label: 'Fable', recommended: false },
       { id: 'haiku', label: 'Haiku', recommended: false },
     ]);
-    expect(claude.model).toBe('sonnet');
+    expect(claude.jobModels).toEqual({ planning: 'sonnet', lessons: 'sonnet', exercises: 'sonnet', tutor: 'sonnet' });
     expect(agents.find((a) => a.id === 'codex')!.models.map((m) => [m.id, m.recommended])).toEqual([
       ['gpt-6-luna', true],
       ['gpt-5.6-luna', false],
       ['gpt-6-astra', false],
     ]);
-    // The free plan runs only Auto, so Auto is the one bench-tested Cursor model.
+    // The free plan runs only Auto, so Auto is Cursor's one model.
     const cursor = agents.find((a) => a.id === 'cursor')!;
-    expect([cursor.models, cursor.model]).toEqual([[{ id: 'auto', label: 'Auto', recommended: true }], 'auto']);
+    expect([cursor.models, cursor.jobModels.lessons]).toEqual([[{ id: 'auto', label: 'Auto', recommended: true }], 'auto']);
   });
 
-  it("offers the models an agent's own settings approve; the recommended one is the first when it isn't among them", async () => {
+  it("offers only the models an agent's own settings enable; the recommended one is the first when it isn't among them", async () => {
     const home = tempDir('code-learn-home-');
     mkdirSync(join(home, '.codex'));
     writeFileSync(join(home, '.codex', 'config.toml'), 'model = "gpt-5.6-luna"\n');
     const c = connector(lookup(), state(), undefined, home);
     const codex = (await c.agents()).find((a) => a.id === 'codex')!;
     expect(codex.models).toEqual([{ id: 'gpt-5.6-luna', label: 'gpt-5.6-luna', recommended: true }]);
-    expect(codex.model).toBe('gpt-5.6-luna');
-    expect(await c.chooseModel('codex', 'gpt-5.6-luna')).toMatchObject({ model: 'gpt-5.6-luna' });
-    await expect(c.chooseModel('codex', 'gpt-6-astra')).rejects.toThrow();
+    expect(codex.jobModels.planning).toBe('gpt-5.6-luna');
+    expect(await c.chooseModel('codex', 'lessons', 'gpt-5.6-luna')).toMatchObject({ jobModels: { lessons: 'gpt-5.6-luna' } });
+    await expect(c.chooseModel('codex', 'lessons', 'gpt-6-astra')).rejects.toThrow();
   });
 
-  it('remembers a model choice per agent in desktop.json, and jobs run with it', async () => {
+  it('remembers a model choice per agent and kind of job in desktop.json, and only that kind of job runs with it', async () => {
     const s = state();
     const c = connector(lookup(), s);
     await c.connect('claude');
-    expect(await c.chosen()).toMatchObject({ id: 'claude', model: 'sonnet' });
-    expect(await c.chooseModel('claude', 'opus')).toMatchObject({ id: 'claude', model: 'opus' });
-    expect(s.read().models).toEqual({ claude: 'opus' });
-    expect(await c.chosen()).toMatchObject({ id: 'claude', model: 'opus' });
-    expect((await connector(lookup(), s).agents()).find((a) => a.id === 'claude')!.model).toBe('opus');
+    expect(await c.chosen('lessons')).toMatchObject({ id: 'claude', model: 'sonnet' });
+    expect(await c.chooseModel('claude', 'lessons', 'haiku')).toMatchObject({ id: 'claude', jobModels: { planning: 'sonnet', lessons: 'haiku', exercises: 'sonnet', tutor: 'sonnet' } });
+    expect(s.read().jobModels).toEqual({ claude: { lessons: 'haiku' } });
+    expect(await c.chosen('lessons')).toMatchObject({ id: 'claude', model: 'haiku' });
+    expect(await c.chosen('exercises')).toMatchObject({ id: 'claude', model: 'sonnet' });
+    expect((await connector(lookup(), s).agents()).find((a) => a.id === 'claude')!.jobModels.lessons).toBe('haiku');
   });
 
-  it('refuses a model that is not on the agent\'s tested list', async () => {
-    const c = connector(lookup(), state());
-    await expect(c.chooseModel('claude', 'gpt-6-luna')).rejects.toThrow();
-    await expect(c.chooseModel('cursor', 'composer-2.5')).rejects.toThrow();
-  });
-
-  it('falls back to the recommended model when a saved choice is no longer tested', async () => {
+  it('keeps the one model chosen before each job had its own, for every job without a choice of its own', async () => {
     const s = state();
-    s.update((d) => ({ ...d, models: { claude: 'claude-3-old' } }));
-    expect((await connector(lookup(), s).agents()).find((a) => a.id === 'claude')!.model).toBe('sonnet');
+    s.update((d) => ({ ...d, models: { claude: 'opus' }, jobModels: { claude: { tutor: 'haiku' } } }));
+    expect((await connector(lookup(), s).agents()).find((a) => a.id === 'claude')!.jobModels).toEqual({ planning: 'opus', lessons: 'opus', exercises: 'opus', tutor: 'haiku' });
+  });
+
+  it('refuses a model that is not on the agent\'s list', async () => {
+    const c = connector(lookup(), state());
+    await expect(c.chooseModel('claude', 'tutor', 'gpt-6-luna')).rejects.toThrow();
+    await expect(c.chooseModel('cursor', 'tutor', 'composer-2.5')).rejects.toThrow();
+  });
+
+  it('falls back to the recommended model when a saved choice is no longer on the list', async () => {
+    const s = state();
+    s.update((d) => ({ ...d, models: { claude: 'claude-3-old' }, jobModels: { claude: { lessons: 'claude-2-older' } } }));
+    expect((await connector(lookup(), s).agents()).find((a) => a.id === 'claude')!.jobModels).toEqual({ planning: 'sonnet', lessons: 'sonnet', exercises: 'sonnet', tutor: 'sonnet' });
   });
 
   it('switching to a signed-out agent keeps the one before, so jobs still run, and switches once it is signed in', async () => {

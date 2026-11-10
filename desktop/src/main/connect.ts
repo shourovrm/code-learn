@@ -2,8 +2,8 @@
 // check (a yes or no; code-learn never touches credentials), the tested-version
 // warning and the recommended minimum model.
 import { homedir } from 'node:os';
-import { NO_AGENT, SIGNED_OUT, type Agent, type AgentId, type AgentInstall } from '../shared/api';
-import { modelChoices, modelFor } from '../shared/models';
+import { NO_AGENT, SIGNED_OUT, type Agent, type AgentId, type AgentInstall, type ModelJob } from '../shared/api';
+import { jobModels, modelChoices } from '../shared/models';
 import { AGENT_CLIS, isTested } from './agent/agents';
 import { approvedIds } from './agent/approvedModels';
 import type { Executable } from './agent/bridge';
@@ -40,8 +40,10 @@ const NO_SETUP: AgentSetup = { canInstall: () => false, install: () => undefined
 export const RECHECK_MS = 5000;
 
 export function connector(lookup: Lookup, state: ReturnType<typeof desktopState>, setup: AgentSetup = NO_SETUP, home: string = homedir()) {
-  /** The models an agent may run with: its approved ids from its own settings, read as the list is shown. */
+  /** The models an agent may run with: the ids its own settings enable, read as the list is shown. */
   const choicesOf = (id: AgentId) => modelChoices(id, approvedIds(id, home));
+  /** The model of each kind of job for an agent, as saved or by default. */
+  const jobModelsOf = (id: AgentId) => jobModels(choicesOf(id), state.read().jobModels?.[id], state.read().models?.[id]);
   /** The last sign-in answer per agent this session. */
   const signedIn = new Map<AgentId, boolean>();
   /** Keeps a real answer; one that couldn't tell is asked again on the next look. */
@@ -127,10 +129,8 @@ export function connector(lookup: Lookup, state: ReturnType<typeof desktopState>
       agentState = known === false ? 'signed-out' : state.read().agent === id ? 'connected' : 'not-connected';
     }
     const version = versions.get(id);
-    const models = choicesOf(id);
-    const model = modelFor(models, state.read().models?.[id]);
     return {
-      id, ...AGENT_INFO[id], state: agentState, models, model, untested: Boolean(exe && version && !isTested(id, version)),
+      id, ...AGENT_INFO[id], state: agentState, models: choicesOf(id), jobModels: jobModelsOf(id), untested: Boolean(exe && version && !isTested(id, version)),
       canInstall: setup.canInstall(id), ...(install ? { install } : {}),
     };
   }
@@ -176,18 +176,18 @@ export function connector(lookup: Lookup, state: ReturnType<typeof desktopState>
       return view(id);
     },
 
-    /** Saves the model for an agent's jobs; only one of the models the agent's list offers. */
-    async chooseModel(id: AgentId, model: string): Promise<Agent> {
-      if (!choicesOf(id).some((m) => m.id === model)) throw new Error(`${model} isn't an approved model for ${AGENT_INFO[id].name}.`);
-      state.update((s) => ({ ...s, models: { ...s.models, [id]: model } }));
+    /** Saves the model for one kind of an agent's jobs; only one of the models the agent's list offers. */
+    async chooseModel(id: AgentId, job: ModelJob, model: string): Promise<Agent> {
+      if (!choicesOf(id).some((m) => m.id === model)) throw new Error(`${model} isn't an enabled model for ${AGENT_INFO[id].name}.`);
+      state.update((s) => ({ ...s, jobModels: { ...s.jobModels, [id]: { ...s.jobModels?.[id], [job]: model } } }));
       return view(id);
     },
 
     /** Whether anything of the agent may run now: false once code-learn has started installing it, until that is done. */
     usable: (id: AgentId) => usable(id) !== null,
 
-    /** The agent jobs run with, and its model. Rejects with NO_AGENT or SIGNED_OUT, which open the connect screen. */
-    async chosen(): Promise<{ id: AgentId; exe: Executable; model?: string }> {
+    /** The agent jobs run with, and its model for this kind of job. Rejects with NO_AGENT or SIGNED_OUT, which open the connect screen. */
+    async chosen(job?: ModelJob): Promise<{ id: AgentId; exe: Executable; model?: string }> {
       const id = state.read().agent;
       const exe = id && usable(id);
       if (!id || !exe) throw new Error(NO_AGENT);
@@ -195,7 +195,7 @@ export function connector(lookup: Lookup, state: ReturnType<typeof desktopState>
       const ok = signedIn.get(id) ?? (await this.recheck(id));
       // Signed out only when the agent says so; a check that can't tell lets the job run and say the rest.
       if (ok === false) throw new Error(SIGNED_OUT);
-      return { id, exe, model: modelFor(choicesOf(id), state.read().models?.[id]) ?? undefined };
+      return { id, exe, model: (job && jobModelsOf(id)[job]) ?? undefined };
     },
 
     /**

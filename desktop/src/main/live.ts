@@ -19,6 +19,7 @@ import {
   type Computer,
   type Concept,
   type CourseView,
+  type ModelJob,
   type Practice,
   type Proposal,
   type Roadmap,
@@ -92,6 +93,8 @@ const stallOf = (problem: JobProblem = 'failed'): Stall => {
 };
 /** What a setup that failed on this computer shows (the setup card has no row for "too busy"). */
 const setupProblemOf = (infra: Infra): SetupProblem => (infra === 'sandbox-busy' ? 'sandbox' : infra);
+/** Which of the learner's four model choices each job runs with (O6). */
+const MODEL_JOB: Record<JobKind, ModelJob> = { research: 'planning', review: 'planning', roadmap: 'planning', setup: 'planning', lesson: 'lessons', author: 'exercises', tutor: 'tutor' };
 /** How a course's roadmap style is practised: its exercises (code), its quiz, or lessons only. */
 const practiceOf = (style: string): Practice => (style === 'quiz' ? 'quiz' : style === 'none' ? 'none' : 'code');
 /** core store.ts's damaged-record errors: the learner repairs them; a retry can't (§5). */
@@ -347,7 +350,7 @@ export function createLive(d: LiveDeps): Live {
       if (unstoppable) return { ok: false, problem: 'unstoppable', text: [] };
       // The agent, and the code-learn server it starts, inherit PATH as it is now.
       await livePath();
-      const { id, exe, model } = await d.connect.chosen();
+      const { id, exe, model } = await d.connect.chosen(MODEL_JOB[kind]);
       // Again after the lookup: another job may have found its agent unstoppable meanwhile.
       if (unstoppable) return { ok: false, problem: 'unstoppable', text: [] };
       if (stop.signal.aborted) return { ok: false, problem: 'failed', text: [] };
@@ -664,9 +667,9 @@ export function createLive(d: LiveDeps): Live {
       log('agent-sign-in', { agent: id });
       await d.connect.signIn(id);
     },
-    async chooseModel(id, model) {
-      const agent = await d.connect.chooseModel(id, model);
-      log('model', { agent: id, model });
+    async chooseModel(id, job, model) {
+      const agent = await d.connect.chooseModel(id, job, model);
+      log('model', { agent: id, job, model });
       return agent;
     },
     async computer() {

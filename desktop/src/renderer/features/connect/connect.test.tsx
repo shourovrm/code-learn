@@ -5,7 +5,7 @@ import { createMock, scenario, type MockOptions } from '../../../main/mock';
 import { mockWithCourse, renderApp } from '../../test-utils';
 
 describe('connect journey', () => {
-  it('reaches the goal in three clicks: connect an agent, then continue past a ready computer', async () => {
+  it('reaches the goal in four clicks: connect an agent, continue to its models, then continue past a ready computer', async () => {
     const user = userEvent.setup();
     renderApp();
     expect(await screen.findByRole('heading', { name: 'Learn anything.' })).toBeInTheDocument();
@@ -21,6 +21,8 @@ describe('connect journey', () => {
     // Read once: "Connected", not "Passed, Connected".
     expect(within(claude).queryByRole('img', { name: 'Passed' })).not.toBeInTheDocument();
 
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await screen.findByRole('heading', { name: 'Choose a model for each job' });
     await user.click(screen.getByRole('button', { name: 'Continue' }));
     expect(await screen.findByRole('heading', { name: 'What do you want to learn?' })).toBeInTheDocument();
     expect(document.body).not.toHaveTextContent('Claude Code');
@@ -63,28 +65,45 @@ describe('connect journey', () => {
     expect(within(codex).getByRole('button', { name: 'Connect' })).toBeEnabled();
   });
 
-  it('shows the recommended model, marks Cursor experimental, and warns about untested versions', async () => {
+  it('names agents only, with no model on it; marks Cursor experimental, and warns about untested versions', async () => {
     renderApp({ to: 'connect' }, createMock(scenario('untested-version')));
     const codex = await screen.findByRole('listitem', { name: 'Codex' });
-    expect(within(codex).getByText('Recommended: gpt-6-luna')).toBeInTheDocument();
+    expect(screen.queryByText(/Recommended:/)).not.toBeInTheDocument();
     expect(within(codex).getByText('Untested version. It may still work.')).toBeInTheDocument();
     expect(within(screen.getByRole('listitem', { name: 'Cursor' })).getByText('Experimental')).toBeInTheDocument();
   });
 
-  it('lets the learner choose a tested model for a connected agent, the recommended one preselected', async () => {
+  it('goes from Connect to a model for each kind of job, the recommended one preselected, then to the computer check', async () => {
     const user = userEvent.setup();
     const api = createMock();
     renderApp({ to: 'connect' }, api);
     const claude = await screen.findByRole('listitem', { name: 'Claude Code' });
-    expect(within(claude).queryByRole('combobox', { name: 'Model' })).not.toBeInTheDocument();
     await user.click(within(claude).getByRole('button', { name: 'Connect' }));
-    const model = await within(claude).findByRole('combobox', { name: 'Model' });
-    expect(within(model).getAllByRole('option').map((o) => o.textContent)).toEqual(['Sonnet (recommended)', 'Opus', 'Fable', 'Haiku']);
-    expect(model).toHaveValue('sonnet');
-    await user.selectOptions(model, 'opus');
-    await vi.waitFor(async () => expect((await api.agents()).find((a) => a.id === 'claude')?.model).toBe('opus'));
-    expect(model).toHaveValue('opus');
-    expect(within(screen.getByRole('listitem', { name: 'Codex' })).queryByRole('combobox')).not.toBeInTheDocument();
+    await within(claude).findByText('Connected');
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(await screen.findByRole('heading', { name: 'Choose a model for each job' })).toBeInTheDocument();
+    expect(screen.getByText('Claude Code offers these models. Each job starts on the recommended one.')).toBeInTheDocument();
+    expect(screen.getAllByRole('combobox').map((c) => c.getAttribute('id'))).toEqual(['model-planning', 'model-lessons', 'model-exercises', 'model-tutor']);
+    const lessons = screen.getByRole('combobox', { name: /^Lessons/ });
+    expect(within(lessons).getAllByRole('option').map((o) => o.textContent)).toEqual(['Sonnet (recommended)', 'Opus', 'Fable', 'Haiku']);
+    expect(lessons).toHaveValue('sonnet');
+    await user.selectOptions(lessons, 'haiku');
+    await vi.waitFor(async () => expect((await api.agents()).find((a) => a.id === 'claude')?.jobModels).toEqual({ planning: 'sonnet', lessons: 'haiku', exercises: 'sonnet', tutor: 'sonnet' }));
+    expect(lessons).toHaveValue('haiku');
+    expect(screen.getByRole('combobox', { name: /^Tutor/ })).toHaveValue('sonnet');
+  });
+
+  it('goes back from the model step to Connect', async () => {
+    const user = userEvent.setup();
+    renderApp({ to: 'models', then: { to: 'goal' } }, createMock({ connected: 'claude' }));
+    await user.click(await screen.findByRole('button', { name: 'Back' }));
+    expect(await screen.findByRole('heading', { name: 'Connect an agent' })).toBeInTheDocument();
+  });
+
+  it('opens Connect from the model step when no agent is connected', async () => {
+    renderApp({ to: 'models', then: { to: 'goal' } }, createMock());
+    expect(await screen.findByRole('heading', { name: 'Connect an agent' })).toBeInTheDocument();
   });
 
   it('asks the learner to sign in to an agent, never for credentials', async () => {
@@ -142,7 +161,7 @@ describe('the only agent', () => {
 });
 
 describe('changing the agent', () => {
-  it('switches to another installed agent: it shows connected with its model, and Continue goes back', async () => {
+  it('switches to another installed agent: it shows connected, and Continue goes to its models, then back', async () => {
     const user = userEvent.setup();
     const api = createMock({ connected: 'claude' });
     renderApp({ to: 'connect', then: { to: 'tracks' } }, api);
@@ -151,12 +170,14 @@ describe('changing the agent', () => {
     const codex = screen.getByRole('listitem', { name: 'Codex' });
     await user.click(within(codex).getByRole('button', { name: 'Connect' }));
     expect(await within(codex).findByText('Connected')).toBeInTheDocument();
-    expect(within(codex).getByRole('combobox', { name: 'Model' })).toHaveValue('gpt-6-luna');
     // One agent is connected at a time: the one before offers Connect again, at once.
     expect(within(claude).queryByText('Connected')).not.toBeInTheDocument();
     expect(within(claude).queryByRole('combobox')).not.toBeInTheDocument();
     expect(within(claude).getByRole('button', { name: 'Connect' })).toBeEnabled();
     expect((await api.agents()).filter((a) => a.state === 'connected').map((a) => a.id)).toEqual(['codex']);
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(await screen.findByText('Codex offers these models. Each job starts on the recommended one.')).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: /^Planning/ })).toHaveValue('gpt-6-luna');
     await user.click(screen.getByRole('button', { name: 'Continue' }));
     expect(await screen.findByRole('heading', { name: 'Toolchains' })).toBeInTheDocument();
   });
@@ -260,7 +281,8 @@ describe('installing an agent', () => {
     await user.click(await within(claude).findByRole('button', { name: 'Sign in' }, { timeout: 4000 }));
     // Signed in in the agent's own window; coming back to code-learn checks, then moves on as Continue does.
     window.dispatchEvent(new Event('focus'));
-    expect(await screen.findByRole('heading', { name: /^(Check this computer|What do you want to learn\?)$/ })).toBeInTheDocument();
+    // Once signed in, code-learn moves on by itself: to the agent's models.
+    expect(await screen.findByRole('heading', { name: 'Choose a model for each job' })).toBeInTheDocument();
   });
 
   it('says why an install stopped, with Try again and a way to do it by hand', async () => {

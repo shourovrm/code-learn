@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CodeLearnApi } from '../../shared/api';
 import { Connect } from '../features/connect/Connect';
+import { Models } from '../features/connect/Models';
 import { Welcome } from '../features/connect/Welcome';
 import { Computer } from '../features/computer/Computer';
 import { CourseEditor } from '../features/course/CourseEditor';
@@ -28,7 +29,9 @@ function Screen({ route, visit }: { route: Route; visit: number }) {
     case 'welcome':
       return <Welcome />;
     case 'connect':
-      return <Connect then={route.then} />;
+      return <Connect then={route.then} check={route.check} />;
+    case 'models':
+      return <Models then={route.then} />;
     case 'computer':
       return <Computer then={route.then} fromConnect={route.fromConnect} />;
     case 'setup':
@@ -85,7 +88,7 @@ export function App({ api, start = { to: 'welcome' } }: { api: CodeLearnApi; sta
         const problem = problemOf(error);
         if (problem === 'connect') {
           setFailed(undefined);
-          setRoute({ to: 'connect', then: resume });
+          setRoute({ to: 'connect', then: resume, check: true });
           return;
         }
         console.error(error);
@@ -107,7 +110,7 @@ export function App({ api, start = { to: 'welcome' } }: { api: CodeLearnApi; sta
           {failed && (
             <div className="failed" role="alert">
               {failed.text}
-              {failed.agent && <Button variant="text" onClick={() => router.go({ to: 'connect', then: route })}>Check your agent</Button>}
+              {failed.agent && <Button variant="text" onClick={() => router.go({ to: 'connect', then: route, check: true })}>Check your agent</Button>}
               <Button variant="text" onClick={() => setFailed(undefined)}>Dismiss</Button>
             </div>
           )}

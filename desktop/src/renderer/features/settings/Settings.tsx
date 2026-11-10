@@ -1,6 +1,6 @@
 // Settings (DESIGN "Sync"): the agent, GitHub sync and the theme. The gear in the sidebar opens it.
 import { useState } from 'react';
-import type { SyncResult, SyncTarget, SyncView } from '../../../shared/api';
+import type { Agent, SyncResult, SyncTarget, SyncView } from '../../../shared/api';
 import { useApi } from '../../app/api';
 import { noteSync } from '../../app/CloseGuard';
 import { problemOf, sayOf } from '../../app/errors';
@@ -9,6 +9,7 @@ import { ThemeSwitch } from '../../app/ThemeSwitch';
 import { useLoad } from '../../app/useLoad';
 import { Button } from '../../ui/Button';
 import { Icon } from '../../ui/Icon';
+import { ModelRows } from '../connect/ModelRows';
 
 export function Settings() {
   return (
@@ -29,7 +30,9 @@ function AgentSection() {
   const api = useApi();
   const { go } = useRouter();
   const { data: agents } = useLoad(() => api.agents(), []);
-  const connected = agents?.find((a) => a.state === 'connected');
+  // The agent as it is after a model choice, until the list is read again.
+  const [chosen, setChosen] = useState<Agent>();
+  const connected = chosen ?? agents?.find((a) => a.state === 'connected');
   return (
     <section className="card settings-card" aria-labelledby="agent-title">
       <h2 className="h3" id="agent-title"><Icon name="plug" size={18} />Agent</h2>
@@ -40,6 +43,12 @@ function AgentSection() {
         </p>
         <Button variant="ghost" onClick={() => go({ to: 'connect', then: { to: 'settings' } })}>Change agent</Button>
       </div>
+      {connected && connected.models.length > 1 && (
+        <div className="settings-models">
+          <h3 className="models-title">Model for each job</h3>
+          <ModelRows agent={connected} onChange={setChosen} />
+        </div>
+      )}
     </section>
   );
 }

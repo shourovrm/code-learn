@@ -11,14 +11,25 @@ import { usageStore } from './usage';
 import { HELD_BACK } from './views';
 
 describe('live CodeLearnApi: agent jobs: models, lanes, stalls, the tutor, progress and quitting (§3.2, §4.11)', () => {
-  it('runs every job with the chosen model: the recommended one until the learner picks another', async () => {
+  it("runs each job with the model chosen for its kind: the recommended one until the learner picks another", async () => {
     const t = live();
     await researched(t);
     // Research, then its review.
     expect(t.jobs.ran.map((j) => j.model)).toEqual(['sonnet', 'sonnet']);
-    await t.api.chooseModel('claude', 'haiku');
+    await t.api.chooseModel('claude', 'lessons', 'haiku');
+    await t.api.chooseModel('claude', 'planning', 'opus');
     await t.api.reviseRoadmap(t.c.roadmap!.concepts, 'Add testing');
-    expect(t.jobs.ran.map((j) => j.model)).toEqual(['sonnet', 'sonnet', 'haiku']);
+    expect(t.jobs.ran.map((j) => [j.kind, j.model])).toEqual([['research', 'sonnet'], ['review', 'sonnet'], ['roadmap', 'opus']]);
+  });
+
+  it('runs a lesson job with the lessons model and leaves the other kinds on theirs', async () => {
+    const t = live();
+    await t.api.connect('claude');
+    await t.api.chooseModel('claude', 'lessons', 'haiku');
+    await practising(t);
+    const kinds = new Map(t.jobs.ran.map((j) => [j.kind, j.model]));
+    expect(kinds.get('lesson')).toBe('haiku');
+    expect(kinds.get('research')).toBe('sonnet');
   });
 
   it("records what each job's agent reported, under its course and kind, for the course on screen", async () => {

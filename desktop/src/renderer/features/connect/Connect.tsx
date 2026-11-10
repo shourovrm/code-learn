@@ -10,8 +10,8 @@ import { stagger } from '../../ui/motion';
 import { StageFill } from '../../ui/StageFill';
 import { ExternalLink } from '../../ui/ExternalLink';
 
-/** The only screen that names agents. Each one that can't run yet shows its next step. */
-export function Connect({ then = { to: 'goal' } }: { then?: Route }) {
+/** Where the learner picks the agent; its models come on the next screen. Each agent that can't run yet shows its next step. */
+export function Connect({ then = { to: 'goal' }, check = false }: { then?: Route; check?: boolean }) {
   const api = useApi();
   const { go, fail } = useRouter();
   // Looks again every few seconds and when the window regains focus, so an agent installed, removed or signed in
@@ -33,7 +33,10 @@ export function Connect({ then = { to: 'goal' } }: { then?: Route }) {
     picked.current = true;
     if (installed.length === 1 && installed[0].state === 'not-connected' && !data.some((a) => a.state === 'connected')) void connect(installed[0].id);
   }, [data]);
-  const next: Route = { to: 'computer', then, fromConnect: true };
+  // An agent with models to choose from gets the model step first. One without goes straight to the computer check, as
+  // does a learner who came only to get a stopped agent working again (`check`).
+  const connected = list?.find((a) => a.state === 'connected');
+  const next: Route = !check && connected && connected.models.length > 1 ? { to: 'models', then } : { to: 'computer', then, fromConnect: true };
   useEffect(() => {
     if (following && list?.find((a) => a.id === following)?.state === 'connected') go(next);
   }, [following, list]);
@@ -46,14 +49,6 @@ export function Connect({ then = { to: 'goal' } }: { then?: Route }) {
     const before = (a: Agent) => (agent.state === 'connected' && a.state === 'connected' ? { ...a, state: 'not-connected' as const } : a);
     setAgents((current) => (current ?? data)?.map((a) => (a.id === agent.id ? agent : before(a))));
     reload();
-  }
-
-  async function choose(id: AgentId, model: string) {
-    try {
-      replace(await api.chooseModel(id, model));
-    } catch (e) {
-      fail(e);
-    }
   }
 
   async function act(id: AgentId, call: () => Promise<void>) {
@@ -82,22 +77,11 @@ export function Connect({ then = { to: 'goal' } }: { then?: Route }) {
       <div className="stack setup-col">
         <h1 className="h1 a-up">Connect an agent</h1>
         <ul className="stack plain">
-          {list.map((a, i) => {
-            const recommended = a.models.find((m) => m.recommended);
-            return (
+          {list.map((a, i) => (
             <li key={a.id} aria-label={a.name} className={`card agent a-up${a.state === 'connected' ? ' on' : ''}`} style={stagger(i + 1)}>
               <div>
                 <b>{a.name}</b>
                 {a.experimental && <div className="quiet-text">Experimental</div>}
-                {a.state !== 'connected' && recommended && <div className="quiet-text">Recommended: {recommended.label}</div>}
-                {a.state === 'connected' && a.models.length > 0 && (
-                  <label className="model">
-                    Model
-                    <select className="field" value={a.model ?? ''} onChange={(e) => choose(a.id, e.target.value)}>
-                      {a.models.map((m) => <option key={m.id} value={m.id}>{m.recommended ? `${m.label} (recommended)` : m.label}</option>)}
-                    </select>
-                  </label>
-                )}
                 {a.untested && <div className="quiet-text">Untested version. It may still work.</div>}
                 {a.state === 'missing' && !running(a.install) && !a.install?.problem && <div className="alert">Not installed</div>}
                 {a.state === 'signed-out' && <div className="alert">Sign in to {a.name}, then try again.</div>}
@@ -122,8 +106,7 @@ export function Connect({ then = { to: 'goal' } }: { then?: Route }) {
                 </div>
               )}
             </li>
-            );
-          })}
+          ))}
         </ul>
         <div className="a-up connect-foot" style={stagger(4)}>
           <span className="quiet-text">code-learn uses your agent and your account.</span>

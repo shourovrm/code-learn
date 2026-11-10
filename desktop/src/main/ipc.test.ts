@@ -10,7 +10,7 @@ const GOOD: Record<Exclude<keyof CodeLearnApi, 'onCheckProgress' | 'onJobProgres
   agents: [],
   jobProgress: [],
   connect: ['claude'],
-  chooseModel: ['claude', 'opus'],
+  chooseModel: ['claude', 'lessons', 'opus'],
   installAgent: ['claude'],
   signIn: ['codex'],
   computer: [],

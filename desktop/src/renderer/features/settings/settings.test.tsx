@@ -20,6 +20,18 @@ describe('Settings', () => {
     expect(within(section('Theme')).getByRole('radiogroup', { name: 'Theme' })).toBeInTheDocument();
   });
 
+  it('offers a model for each kind of job from the connected agent\'s list, saved at once', async () => {
+    const user = userEvent.setup();
+    const api = createMock({ connected: 'claude' });
+    renderApp({ to: 'settings' }, api);
+    const agent = await screen.findByRole('region', { name: 'Agent' });
+    const lessons = await within(agent).findByRole('combobox', { name: /^Lessons/ });
+    expect(within(agent).getAllByRole('combobox')).toHaveLength(4);
+    await user.selectOptions(lessons, 'haiku');
+    await waitFor(async () => expect((await api.agents()).find((a) => a.id === 'claude')?.jobModels.lessons).toBe('haiku'));
+    expect(lessons).toHaveValue('haiku');
+  });
+
   it('names the connected agent, and Change agent comes back to Settings', async () => {
     const user = userEvent.setup();
     renderApp({ to: 'settings' }, createMock({ connected: 'claude' }));
@@ -27,6 +39,8 @@ describe('Settings', () => {
     expect(await within(agent).findByText('Claude Code')).toBeInTheDocument();
     await user.click(within(agent).getByRole('button', { name: 'Change agent' }));
     expect(await screen.findByRole('heading', { name: 'Connect an agent' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await screen.findByRole('heading', { name: 'Choose a model for each job' });
     await user.click(screen.getByRole('button', { name: 'Continue' }));
     expect(await screen.findByRole('heading', { name: 'Settings', level: 1 })).toBeInTheDocument();
   });
@@ -38,6 +52,8 @@ describe('Settings', () => {
     await user.click(within(sidebar()).getByRole('button', { name: 'Settings' }));
     await user.click(await screen.findByRole('button', { name: 'Change agent' }));
     await user.click(await screen.findByRole('button', { name: 'Continue' }));
+    await screen.findByRole('heading', { name: 'Choose a model for each job' });
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
     await screen.findByRole('heading', { name: 'Settings', level: 1 });
     await user.click(within(sidebar()).getByRole('button', { name: 'Back' }));
     expect(await screen.findByRole('heading', { name: 'Toolchains' })).toBeInTheDocument();

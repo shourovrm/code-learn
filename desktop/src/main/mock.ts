@@ -26,7 +26,7 @@ import { type CheckProgress, type ExerciseStatus, type JobKind, type JobProgress
   type TestView,
   type Track,
 } from '../shared/api';
-import { modelChoices, modelFor } from '../shared/models';
+import { jobModels, modelChoices } from '../shared/models';
 import { AGENT_INFO } from './connect';
 import { addTopic } from '../shared/roadmap';
 import { shownTopic } from '../shared/topic';
@@ -156,7 +156,7 @@ const SANDBOX_REASON: Record<Exclude<Sandbox, 'ready'>, string> = {
 /** The connect screen's agents, as the connector describes them; code-learn installs each of them. */
 const AGENTS: Omit<Agent, 'state' | 'untested'>[] = (Object.keys(AGENT_INFO) as AgentId[]).map((id) => {
   const models = modelChoices(id);
-  return { id, ...AGENT_INFO[id], canInstall: true, models, model: modelFor(models) };
+  return { id, ...AGENT_INFO[id], canInstall: true, models, jobModels: jobModels(models) };
 });
 
 const TOPICS: [string, string[]][] = [
@@ -658,10 +658,10 @@ export function createMock(options: MockOptions = {}): CodeLearnApi {
       return [...jobs.values()];
     },
 
-    async chooseModel(id, model) {
+    async chooseModel(id, job, model) {
       const agent = agents.find((a) => a.id === id)!;
-      if (!agent.models.some((m) => m.id === model)) throw new Error(`${model} isn't an approved model for ${agent.name}.`);
-      agent.model = model;
+      if (!agent.models.some((m) => m.id === model)) throw new Error(`${model} isn't an enabled model for ${agent.name}.`);
+      agent.jobModels = { ...agent.jobModels, [job]: model };
       return { ...agent, untested: Boolean(options.untested) && agent.state !== 'missing' };
     },
 

@@ -189,6 +189,8 @@ a.inline:hover { color: var(--ink); }
 .settings-card .h3 { display: flex; align-items: center; gap: var(--space-100); }
 .settings-card p { margin: 0; }
 .settings-row { display: flex; align-items: center; gap: var(--space-150); flex-wrap: wrap; }
+.settings-models { display: flex; flex-direction: column; gap: var(--space-150); padding-top: var(--space-150); border-top: var(--border) solid var(--line); }
+.models-title { margin: 0; font: var(--type-body); font-weight: 600; }
 .settings-row .field { flex: 1; min-width: 0; font-family: var(--mono); font-variant-ligatures: none; }
 .settings-ways { display: flex; flex-direction: column; gap: var(--space-100); }
 .settings-way { display: flex; gap: var(--space-150); align-items: flex-start; padding: var(--space-150) var(--space-200); border: var(--border) solid var(--line); border-radius: var(--radius-ctl); cursor: pointer; }

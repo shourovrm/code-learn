@@ -83,7 +83,7 @@ function NotFinished({ goal, error, retry }: { goal: Goal; error?: unknown; retr
     <main className="center">
       <Panel art={<Sprig mood="soft" width={130} />} title="code-learn couldn't finish the research." text={why}>
         {/* Offline isn't the agent's doing. */}
-        {problem !== 'offline' && <Button variant="ghost" size="lg" onClick={() => go({ to: 'connect', then: { to: 'research', goal } })}>Check your agent</Button>}
+        {problem !== 'offline' && <Button variant="ghost" size="lg" onClick={() => go({ to: 'connect', then: { to: 'research', goal }, check: true })}>Check your agent</Button>}
         <Button size="lg" onClick={retry}>Try again</Button>
       </Panel>
     </main>

@@ -40,6 +40,8 @@ async function connect(page: Page) {
   await button(page, 'Connect an agent').click();
   await page.getByRole('listitem', { name: 'Claude Code' }).getByRole('button', { name: 'Connect' }).click();
   await button(page, 'Continue').click();
+  await expect(heading(page, 'Choose a model for each job')).toBeVisible();
+  await button(page, 'Continue').click();
 }
 
 /** The mock's own API, through the preload bridge: finishes every topic, like a learner would. */
@@ -86,8 +88,11 @@ for (const scheme of ['light', 'dark'] as const) {
     await button(page, 'Connect an agent').click();
     await audit(page, 'connect');
     await page.getByRole('listitem', { name: 'Claude Code' }).getByRole('button', { name: 'Connect' }).click();
-    await expect(page.getByRole('combobox', { name: 'Model' })).toHaveValue('sonnet');
-    await audit(page, 'connect, connected, with the model choice');
+    await expect(page.getByRole('listitem', { name: 'Claude Code' }).getByText('Connected')).toBeVisible();
+    await audit(page, 'connect, connected');
+    await button(page, 'Continue').click();
+    await expect(page.getByRole('combobox', { name: /^Lessons/ })).toHaveValue('sonnet');
+    await audit(page, 'a model for each job');
     // A computer that is ready at the first check passes by itself; its screens with a step are audited below.
     await button(page, 'Continue').click();
     await expect(heading(page, 'What do you want to learn?')).toBeVisible();
@@ -390,6 +395,9 @@ test('every screen reflows in the smallest window and at 200% and 400% zoom: not
   await reflows(app, page, 'connect');
   await page.getByRole('listitem', { name: 'Claude Code' }).getByRole('button', { name: 'Connect' }).click();
   await button(page, 'Continue').click();
+  await expect(heading(page, 'Choose a model for each job')).toBeVisible();
+  await reflows(app, page, 'a model for each job');
+  await button(page, 'Continue').click();
   await expect(page.getByRole('textbox', { name: 'What do you want to learn?' })).toBeVisible();
   await reflows(app, page, 'goal');
   await page.getByRole('textbox', { name: 'What do you want to learn?' }).fill('React');
@@ -484,8 +492,9 @@ test('the journey works with the keyboard alone', async ({ launch }) => {
   await press(page, 'Connect an agent');
   await press(page, 'Connect');
   await expect(page.getByRole('listitem', { name: 'Claude Code' }).getByText('Connected')).toBeVisible();
-  // The model choice is reachable by keyboard.
-  await tabTo(page, 'combobox', 'Model');
+  await press(page, 'Continue');
+  // Each model choice is reachable by keyboard.
+  await tabTo(page, 'combobox', /^Tutor/);
   await press(page, 'Continue');
   await expect(heading(page, 'What do you want to learn?')).toBeVisible();
   await typeInto(page, 'What do you want to learn?', 'React');

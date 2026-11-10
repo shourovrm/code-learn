@@ -53,7 +53,7 @@ const ARGS: { [K in Exclude<keyof CodeLearnApi, 'onCheckProgress' | 'onJobProgre
   agents: [],
   jobProgress: [],
   connect: [oneOf('claude', 'codex', 'cursor', 'pi')],
-  chooseModel: [oneOf('claude', 'codex', 'cursor', 'pi'), text(64, 1)],
+  chooseModel: [oneOf('claude', 'codex', 'cursor', 'pi'), oneOf('planning', 'lessons', 'exercises', 'tutor'), text(200, 1)],
   installAgent: [oneOf('claude', 'codex', 'cursor', 'pi')],
   signIn: [oneOf('claude', 'codex', 'cursor', 'pi')],
   computer: [],

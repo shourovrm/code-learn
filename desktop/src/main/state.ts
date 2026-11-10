@@ -3,7 +3,7 @@
 // atomically, like every code-learn-owned file.
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { AgentId, Depth, SyncResult } from '../shared/api';
+import type { AgentId, Depth, ModelJob, SyncResult } from '../shared/api';
 
 export interface DesktopState {
   format_version: 1;
@@ -20,8 +20,10 @@ export interface DesktopState {
   names?: Record<string, string>;
   /** The activity style to restore after turning activities off. */
   activityStyles?: Record<string, string>;
-  /** The learner's model choice per agent (O6). Absent: the recommended one. */
+  /** The one model chosen per agent before each kind of job had its own: a job with no choice of its own runs with it. */
   models?: Partial<Record<AgentId, string>>;
+  /** The learner's model choice per agent and kind of job (O6). Absent: `models`, else the recommended one. */
+  jobModels?: Partial<Record<AgentId, Partial<Record<ModelJob, string>>>>;
   /** The instructions given when a topic was last rebuilt, keyed `course|concept`, for its lesson and exercise jobs. */
   rebuildNotes?: Record<string, string>;
   /** How deep the learner asked each course to go, for its lesson and exercise jobs. Absent: standard. */
