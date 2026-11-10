@@ -83,6 +83,13 @@ export interface CoreProgramRun {
   done: Promise<{ exit: number; stage?: 'build' | 'run'; timedOut: boolean; flooded: boolean; stopped?: boolean; outOfMemory?: boolean }>;
 }
 
+/** A file a sync brought in, by its path in the sync folder; without `text`, deleted. `was` is a log as exported. */
+export interface CoreSyncChange {
+  path: string;
+  text?: string;
+  was?: string;
+}
+
 export interface CoreApp {
   /** core templates.ts: one brief per agent job, the same text the terminal uses. */
   JOB_BRIEFS: Record<'research' | 'review' | 'roadmap' | 'setup' | 'lesson' | 'author' | 'tutor', string>;
@@ -135,6 +142,14 @@ export interface CoreApp {
   /** Rebuilds the chosen topics: with `replace`, their lessons and the exercises only they cover go, and progress resets (core §5). */
   rebuildTopics(ws: string, course: string, concepts: string[], options: { replace: boolean }): Promise<void>;
   listLessons(ws: string, bound?: string): { id: string; concept: string; title: string; read: boolean }[];
+  /** Copies what syncs to GitHub into `dest/home` and `dest/workspace`, each part under its lock (core sync). */
+  exportForSync(ws: string, dest: string): Promise<void>;
+  /** Writes or deletes the files a sync brought in, under their locks; refuses any path that doesn't sync. */
+  importFromSync(ws: string, changes: CoreSyncChange[]): Promise<void>;
+  /** A course's event log changed on two computers: the shared lines, then both sides' new ones in time order. */
+  mergeLog(base: string, ours: string, theirs: string): string;
+  /** Lesson notes written on two computers: this computer's, then the other's under its name. */
+  mergeNotes(ours: string, theirs: string, from: string): string;
   listExercises(ws: string, bound?: string): { exercise: string; concepts: string[]; difficulty: number; created: string }[];
   saveNotes(ws: string, id: string, text: string, bound?: string): Promise<void>;
   markLessonRead(ws: string, id: string, bound?: string): Promise<void>;

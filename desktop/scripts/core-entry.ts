@@ -8,6 +8,7 @@ export * from '../../src/app';
 export { isolation } from '../../src/doctor';
 export { sandboxDown } from '../../src/sandbox';
 export { readWorkspace } from '../../src/store';
+export { mergeLog, mergeNotes } from '../../src/sync';
 export { JOB_BRIEFS } from '../../src/templates';
 
 /**

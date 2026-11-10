@@ -234,6 +234,11 @@ export function fakeCore() {
     },
     saveNotes: async (_ws, id, text, bound) => void (c.bound.push(bound), (c.lessons.find((l) => l.id === id)!.notes = text)),
     markLessonRead: async (_ws, id, bound) => void (c.bound.push(bound), c.reads.add(id)),
+    // Sync's own tests run the real core against real git; here a sync has nothing to copy.
+    exportForSync: async () => undefined,
+    importFromSync: async () => undefined,
+    mergeLog: (_base, ours) => ours,
+    mergeNotes: (ours) => ours,
     rebuildTopics: async (_ws, course, concepts, { replace }) => {
       c.rebuilt.push({ course, concepts, replace });
       if (!replace) return;
