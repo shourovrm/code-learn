@@ -41,8 +41,11 @@ function onNarrowChange(changed: () => void) {
   return () => query.removeEventListener('change', changed);
 }
 
-/** The main navigation: wide with labels, or slim with icons beside a workspace or in a narrow window. */
-export function Sidebar({ slim: slimHere = false }: { slim?: boolean }) {
+/**
+ * The main navigation: wide with labels, or slim with icons beside a workspace or in a narrow window. `children` are
+ * the page's own buttons, after the sections (the Contents button beside a lesson or an exercise).
+ */
+export function Sidebar({ slim: slimHere = false, children }: { slim?: boolean; children?: ReactNode }) {
   const slim = useSyncExternalStore(onNarrowChange, narrowNow) || slimHere;
   const api = useApi();
   const { route, go, back, canGoBack, fail } = useRouter();
@@ -97,6 +100,7 @@ export function Sidebar({ slim: slimHere = false }: { slim?: boolean }) {
         <div className="lg"><Sprig width={44} name={course?.track} /></div>
         {backButton}
         {nav}
+        {children}
         <WorkNow course={course} slim />
         <UpdateNotice slim />
         <Courses slim />
@@ -111,6 +115,7 @@ export function Sidebar({ slim: slimHere = false }: { slim?: boolean }) {
       <div className="logo"><Logo height={22} onNavy /></div>
       {backButton}
       {nav}
+      {children}
       <WorkNow course={course} />
       <div className="foot">
         <UpdateNotice />

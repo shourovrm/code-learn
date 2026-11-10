@@ -1,28 +1,25 @@
-import { useState } from 'react';
 import type { TopicView } from '../../../shared/api';
 import { useRouter } from '../../app/router';
 import { Growth } from '../../ui/Growth';
 import { Icon } from '../../ui/Icon';
 import { Writing } from './Writing';
 
-/** The topic's pages beside a lesson: its lessons, its activity and the next topic. It folds away to a strip. */
-export function Outline({ topic, current, next }: { topic: TopicView; current: string; next?: TopicView }) {
+/**
+ * The topic's contents beside a lesson or its exercise: its lessons, its activity and the next topic. `current` is the
+ * lesson on screen; without one, the exercise is.
+ */
+export function Outline({ topic, current, next, onHide }: { topic: TopicView; current?: string; next?: TopicView; onHide: () => void }) {
   const { go } = useRouter();
-  const [folded, setFolded] = useState(false);
-  if (folded) {
-    return (
-      <div className="stmt outline folded">
-        <button type="button" className="item link" onClick={() => setFolded(false)}>Show panel</button>
-      </div>
-    );
-  }
   const open = topic.activity === 'open' || topic.activity === 'passed';
   const lessonWriting = topic.lessons.some((l) => l.state === 'writing');
   const pages = topic.lessons.length + (topic.activity === 'none' ? 0 : 1);
   const done = topic.lessons.filter((l) => l.state === 'read').length + (topic.activity === 'passed' ? 1 : 0);
   return (
-    <nav className="stmt outline" aria-label={topic.title}>
-      <button type="button" className="item link" onClick={() => go({ to: 'learn' })}>‹ All topics</button>
+    <nav className="outline" aria-label={topic.title}>
+      <div className="outline-head">
+        <button type="button" className="item link" onClick={() => go({ to: 'learn' })}>‹ All topics</button>
+        <button type="button" className="ibtn" aria-label="Hide contents" onClick={onHide}><Icon name="x" size={16} /></button>
+      </div>
       <h2 className="h3">{topic.title}</h2>
       <span className="locked">{`${done} of ${pages} done`}</span>
       {topic.lessons.map((l) =>
@@ -42,7 +39,7 @@ export function Outline({ topic, current, next }: { topic: TopicView; current: s
         ),
       )}
       {topic.activity !== 'none' && (open ? (
-        <button type="button" className="item link" onClick={() => go({ to: 'practice', concept: topic.id })}>
+        <button type="button" className="item link" aria-current={current === undefined ? 'page' : undefined} onClick={() => go({ to: 'practice', concept: topic.id })}>
           <Growth stage={topic.activity === 'passed' ? 'sprout' : 'seed'} size={20} />
           Exercise
         </button>
@@ -66,7 +63,6 @@ export function Outline({ topic, current, next }: { topic: TopicView; current: s
           <button type="button" className="item link" onClick={() => go({ to: 'topic', topicId: next.id })}>{next.title}</button>
         </>
       )}
-      <button type="button" className="item link" onClick={() => setFolded(true)}>Hide panel</button>
     </nav>
   );
 }

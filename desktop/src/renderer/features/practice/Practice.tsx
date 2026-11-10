@@ -4,11 +4,13 @@ import { useApi } from '../../app/api';
 import { continueRoute, offeredTopic, settled } from '../../app/course';
 import { useConversation } from '../../app/useConversation';
 import { useRouter } from '../../app/router';
+import { ContentsButton } from '../../app/ContentsButton';
 import { Failed, Stale, Stalled } from '../../app/Problems';
 import { Sidebar } from '../../app/Sidebar';
 import { useLoad } from '../../app/useLoad';
 import { useRun } from '../../app/useRun';
 import { Button } from '../../ui/Button';
+import { Icon } from '../../ui/Icon';
 import { Markdown } from '../../ui/Markdown';
 import { stagger } from '../../ui/motion';
 import { Rail } from '../../ui/Rail';
@@ -19,9 +21,9 @@ import { Results } from './Results';
 import { useAttempt } from './useAttempt';
 import { useLearnerFiles } from './useLearnerFiles';
 import { RunButton } from '../../ui/RunButton';
+import { Outline } from '../lessons/Outline';
 import { Writing } from '../lessons/Writing';
 import { ExerciseNav } from './ExerciseNav';
-import { TopicSteps } from './TopicSteps';
 import { OutputDock, type OutputTab } from './OutputDock';
 import { SolutionButton } from './SolutionButton';
 import { Solved } from './Solved';
@@ -43,13 +45,23 @@ export function Practice({ concept }: { concept: string }) {
   );
   // An activity that opens after the learner waited here takes focus, as a new screen's heading does.
   const waited = useRef(false);
+  // Which tab the brief's column shows: the Contents button switches it too.
+  const [tab, setTab] = useState<BriefTab>('brief');
+  const toggleContents = useCallback(() => setTab((shown) => (shown === 'contents' ? 'brief' : 'contents')), []);
   if (error) return <><Sidebar slim /><Failed error={error} retry={reload} /></>;
   if (!data) return <Sidebar slim />;
   if (!data.activity) {
     waited.current = true;
     return <><Sidebar slim /><Waiting topic={data.topic!} course={data.course} stale={stale} retry={reload} /></>;
   }
-  return <><Sidebar slim /><Workspace key={data.activity.id} activity={data.activity} course={data.course} focus={waited.current} /></>;
+  // A quiz has no brief column, so no contents beside it.
+  const contentsButton = data.activity.style !== 'quiz' && <ContentsButton shown={tab === 'contents'} onToggle={toggleContents} />;
+  return (
+    <>
+      <Sidebar slim>{contentsButton}</Sidebar>
+      <Workspace key={data.activity.id} activity={data.activity} course={data.course} focus={waited.current} tab={tab} onTab={setTab} />
+    </>
+  );
 }
 
 /**
@@ -82,7 +94,9 @@ function Waiting({ topic, course, stale, retry }: { topic: TopicView; course: Co
  * Statement, editor, terminal and results, with code-learn beside them. Only Check is graded; Run and Try it never are.
  * The learner edits, code-learn explains.
  */
-function Workspace({ activity, course, focus }: { activity: Activity; course: CourseView; focus: boolean }) {
+type BriefTab = 'brief' | 'contents';
+
+function Workspace({ activity, course, focus, tab, onTab }: { activity: Activity; course: CourseView; focus: boolean; tab: BriefTab; onTab: (tab: BriefTab) => void }) {
   const api = useApi();
   const title = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
@@ -156,12 +170,20 @@ function Workspace({ activity, course, focus }: { activity: Activity; course: Co
   return (
     <div className={`ws${activity.style === 'quiz' ? ' quiz' : ''}`}>
       {activity.style !== 'quiz' && <section className="stmt" aria-labelledby="activity-title">
-        {status?.solved && <Solved solved={status.solved} />}
-        {topic?.review === 'due' && <span className="pill" style={{ alignSelf: 'flex-start' }}>Review</span>}
-        <h1 className="h2" id="activity-title" ref={title} tabIndex={-1}>{activity.title}</h1>
-        <Markdown text={activity.statement} />
-        {topic && <TopicSteps topic={topic} title={activity.title} />}
-        <ExerciseNav topics={course.topics} concept={activity.concept} />
+        <div className="stmt-tabs" role="tablist" aria-label="Beside the code">
+          <button type="button" role="tab" id="brief-tab" aria-controls="brief-panel" aria-selected={tab === 'brief'} onClick={() => onTab('brief')}><Icon name="book" size={16} />Brief</button>
+          <button type="button" role="tab" id="contents-tab" aria-controls="contents-panel" aria-selected={tab === 'contents'} onClick={() => onTab('contents')}><Icon name="list" size={16} />Contents</button>
+        </div>
+        <div className="stmt-panel" role="tabpanel" id="brief-panel" aria-labelledby="brief-tab" hidden={tab !== 'brief'}>
+          {status?.solved && <Solved solved={status.solved} />}
+          {topic?.review === 'due' && <span className="pill" style={{ alignSelf: 'flex-start' }}>Review</span>}
+          <h1 className="h2" id="activity-title" ref={title} tabIndex={-1}>{activity.title}</h1>
+          <Markdown text={activity.statement} />
+          <ExerciseNav topics={course.topics} concept={activity.concept} />
+        </div>
+        <div className="stmt-panel" role="tabpanel" id="contents-panel" aria-labelledby="contents-tab" hidden={tab !== 'contents'}>
+          {topic && <Outline topic={topic} next={course.topics[course.topics.indexOf(topic) + 1]} onHide={() => onTab('brief')} />}
+        </div>
       </section>}
       <div className="mid">
         {activity.style === 'quiz' ? <section className="stmt quiz-form" aria-labelledby="activity-title">

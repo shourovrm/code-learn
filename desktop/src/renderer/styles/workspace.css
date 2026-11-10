@@ -28,8 +28,8 @@
 .quiz-questions .opt { white-space: normal; }
 .quiz-results { padding: var(--space-300); }
 .ws.lesson, .ws.lesson:has(> .coach.folded) { grid-template-columns: var(--column-w) minmax(0, 1fr) auto; }
-/* The lesson's panel folded to a strip: the lesson takes the room. */
-.ws.lesson:has(> .outline.folded) { grid-template-columns: auto minmax(0, 1fr) auto; }
+/* The lesson's contents hidden: the lesson takes the room. */
+.ws.lesson:not(:has(> .stmt)), .ws.lesson:not(:has(> .stmt)):has(> .coach.folded) { grid-template-columns: minmax(0, 1fr) auto; }
 
 /* The statement column is the seed packet's field: garden green, light text, outlined buttons. The quiz form is the
    same column on paper, so it names the same colours from the paper. */
@@ -50,13 +50,6 @@
 .stmt .md { font: var(--type-body-large); }
 .stmt .md a { color: inherit; }
 .stmt .md :not(pre) > code { background: var(--stmt-code); }
-.topic-steps { display: flex; flex-direction: column; gap: var(--space-100); }
-.topic-steps-head { margin: 0; font: var(--type-heading-xxsmall); color: var(--stmt-muted); }
-.topic-steps ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-.topic-steps li { min-height: var(--control-h); display: flex; align-items: center; gap: var(--space-150); color: var(--stmt-text); }
-.topic-steps li[aria-current="step"] { font-weight: 700; }
-.topic-steps .link { padding: 0; border: none; background: transparent; color: inherit; font: inherit; text-align: left; text-decoration: underline; text-decoration-color: var(--stmt-line); text-underline-offset: var(--space-050); cursor: pointer; }
-.topic-steps .link:hover { text-decoration-color: currentColor; }
 .stmt .md pre { background: var(--stmt-code); color: var(--stmt-text); }
 .stmt:not(.quiz-form) .md pre [class*="hljs-"] { color: inherit; }
 /* A small label cut like a plant stake: a pointed left end, marigold, dark green text. */
@@ -71,7 +64,16 @@
 .exnav .quiet-text { color: var(--stmt-muted); }
 .exnav .btn { height: var(--control-h); padding: 0 var(--space-150); }
 .exnav .btn.ghost { background: transparent; border-color: var(--stmt-line); color: var(--stmt-text); }
-.outline { gap: var(--space-050); }
+.outline { display: flex; flex-direction: column; gap: var(--space-050); }
+.outline-head { display: flex; align-items: center; justify-content: space-between; }
+.outline-head .ibtn { color: var(--stmt-text); }
+.outline-head .ibtn:hover:not(:disabled) { background: var(--stmt-code); }
+/* The exercise's column: its brief, or the topic's contents, one tab at a time. */
+.stmt-tabs { display: flex; gap: var(--space-050); margin: calc(-1 * var(--space-300)) calc(-1 * var(--space-300)) 0; padding: 0 var(--space-300); border-bottom: var(--border) solid var(--stmt-line); }
+.stmt-tabs [role="tab"] { display: inline-flex; align-items: center; gap: var(--space-075); padding: var(--space-150) var(--space-100); border: 0; background: transparent; color: var(--stmt-muted); font: var(--type-body); font-weight: 600; cursor: pointer; }
+.stmt-tabs [aria-selected="true"] { color: var(--stmt-text); box-shadow: inset 0 calc(-1 * var(--border-bold)) 0 var(--primary); }
+.stmt-panel { display: flex; flex-direction: column; gap: var(--space-200); }
+.stmt-panel[hidden] { display: none; }
 .outline .h3 { padding: 0 var(--space-100) var(--space-100); }
 .outline .item { display: flex; align-items: center; gap: var(--space-150); min-height: var(--space-500); padding: var(--space-050) var(--space-100); border: none; border-left: var(--border-bold) solid transparent; border-radius: var(--radius-ctl); background: transparent; color: var(--stmt-muted); font: var(--type-body); text-align: left; }
 /* Why a locked activity is locked, in words (the lock alone says nothing). */

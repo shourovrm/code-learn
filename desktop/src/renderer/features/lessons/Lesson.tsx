@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { CourseView, Lesson as LessonData, TopicView } from '../../../shared/api';
 import { useApi } from '../../app/api';
 import { lessonCache } from '../../app/cache';
@@ -6,6 +6,7 @@ import { useBusy } from '../../app/useBusy';
 import { useConversation } from '../../app/useConversation';
 import { useRouter, type Route } from '../../app/router';
 import { settled } from '../../app/course';
+import { ContentsButton } from '../../app/ContentsButton';
 import { Failed, Stale, Stalled } from '../../app/Problems';
 import { Sidebar } from '../../app/Sidebar';
 import { useLoad } from '../../app/useLoad';
@@ -49,8 +50,29 @@ interface View {
 }
 
 /** A static lesson with the learner's notes. Reopens instantly from the cache (§4.3). */
+const CONTENTS_HIDDEN = 'code-learn.contents-hidden';
+
+/** Whether the learner hid the topic's contents beside lessons: it stays so from one lesson to the next. */
+function storedContentsHidden(): boolean {
+  try {
+    return window.localStorage.getItem(CONTENTS_HIDDEN) === 'yes';
+  } catch {
+    // Storage that can't be read (a locked-down profile) shows the contents.
+    return false;
+  }
+}
+
 export function Lesson({ lessonId }: { lessonId: string }) {
   const api = useApi();
+  const [contents, setContents] = useState(() => !storedContentsHidden());
+  const toggleContents = useCallback(() => setContents((shown) => !shown), []);
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(CONTENTS_HIDDEN, contents ? 'no' : 'yes');
+    } catch {
+      // The choice still holds until the app closes.
+    }
+  }, [contents]);
   const cache = lessonCache<View>(api);
   // Keeps reading while the topic's work is pending, so a stall shows here too (§5).
   const { data, error, stale, reload } = useLoad(async () => {
@@ -77,8 +99,8 @@ export function Lesson({ lessonId }: { lessonId: string }) {
   if (view) {
     return (
       <>
-        <Sidebar slim />
-        <Reader {...view} onSaved={refresh} onNoted={noted} />
+        <Sidebar slim><ContentsButton shown={contents} onToggle={toggleContents} /></Sidebar>
+        <Reader {...view} contents={contents} onHideContents={toggleContents} onSaved={refresh} onNoted={noted} />
         {view.course.stalled && <Stalled stalled={view.course.stalled} work={view.course.stalledWork} later={view.course.later} retry={refresh} />}
         {stale !== undefined && <Stale error={stale} retry={reload} />}
       </>
@@ -88,7 +110,9 @@ export function Lesson({ lessonId }: { lessonId: string }) {
   return <Sidebar slim />;
 }
 
-function Reader({ lesson, course, topic, onSaved, onNoted }: View & { onSaved: () => void; onNoted: (notes: string) => void }) {
+function Reader({ lesson, course, topic, contents, onHideContents, onSaved, onNoted }: View & {
+  contents: boolean; onHideContents: () => void; onSaved: () => void; onNoted: (notes: string) => void;
+}) {
   const api = useApi();
   const { go, fail } = useRouter();
   const [saved, setSaved] = useState<string>();
@@ -129,7 +153,7 @@ function Reader({ lesson, course, topic, onSaved, onNoted }: View & { onSaved: (
 
   return (
     <div className="ws lesson">
-      <Outline topic={topic} current={lesson.id} next={nextTopic} />
+      {contents && <div className="stmt"><Outline topic={topic} current={lesson.id} next={nextTopic} onHide={onHideContents} /></div>}
       <main className="reader">
         {/* Setup waits for the learner's OK; reading doesn't wait for setup (§4.1). */}
         <SetupOffer course={course} banner onChange={onSaved} />

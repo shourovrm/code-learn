@@ -1,7 +1,7 @@
 vi.mock('@xterm/xterm', () => import('../../testing/xterm'));
 vi.mock('@xterm/addon-fit', () => import('../../testing/xterm'));
 
-import { act, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { NOT_COUNTED, type CodeLearnApi, type JobProgress } from '../../../shared/api';
@@ -91,18 +91,43 @@ describe('the lesson page (steps through the chapter)', () => {
     expect(answer).toBeVisible();
   });
 
-  it('leads from the panel on to the next topic, and folds the panel away', async () => {
+  it('leads from the panel on to the next topic, and hides it from its corner, the Contents button or Ctrl+\\', async () => {
     const user = userEvent.setup();
     const { api, course } = await mockWithCourse();
     const [first, second] = course.topics;
     renderApp({ to: 'lesson', lessonId: first.lessons[0].id }, api);
     const panel = await screen.findByRole('navigation', { name: first.title });
     expect(panel).toHaveTextContent(`0 of ${first.lessons.length + 1} done`);
-    await user.click(within(panel).getByRole('button', { name: 'Hide panel' }));
+    const contents = screen.getByRole('button', { name: 'Contents' });
+    expect(contents).toHaveAttribute('aria-pressed', 'true');
+    await user.click(within(panel).getByRole('button', { name: 'Hide contents' }));
     expect(screen.queryByRole('navigation', { name: first.title })).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Show panel' }));
+    expect(contents).toHaveAttribute('aria-pressed', 'false');
+    await user.keyboard('{Control>}\\{/Control}');
+    expect(screen.getByRole('navigation', { name: first.title })).toBeInTheDocument();
+    await user.click(contents);
+    expect(screen.queryByRole('navigation', { name: first.title })).not.toBeInTheDocument();
+    await user.click(contents);
     await user.click(within(screen.getByRole('navigation', { name: first.title })).getByRole('button', { name: second.title }));
     expect(await screen.findByRole('heading', { name: second.title, level: 1 })).toBeInTheDocument();
+  });
+
+  it('keeps the contents hidden on the next lesson opened', async () => {
+    // jsdom here has no localStorage: a map stands in for it.
+    const stored = new Map<string, string>();
+    vi.stubGlobal('localStorage', { getItem: (k: string) => stored.get(k) ?? null, setItem: (k: string, v: string) => void stored.set(k, v) });
+    const user = userEvent.setup();
+    const { api, course } = await mockWithCourse();
+    const [first] = course.topics;
+    renderApp({ to: 'lesson', lessonId: first.lessons[0].id }, api);
+    await user.click(await screen.findByRole('button', { name: 'Hide contents' }));
+    cleanup();
+    renderApp({ to: 'lesson', lessonId: first.lessons[0].id }, api);
+    await screen.findByRole('heading', { name: first.lessons[0].title, level: 1 });
+    expect(screen.queryByRole('navigation', { name: first.title })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Contents' }));
+    expect(screen.getByRole('navigation', { name: first.title })).toBeInTheDocument();
+    vi.unstubAllGlobals();
   });
 
   it('leads from the panel back to all topics', async () => {

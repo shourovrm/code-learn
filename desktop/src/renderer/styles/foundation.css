@@ -52,6 +52,8 @@ button.pick:hover { background: color-mix(in srgb, var(--garden-text) 10%, trans
 button.pick:not([aria-current]) { border-color: transparent; color: var(--garden-text); font-weight: 400; }
 .slim-courses { align-items: center; }
 .slim .nav[aria-current="true"] { background: var(--garden-2); }
+/* A page's own panel button (Contents) while its panel shows. */
+.nav[aria-pressed="true"] { background: var(--garden-2); }
 .badge { width: var(--badge-size); height: var(--badge-size); flex-shrink: 0; border-radius: var(--radius-card); color: var(--on-garden); display: grid; place-items: center; font: var(--type-code); font-weight: 700; font-variant-ligatures: none; }
 .slim { width: var(--rail-w); flex-shrink: 0; overflow-y: auto; display: flex; flex-direction: column; align-items: center; gap: var(--space-050); padding: var(--space-200) 0; background: var(--garden); color: var(--garden-text); }
 .slim .nav { width: var(--nav-h); height: var(--nav-h); padding: 0; justify-content: center; }
