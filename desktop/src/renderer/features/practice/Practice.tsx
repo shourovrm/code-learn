@@ -10,7 +10,6 @@ import { Sidebar } from '../../app/Sidebar';
 import { useLoad } from '../../app/useLoad';
 import { useRun } from '../../app/useRun';
 import { Button } from '../../ui/Button';
-import { Icon } from '../../ui/Icon';
 import { Markdown } from '../../ui/Markdown';
 import { stagger } from '../../ui/motion';
 import { Rail } from '../../ui/Rail';
@@ -45,7 +44,7 @@ export function Practice({ concept }: { concept: string }) {
   );
   // An activity that opens after the learner waited here takes focus, as a new screen's heading does.
   const waited = useRef(false);
-  // Which tab the brief's column shows: the Contents button switches it too.
+  // What the brief's column shows: the sidebar's Contents button switches it.
   const [tab, setTab] = useState<BriefTab>('brief');
   const toggleContents = useCallback(() => setTab((shown) => (shown === 'contents' ? 'brief' : 'contents')), []);
   if (error) return <><Sidebar slim /><Failed error={error} retry={reload} /></>;
@@ -170,18 +169,14 @@ function Workspace({ activity, course, focus, tab, onTab }: { activity: Activity
   return (
     <div className={`ws${activity.style === 'quiz' ? ' quiz' : ''}`}>
       {activity.style !== 'quiz' && <section className="stmt" aria-labelledby="activity-title">
-        <div className="stmt-tabs" role="tablist" aria-label="Beside the code">
-          <button type="button" role="tab" id="brief-tab" aria-controls="brief-panel" aria-selected={tab === 'brief'} onClick={() => onTab('brief')}><Icon name="book" size={16} />Brief</button>
-          <button type="button" role="tab" id="contents-tab" aria-controls="contents-panel" aria-selected={tab === 'contents'} onClick={() => onTab('contents')}><Icon name="list" size={16} />Contents</button>
-        </div>
-        <div className="stmt-panel" role="tabpanel" id="brief-panel" aria-labelledby="brief-tab" hidden={tab !== 'brief'}>
+        <div className="stmt-panel" hidden={tab !== 'brief'}>
           {status?.solved && <Solved solved={status.solved} />}
           {topic?.review === 'due' && <span className="pill" style={{ alignSelf: 'flex-start' }}>Review</span>}
           <h1 className="h2" id="activity-title" ref={title} tabIndex={-1}>{activity.title}</h1>
           <Markdown text={activity.statement} />
           <ExerciseNav topics={course.topics} concept={activity.concept} />
         </div>
-        <div className="stmt-panel" role="tabpanel" id="contents-panel" aria-labelledby="contents-tab" hidden={tab !== 'contents'}>
+        <div className="stmt-panel" role="region" aria-label="Contents" hidden={tab !== 'contents'}>
           {topic && <Outline topic={topic} next={course.topics[course.topics.indexOf(topic) + 1]} onHide={() => onTab('brief')} />}
         </div>
       </section>}

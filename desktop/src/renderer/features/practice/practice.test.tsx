@@ -51,24 +51,30 @@ describe('practice', () => {
     expect(code()).not.toHaveFocus();
   });
 
-  it("shows the topic's contents in a tab beside the brief, and a lesson opens from there", async () => {
+  // One control for the contents: the sidebar's button, as beside a lesson. The column had its own two tabs as well.
+  it("shows the topic's contents in the brief's place from the sidebar's Contents button, and a lesson opens from there", async () => {
     const { user } = await open();
-    expect(screen.getByRole('tab', { name: 'Brief' })).toHaveAttribute('aria-selected', 'true');
-    await user.click(screen.getByRole('tab', { name: 'Contents' }));
-    const contents = screen.getByRole('tabpanel', { name: 'Contents' });
+    expect(screen.queryByRole('tab', { name: 'Contents' })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Click Counter' })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Contents' }));
+    const contents = screen.getByRole('region', { name: 'Contents' });
+    expect(screen.queryByRole('heading', { name: 'Click Counter' })).not.toBeInTheDocument();
     expect(within(contents).getByRole('button', { name: 'Exercise' })).toHaveAttribute('aria-current', 'page');
     await user.click(within(contents).getByRole('button', { name: /^useState/ }));
     expect(await screen.findByRole('heading', { name: 'useState' })).toBeInTheDocument();
   });
 
-  it('switches between the brief and the contents from the Contents button', async () => {
+  it('goes back to the brief from the Contents button or from Hide contents', async () => {
     const { user } = await open();
     const button = screen.getByRole('button', { name: 'Contents' });
     await user.click(button);
-    expect(screen.getByRole('tab', { name: 'Contents' })).toHaveAttribute('aria-selected', 'true');
     expect(button).toHaveAttribute('aria-pressed', 'true');
-    await user.click(within(screen.getByRole('tabpanel', { name: 'Contents' })).getByRole('button', { name: 'Hide contents' }));
-    expect(screen.getByRole('tab', { name: 'Brief' })).toHaveAttribute('aria-selected', 'true');
+    await user.click(within(screen.getByRole('region', { name: 'Contents' })).getByRole('button', { name: 'Hide contents' }));
+    expect(button).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('heading', { name: 'Click Counter' })).toBeVisible();
+    await user.click(button);
+    await user.click(button);
+    expect(screen.getByRole('heading', { name: 'Click Counter' })).toBeVisible();
   });
 
   it('opens the activity with its statement, and only Check is graded', async () => {
