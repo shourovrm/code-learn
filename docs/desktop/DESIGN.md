@@ -232,7 +232,7 @@ Proved for Claude Code and Codex in [agent-bridge.md](agent-bridge.md). Cursor w
 | Roadmap review | `get_roadmap`, `save_roadmap` | the turn ends without error |
 | Roadmap change ("Ask code-learn for changes") | `get_roadmap`, `save_roadmap` | the course record changed, or the turn ended without error and without a save (shown as "No change" with the agent's text) |
 | Setup | `list_tracks`, `save_track` (proposes only) | a new proposal exists for the job's track |
-| Lesson | `get_roadmap`, `save_lesson` | a new lesson exists for the job's concept |
+| Lesson | `get_roadmap`, `get_lesson` (the lessons of the topics this one requires, at most three), `save_lesson` | a new lesson exists for the job's concept |
 | Author | `next_step`, `save_exercise` | a new exercise exists for the job's concept and difficulty |
 | Tutor | `progress`, `next_step`, `get_exercise`, `get_lesson`, `mark_lesson_read`, `get_roadmap`, `list_tracks` | the turn ends without error |
 
@@ -329,7 +329,7 @@ The course map has an **Activities** switch, On or Off. Off re-saves `style: non
 
 A lessons-only course follows core's `learn` step. `lesson: null` starts a lesson job; an id waits for that lesson to be read. It starts no setup or author jobs. The course map and topic pages show lessons read, omit activities and reviews, and finish only when core returns `done`. Next on a topic's last lesson returns to the map. The sidebar hides Practice. Saved lessons, notes and runnable examples on an installed track remain available when switching either way.
 
-- **Saving.** `save_lesson { id, concept, title, markdown, examples? }`. The id is new in the course, the concept is in the roadmap, and the Markdown is at most 64 KB. Optional runnable examples are checked by running them in the sandbox (core §5).
+- **Saving.** `save_lesson { id, concept, title, markdown, examples? }`. The id is new in the course, the concept is in the roadmap, and the Markdown is at most 64 KB. It opens with "**You will be able to:**" and has the lesson's `##` sections once each, in order (core `LESSON_SECTIONS`). Optional runnable examples are checked by running them in the sandbox (core §5).
 - **Storage.** `courses/<course>/lessons/<id>/` holds:
   - `lesson.json` (`format_version`, id, concept, title, created);
   - `lesson.md`, the agent's text, never changed after saving (a rebuild from the course map removes it);

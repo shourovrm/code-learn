@@ -106,8 +106,8 @@ export function createServer(ws: string, version: string, { course, tools, deskt
 
   if (want("get_roadmap")) server.registerTool(
     "get_roadmap",
-    { description: "The course roadmap: title, goal, track, style and concepts with their prerequisites, and the track's contract once it's set up." },
-    () => respond(() => app.getRoadmap(ws, course, true)),
+    { description: "The course roadmap: title, goal, track, style and concepts with their prerequisites, the track's contract once it's set up, and the lessons the course has (each one's id and concept)." },
+    () => respond(() => ({ ...app.getRoadmap(ws, course, true), lessons: app.listLessons(ws, course).map(({ id, concept }) => ({ id, concept })) })),
   );
 
   if (want("next_step")) server.registerTool(

@@ -419,6 +419,12 @@ describe("research and teaching quality", () => {
     }
   });
 
+  // A writer that saw only the roadmap couldn't reuse the words and examples of the lessons before it.
+  it("has a lesson's writer read the lessons of the topics it builds on, at most three", () => {
+    expect(JOB_BRIEFS.lesson).toMatch(/Read the lesson of each concept this one `requires` with `get_lesson`, at most three/);
+    expect(JOB_BRIEFS.lesson).toMatch(/Use their words for the same things/);
+  });
+
   it("asks research for the page a source's facts are on, since lessons list those links", () => {
     for (const text of [AGENTS_SECTION, JOB_BRIEFS.research]) expect(text).toMatch(/Link the page that covers the topic, not a site's front page/);
   });

@@ -107,6 +107,7 @@ describe('jobs (§3.2)', () => {
     let server: string[] = [];
     await runJob(job(agent.exe, { kind: 'lesson', server: (tools) => ((server = tools), { command: '/app', args: [] }), done: () => true }));
     expect(server).toEqual(JOBS.lesson.tools);
+    expect(server).toContain('get_lesson');
   });
 
   it('lets research, review and setup use the web, and no other job', () => {

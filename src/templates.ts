@@ -211,7 +211,7 @@ ${TRACK_RULES}`,
 
   lesson: `You write one lesson for a code-learn course.
 
-1. Call \`get_roadmap\` to see where the concept sits.
+1. Call \`get_roadmap\` to see where the concept sits. Its \`lessons\` lists the lessons the course has. Read the lesson of each concept this one \`requires\` with \`get_lesson\`, at most three, the nearest first. Use their words for the same things, build on their examples where it fits, and don't teach again what they taught.
 2. Write a short Markdown lesson (at most 64 KB) for the concept you were given, as "The lesson" below sets out.
 3. Teach the idea; don't solve the activity that follows. ${PLAIN}
 4. ${DIAGRAMS}

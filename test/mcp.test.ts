@@ -71,7 +71,10 @@ describe("--course", () => {
 
     expect(await call("get_roadmap")).toMatchObject({ course: "first", goal: "First" });
     expect(await call("next_step")).toEqual({ kind: "setup", track: "shell-io@1" });
+    expect((await call("get_roadmap")).lessons).toEqual([]);
     await call("save_lesson", { id: "intro", concept: "sh.basics", title: "Intro", markdown: lessonText("Hello.") });
+    // A lesson's writer finds the lessons its topic builds on here, and reads them with get_lesson.
+    expect((await call("get_roadmap")).lessons).toEqual([{ id: "intro", concept: "sh.basics" }]);
     expect(app.listLessons(ws, "first").map((l) => l.id)).toEqual(["intro"]);
     expect(app.listLessons(ws)).toEqual([]);
     await call("mark_lesson_read", { id: "intro" });

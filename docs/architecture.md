@@ -410,7 +410,7 @@ The job kinds, their only tools and their deadlines are fixed in [`jobs.ts`](../
 | research | `list_tracks`, `save_roadmap` | 10 min | yes |
 | roadmap | `get_roadmap`, `save_roadmap` | 10 min | no |
 | setup | `list_tracks`, `save_track` | 10 min | no |
-| lesson | `get_roadmap`, `save_lesson` | 5 min | no |
+| lesson | `get_roadmap`, `get_lesson`, `save_lesson` | 5 min | no |
 | author | `next_step`, `save_exercise` | 15 min | no |
 | tutor | `progress`, `next_step`, `get_exercise`, `get_lesson`, `mark_lesson_read`, `get_roadmap`, `list_tracks` | 5 min | no |
 
