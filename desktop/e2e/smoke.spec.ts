@@ -46,12 +46,15 @@ test('connect, computer check, goal, course, lesson and practice', async ({ laun
   await button('Check').click();
   await expect(results.getByRole('heading', { name: '4 of 4 passed' })).toBeVisible();
 
-  // Another agent mid-course: Agent in the sidebar opens Connect, and Continue comes back to the activity.
-  await button('Agent').click();
+  // Another agent mid-course: Change agent in Settings opens Connect, Continue comes back to Settings, and Back to the exercise.
+  await button('Settings').click();
+  await button('Change agent').click();
   const codex = page.getByRole('listitem', { name: 'Codex' });
   await codex.getByRole('button', { name: 'Connect' }).click();
   await expect(codex.getByText('Connected')).toBeVisible();
   await button('Continue').click();
+  await expect(heading('Settings')).toBeVisible();
+  await button('Back').click();
   await expect(heading('Click Counter')).toBeVisible();
 
   await app.close();
@@ -89,7 +92,7 @@ test('no bubblewrap: the command that installs it, a re-check, and Later', async
   await app.close();
 });
 
-test('the theme follows the desktop, and the sidebar switch overrides it', async ({ launch }) => {
+test('the theme follows the desktop, and the switch in Settings overrides it', async ({ launch }) => {
   const { app, page } = await launch();
   const theme = () => page.evaluate(() => document.documentElement.dataset.theme);
   await page.emulateMedia({ colorScheme: 'dark' });
@@ -99,13 +102,8 @@ test('the theme follows the desktop, and the sidebar switch overrides it', async
   await page.getByRole('button', { name: 'Connect an agent', exact: true }).click();
   await page.getByRole('listitem', { name: 'Claude Code' }).getByRole('button', { name: 'Connect' }).click();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  // The wide sidebar has the three choices; a narrow window's slim one has a single button that moves to the next.
-  const choices = page.getByRole('radiogroup', { name: 'Theme' });
-  if (await choices.isVisible()) await choices.getByRole('radio', { name: 'Dark' }).click();
-  else {
-    await page.getByRole('button', { name: 'Theme: System. Switch to Light' }).click();
-    await page.getByRole('button', { name: 'Theme: Light. Switch to Dark' }).click();
-  }
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('radiogroup', { name: 'Theme' }).getByRole('radio', { name: 'Dark' }).click();
   await expect.poll(theme).toBe('dark');
   // Kept after a reload, and the desktop's change no longer moves it.
   await page.reload();

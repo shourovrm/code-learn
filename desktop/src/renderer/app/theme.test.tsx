@@ -74,16 +74,6 @@ describe('the theme switch', () => {
     expect(screen.getByRole('radio', { name: 'Dark' })).toHaveAttribute('aria-checked', 'true');
     expect(theme()).toBe('dark');
   });
-
-  it('cycles the choices from one named button in the slim sidebar', async () => {
-    desktop(false);
-    initTheme();
-    render(<ThemeSwitch slim />);
-    await userEvent.click(screen.getByRole('button', { name: 'Theme: System. Switch to Light' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Theme: Light. Switch to Dark' }));
-    expect(theme()).toBe('dark');
-    expect(screen.getByRole('button', { name: 'Theme: Dark. Switch to System' })).toBeInTheDocument();
-  });
 });
 
 describe('the dark tokens', () => {

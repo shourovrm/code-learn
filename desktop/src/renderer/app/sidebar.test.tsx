@@ -1,4 +1,4 @@
-import { act, screen, waitFor, within } from '@testing-library/react';
+import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { createMock } from '../../main/mock';
@@ -98,7 +98,7 @@ describe('narrow windows', () => {
       const { api } = await mockWithCourse();
       renderApp({ to: 'tracks' }, api);
       await screen.findByRole('heading', { name: 'Toolchains' });
-      for (const name of ['Learn', 'Toolchains', 'Agent', 'New course', 'Theme: System. Switch to Light']) {
+      for (const name of ['Learn', 'Toolchains', 'Settings', 'New course']) {
         const button = within(sidebar()).getByRole('button', { name });
         await user.hover(button);
         expect(await screen.findByRole('tooltip')).toHaveTextContent(name);
@@ -167,60 +167,19 @@ describe('narrow windows', () => {
   });
 });
 
-describe('changing the agent', () => {
-  it('opens the connect screen from Agent, and Continue comes back to the screen it left', async () => {
-    const user = userEvent.setup();
-    // StrictMode, as the app's root: its replayed effects must not leave Agent dead.
-    renderApp({ to: 'tracks' }, createMock({ connected: 'claude' }), { strict: true });
-    await screen.findByRole('heading', { name: 'Toolchains' });
-    // Agent names appear only on the connect screen.
-    expect(sidebar()).not.toHaveTextContent(/Claude Code|Codex|Cursor/);
-    await user.click(within(sidebar()).getByRole('button', { name: 'Agent' }));
-    expect(await screen.findByRole('heading', { name: 'Connect an agent' })).toBeInTheDocument();
-    expect(within(screen.getByRole('listitem', { name: 'Claude Code' })).getByText('Connected')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Continue' }));
-    // Check this computer passes by itself on the way back.
-    expect(await screen.findByRole('heading', { name: 'Toolchains' })).toBeInTheDocument();
-  });
-
-  it("comes back to the course editor with the learner's edits, which its draft holds", async () => {
-    const user = userEvent.setup();
-    const { api, roadmap } = await mockWithRoadmap();
-    renderApp({ to: 'course', roadmap }, api);
-    await user.click(await screen.findByRole('button', { name: 'Remove Lists and keys' }));
-    await waitFor(async () => expect((await api.draft())!.concepts.map((c) => c.title)).not.toContain('Lists and keys'));
-    await user.click(within(sidebar()).getByRole('button', { name: 'Agent' }));
-    await user.click(await screen.findByRole('button', { name: 'Continue' }));
-    expect(await screen.findByRole('button', { name: 'Remove JSX' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Remove Lists and keys' })).not.toBeInTheDocument();
-  });
-
-  it('does nothing once the learner moved on before Connect could open', async () => {
-    const user = userEvent.setup();
-    const { api, roadmap } = await mockWithRoadmap();
-    const draft = api.draft.bind(api);
-    const waiting: (() => void)[] = [];
-    api.draft = () => new Promise((done) => waiting.push(() => done(draft())));
-    renderApp({ to: 'course', roadmap }, api);
-    await user.click(await within(sidebar()).findByRole('button', { name: 'Agent' }));
-    await user.click(within(sidebar()).getByRole('button', { name: 'Toolchains' }));
-    expect(await screen.findByRole('heading', { name: 'Toolchains' })).toBeInTheDocument();
-    await act(async () => waiting.forEach((go) => go()));
-    expect(screen.getByRole('heading', { name: 'Toolchains' })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Connect an agent' })).not.toBeInTheDocument();
-  });
-
+describe('Settings in the sidebar', () => {
+  // Opening Settings, and changing the agent from it, are in features/settings.
   it('is in the slim sidebar too, named in its tooltip', async () => {
     narrowWindow();
     try {
       const user = userEvent.setup();
       renderApp({ to: 'tracks' }, createMock({ connected: 'claude' }));
-      const agent = await within(sidebar()).findByRole('button', { name: 'Agent' });
-      await user.hover(agent);
-      expect(await screen.findByRole('tooltip')).toHaveTextContent('Agent');
-      expect(agent).not.toHaveTextContent('Agent');
-      await user.click(agent);
-      expect(await screen.findByRole('heading', { name: 'Connect an agent' })).toBeInTheDocument();
+      const settings = await within(sidebar()).findByRole('button', { name: 'Settings' });
+      await user.hover(settings);
+      expect(await screen.findByRole('tooltip')).toHaveTextContent('Settings');
+      expect(settings).not.toHaveTextContent('Settings');
+      await user.click(settings);
+      expect(await screen.findByRole('heading', { name: 'Settings', level: 1 })).toBeInTheDocument();
     } finally {
       vi.unstubAllGlobals();
     }

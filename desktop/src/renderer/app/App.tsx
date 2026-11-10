@@ -13,8 +13,10 @@ import { Research } from '../features/research/Research';
 import { Setup } from '../features/setup/Setup';
 import { Tracks } from '../features/tracks/Tracks';
 import { CoursesPage } from '../features/courses/CoursesPage';
+import { Settings } from '../features/settings/Settings';
 import { Button } from '../ui/Button';
 import { ApiContext } from './api';
+import { CloseGuard } from './CloseGuard';
 import { problemOf, sayOf } from './errors';
 import { historyAfterGo, RouterContext, type Route, type Router } from './router';
 import { useRouteFocus } from './useRouteFocus';
@@ -45,6 +47,8 @@ function Screen({ route, visit }: { route: Route; visit: number }) {
       return <WithSide><CoursesPage /></WithSide>;
     case 'tracks':
       return <WithSide><Tracks /></WithSide>;
+    case 'settings':
+      return <WithSide><Settings /></WithSide>;
     case 'lesson':
       return <Lesson key={route.lessonId} lessonId={route.lessonId} />;
     case 'practice':
@@ -99,6 +103,7 @@ export function App({ api, start = { to: 'welcome' } }: { api: CodeLearnApi; sta
           <div className="wbody" ref={body}>
             <Screen route={route} visit={visit} />
           </div>
+          <CloseGuard />
           {failed && (
             <div className="failed" role="alert">
               {failed.text}

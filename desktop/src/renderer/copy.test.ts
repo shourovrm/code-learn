@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import ts from 'typescript';
 import { expect, it } from 'vitest';
 
-const BANNED = /\b(harness|session|activit(?:y|ies)|tracks?|settings|please|sorry|oops)\b|!/i;
+const BANNED = /\b(harness|session|activit(?:y|ies)|tracks?|please|sorry|oops)\b|!/i;
 const ATTRIBUTES = new Set(['placeholder', 'title', 'aria-label', 'label', 'alt']);
 
 function sources(dir: string): string[] {

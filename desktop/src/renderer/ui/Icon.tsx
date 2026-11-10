@@ -19,6 +19,8 @@ const PATHS = {
   plug: { w: 2.2, d: <><path d="M9 3v5M15 3v5" /><path d="M6 8h12v3a6 6 0 0 1-12 0z" /><path d="M12 17v4" /></> },
   chat: { w: 2.2, d: <path d="M4 5h16v11H9l-5 4z" /> },
   fold: { w: 2.4, d: <path d="M9 6l6 6-6 6" /> },
+  // Settings: a cog.
+  gear: { w: 2.2, d: <><circle cx="12" cy="12" r="3" /><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" /></> },
   // A topic's contents: lines with a dot before each.
   list: { w: 2.2, d: <path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01" /> },
 } satisfies Record<string, { w: number; d: ReactNode }>;

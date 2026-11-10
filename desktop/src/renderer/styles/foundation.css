@@ -178,10 +178,33 @@ a.inline:hover { color: var(--ink); }
 .side .update { display: flex; flex-direction: column; gap: var(--space-100); margin-bottom: var(--space-100); padding: var(--space-150); border: var(--border) solid var(--garden-line); border-radius: var(--radius-ctl); color: var(--garden-text); font: var(--type-body-small); }
 .side .update a { color: var(--primary); font-weight: 600; }
 /* The theme switch, on the sidebar's garden in both themes. */
-.theme-switch { display: flex; gap: var(--space-025); margin-top: var(--space-100); padding: var(--space-050); border: var(--border) solid var(--garden-line); border-radius: var(--radius-ctl); }
-.theme-switch button { flex: 1; min-width: 0; height: var(--control-h-compact); padding: 0 var(--space-075); border: none; border-radius: var(--radius-tag); background: transparent; color: var(--garden-muted); display: inline-flex; align-items: center; justify-content: center; gap: var(--space-050); font: var(--type-body-small); cursor: pointer; transition: background .2s var(--ease), color .2s var(--ease); }
-.theme-switch button:hover { color: var(--garden-text); background: color-mix(in srgb, var(--garden-text) 10%, transparent); }
-.theme-switch button[aria-checked="true"] { background: var(--garden-2); color: var(--primary); font-weight: 700; }
+.theme-switch { display: inline-flex; gap: var(--space-025); padding: var(--space-050); border: var(--border) solid var(--line); border-radius: var(--radius-ctl); }
+.theme-switch button { min-width: var(--space-1000); height: var(--control-h-compact); padding: 0 var(--space-150); border: none; border-radius: var(--radius-tag); background: transparent; color: var(--muted); display: inline-flex; align-items: center; justify-content: center; gap: var(--space-050); font: var(--type-body-small); cursor: pointer; transition: background .2s var(--ease), color .2s var(--ease); }
+.theme-switch button:hover { color: var(--ink); background: var(--soft); }
+.theme-switch button[aria-checked="true"] { background: var(--primary); color: var(--on-primary); font-weight: 700; }
+
+/* Settings: one card per section, a row of words and their buttons, the ways to reach GitHub as choices. */
+.settings { max-width: calc(var(--measure) + var(--space-600)); }
+.settings-card { padding: var(--space-250) var(--space-300); display: flex; flex-direction: column; gap: var(--space-150); }
+.settings-card .h3 { display: flex; align-items: center; gap: var(--space-100); }
+.settings-card p { margin: 0; }
+.settings-row { display: flex; align-items: center; gap: var(--space-150); flex-wrap: wrap; }
+.settings-row .field { flex: 1; min-width: 0; font-family: var(--mono); font-variant-ligatures: none; }
+.settings-ways { display: flex; flex-direction: column; gap: var(--space-100); }
+.settings-way { display: flex; gap: var(--space-150); align-items: flex-start; padding: var(--space-150) var(--space-200); border: var(--border) solid var(--line); border-radius: var(--radius-ctl); cursor: pointer; }
+.settings-way.on { border-color: var(--primary-edge); box-shadow: inset var(--border-bold) 0 0 var(--primary); }
+.settings-way input { margin-top: var(--space-050); }
+.settings-repos { margin: 0; padding: 0; border: var(--border) solid var(--line); border-radius: var(--radius-ctl); }
+.settings-repos legend { padding: 0 var(--space-100); margin-left: var(--space-150); }
+.settings-repos label { display: flex; align-items: center; gap: var(--space-100); padding: var(--space-100) var(--space-200); border-top: var(--border) solid var(--line); }
+.settings-repos label:first-of-type { border-top: none; }
+.settings-public { color: var(--muted); }
+.settings-check { display: flex; align-items: center; gap: var(--space-100); font: var(--type-body); color: var(--muted); }
+.settings-ok { color: var(--ok); font-weight: 700; }
+.settings-problem { color: var(--bad); font-weight: 700; }
+.settings-clash { padding: var(--space-150) var(--space-200); border-radius: var(--radius-ctl); background: var(--soft); display: flex; flex-direction: column; gap: var(--space-075); }
+.settings-clash ul { margin: 0; padding-left: var(--space-250); }
+.tag { display: inline-block; padding: 0 var(--space-100); border: var(--border) solid var(--line); border-radius: var(--radius-tag); font: var(--type-body-small); color: var(--muted); }
 /* code-learn's running jobs under the navigation (§4.11): Sprig filling, what it is, and its stage. */
 .work { list-style: none; margin: var(--space-100) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-075); }
 .work-job { display: flex; align-items: center; gap: var(--space-100); width: 100%; min-height: var(--job-row-h); padding: var(--space-075) var(--space-100); border: var(--border) solid var(--garden-line); border-radius: var(--radius-ctl); background: transparent; color: var(--garden-text); text-align: left; cursor: pointer; transition: background .2s var(--ease); }

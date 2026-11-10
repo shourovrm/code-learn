@@ -547,6 +547,35 @@ A learner can keep several courses and switch between them in one code-learn. Wi
 - **Job progress** (§4.11) reaches the window for the course on screen, research and the draft. Another course's jobs report again once it is on screen.
 - **The tutor.** Each course keeps its own tutor session (`sessions`, keyed by course and agent) and its own queue of turns. A question in one course never waits for another's turn, and coming back to a course resumes its conversation.
 
+### 4.15 Settings and Sync
+
+**Settings.** The gear in the sidebar opens Settings, which replaced the Agent item and the sidebar's theme switch. It has three cards:
+- **Agent:** the connected agent, and **Change agent**, which opens the connect screen. Continue there comes back to Settings.
+- **Sync with GitHub:** described below.
+- **Theme:** System, Light or Dark.
+
+Settings is not a Back target, so Back from it returns to the screen it was opened from.
+
+**Sync.** The learner's courses, progress, notes and code go to their own **private** GitHub repository, so every computer they use has the same.
+- **What syncs** (`src/sync.ts`, an allowlist): from code-learn's home, `courses/` (hidden tests included, per AGENTS.md's exception) and `tracks/`; from the workspace, `code-learn.json` and `exercises/`. Toolchains, caches, runs, the sandbox's files, locks, temp files, `desktop.json` and the agents' config (which holds this computer's paths) never sync. A second computer installs its toolchain through the usual setup.
+- **Where git runs:** in a staging clone in `userData/sync/repo`, never in the workspace. An agent can write the workspace, and a `.git` it wrote could make git run code on the host. Core's `exportForSync` copies the files out and `importFromSync` writes them back, each part under its course, track or workspace lock, atomically. Import refuses a path that doesn't sync.
+- **How git runs:** with an argument array, `core.hooksPath=/dev/null`, `core.fsmonitor=false`, no prompts (`GIT_TERMINAL_PROMPT=0`, ssh in batch mode), and the computer's name as the commit author.
+- **Signing in:** either way, code-learn never reads a credential.
+  - Through the GitHub CLI: Settings lists the learner's repositories (public ones can't be picked) or creates a private `code-learn-sync`. gh is asked whether a repository is private, and git signs in through `gh auth git-credential`.
+  - With an address (https, ssh or `git@host:path`): git signs in with the learner's SSH key or saved login. code-learn can't check privacy, so the learner ticks "This repository is private".
+- **When:**
+  - at start;
+  - every minute in which something changed (an export compared with the last commit);
+  - with Sync now;
+  - before quitting. While a repository is connected, closing asks: Cancel, Close without syncing, or Sync and close. Sync and close waits at most 10 seconds for the network.
+  - Offline, a sync keeps its local commit and is sent the next time.
+- **Clashes** (both computers changed a file since the last sync):
+  - A course's event log keeps the lines both share, then both sides' new lines in time order (`mergeLog`). Lines appended here while the sync ran are kept on import.
+  - Lesson notes keep both texts, the other's under "From <computer>".
+  - The learner's code keeps this computer's version and saves the other's beside it as `<file>.from-<computer>`. Settings lists these files.
+  - A file changed on one side and deleted on the other keeps the change. Any other file takes the side whose sync is newer.
+- **Deferred:** syncing while two computers are open at the same moment beyond these rules; a workspace folder other than `~/code-learn`.
+
 ## 5. Failure states
 
 Infrastructure failures record nothing. Learner-caused outcomes are graded as `error` and recorded (core §4.3, §7).

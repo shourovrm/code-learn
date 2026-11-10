@@ -12,7 +12,7 @@ describe('courses', () => {
     expect(course).toHaveTextContent('Code · ');
     const sidebar = within(screen.getByRole('navigation', { name: 'Main' }));
     const labels = sidebar.getAllByRole('button').map((b) => b.textContent);
-    expect(labels.filter((label) => ['Learn', 'Practice', 'Courses', 'Toolchains', 'Agent'].includes(label ?? ''))).toEqual(['Learn', 'Practice', 'Courses', 'Toolchains', 'Agent']);
+    expect(labels.filter((label) => ['Learn', 'Practice', 'Courses', 'Toolchains', 'Settings'].includes(label ?? ''))).toEqual(['Learn', 'Practice', 'Courses', 'Toolchains', 'Settings']);
     expect(sidebar.getByRole('button', { name: 'Courses' })).toHaveAttribute('aria-current', 'page');
   });
 

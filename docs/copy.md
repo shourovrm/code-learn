@@ -20,7 +20,8 @@ an exclamation mark. Atlassian's copy rules apply: sentence case, verbs on butto
 | tutor | the agent answering questions beside the work | assistant, bot, session |
 | agent | the coding agent the learner connects | model, provider, harness |
 | toolchain | the compilers and libraries a course installs | track, environment |
-| this computer | the learner's machine and what it needs | host, system, settings |
+| this computer | the learner's machine and what it needs | host, system |
+| Settings | the screen with the agent, GitHub sync and the theme; never the computer's own settings | preferences, options |
 | sandbox | where code-learn runs code, cut off from files and the network | container, jail |
 | rebuild | writing a topic's lessons and exercise again | regenerate, reset |
 | mastery | how well a topic is known | score, level |
@@ -51,5 +52,5 @@ fixes it.
 | Practice opens here once your activity is written. | … once your exercise is written. | same |
 | … then reopen this activity. | … then reopen this exercise. | same |
 | This activity isn't ready yet. | This exercise isn't ready yet. | same |
-| Check this computer under Settings, then run again. | Check this computer, then run again. | there is no Settings |
+| Check this computer under Settings, then run again. | Check this computer, then run again. | the computer check isn't in Settings |
 | Send (tutor, primary) | Send (default button) | one primary per screen |

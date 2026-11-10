@@ -16,7 +16,8 @@ export type Route =
   /** `course`: the course just put on screen, so its map opens fresh (§4.13). */
   | { to: 'learn'; course?: string }
   | { to: 'courses' }
-  | { to: 'tracks' };
+  | { to: 'tracks' }
+  | { to: 'settings' };
 
 export interface Router {
   route: Route;
