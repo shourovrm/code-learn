@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.3 (2026-11-10)
+
+- Settings replaces Agent in the sidebar, with three cards: Agent, Sync with GitHub and Theme.
+- Sync with GitHub: your courses, progress, notes and code go to your own private repository, through gh or a git address. It syncs at start, about a minute after changes, and before quitting, behind a prompt. Two computers keep both sides' progress and notes; for your code, this computer's version stays and the other is saved beside it.
+- Every lesson has the same parts in the same order: "Last time", "You will be able to", Why it matters, The idea in small steps, Worked example, Common mistakes, Remember, Self-check, Answers, an optional Try it, and Sources. code-learn refuses a lesson that misses one, so this holds for any agent or model.
+- The "New words" list is gone: a new term is defined in bold where it first appears, and keeps that one word afterwards.
+- A lesson's writer reads the lessons of the topics it builds on (at most three), so words and examples carry over; each step teaches one new thing; a sentence before each code block says what it shows.
+- The roadmap's goal records what you already know, and lessons are pitched to it.
+- An exercise's statement has the same parts every time: what to do, Rules and Example.
+- A Contents button in the sidebar (and Ctrl+\) shows or hides the lesson outline; an exercise has Brief and Contents tabs.
+- The current topic's exercise is written ahead of lessons queued for later topics.
+- Fable is among Claude Code's models.
+
 ## 0.2.2 (2026-11-10)
 
 - Lessons and exercises stay within what the course has taught: the exercise author gets the topics before its own and may use nothing from a later one. Lessons are written for a beginner: a recap of the last topic, a "New words" list, a small example before each rule, short sentences, about five minutes to read, and a short Remember section of 3 to 5 facts.
