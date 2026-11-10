@@ -1,9 +1,6 @@
-// electron-builder settings for the Linux installers (core DESIGN §4.6): an AppImage, which runs on any x64
-// distribution, and a pacman package for Arch and its derivatives. Neither is signed, and nothing is published from
-// a build: code-learn has no release channel yet, so the app has no automatic updates.
-
-/** What every installer needs from the computer: the sandbox (bubblewrap) and the systemd user session it runs in. */
-const SYSTEM_DEPENDENCIES = ['bubblewrap', 'systemd'];
+// electron-builder settings for the Linux installer (core DESIGN §4.6): an AppImage, which runs on any x64
+// distribution. It is not signed, and nothing is published from a build: code-learn has no release channel yet, so
+// the app has no automatic updates.
 
 /** @param {Record<string, string | undefined>} _env */
 function packaging(_env) {
@@ -29,17 +26,15 @@ function packaging(_env) {
     extraMetadata: { codeLearn: { signed: false } },
     linux: {
       target: [
+        // An AppImage can't name what it needs from the computer, so the app's Check this computer says it instead.
         { target: 'AppImage', arch: ['x64'] },
-        { target: 'pacman', arch: ['x64'] },
       ],
       category: 'Education',
       executableName: 'code-learn',
       synopsis: 'Graded coding practice that your coding agent writes',
       maintainer: 'code-learn contributors',
     },
-    // The pacman package names what it needs; an AppImage can't, so the app's Check this computer says it instead.
-    pacman: { depends: SYSTEM_DEPENDENCIES },
   };
 }
 
-module.exports = { packaging, SYSTEM_DEPENDENCIES };
+module.exports = { packaging };

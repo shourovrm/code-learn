@@ -41,7 +41,7 @@ Each item is verified by an automated test unless marked *journey*. Journeys run
 
 ### Supported matrix
 
-- **Desktop app:** Linux x86_64 with a systemd user session and bubblewrap 0.9 or later, as an AppImage or a pacman package (§4.6).
+- **Desktop app:** Linux x86_64 with a systemd user session and bubblewrap 0.9 or later, as an AppImage (§4.6).
 - **Terminal:** the same Linux computers, with Node.js 22 or later and micromamba 2.
 - **Agents:** Claude Code and Codex; Cursor and pi are experimental. The desktop runs pi with only code-learn's tools (`--no-builtin-tools`, `--no-extensions -e builtin:mcp`, `--tools mcp__code_learn__…`), its server in the job folder's `.pi/mcp.json` with `direct` exposure, and suggests `openrouter/anthropic/claude-haiku-5.5`. pi has no web tools, so research and setup with pi run on the model's own knowledge.
 
@@ -319,7 +319,7 @@ The learner's home folder, `$CODE_LEARN_HOME` and the rest of the computer are n
 - §4.2's known limitation stays: a program can forge frames through `/proc/<driver>/fd`. Grading remains honor-system.
 - The install sandbox has network access and runs the track's `setup` and the packages' own install scripts. It can write only the staging folder and the package cache. The learner's consent before an install (§4.6) is still the trust point.
 
-**The desktop app on Linux.** The app is Linux x86_64 only, shipped as an AppImage and a pacman package. Its Docker Desktop, WSL, macOS and Windows code is removed. The changes to its API (`desktop/src/shared/api.ts`):
+**The desktop app on Linux.** The app is Linux x86_64 only, shipped as an AppImage. Its Docker Desktop, WSL, macOS and Windows code is removed. The changes to its API (`desktop/src/shared/api.ts`):
 - "Check this computer" has two checks in order: `sandbox` (bubblewrap 0.9 or later and a reachable systemd user session, core `sandboxDown`) and `isolation` (core doctor's self-test). A failed `sandbox` check carries core's message and, when bubblewrap is missing, the install command for this distribution, read from `ID` and `ID_LIKE` in `/etc/os-release`: `sudo pacman -S bubblewrap` (Arch and derivatives), `sudo apt install bubblewrap` (Debian, Ubuntu), `sudo dnf install bubblewrap` (Fedora), `sudo zypper install bubblewrap` (openSUSE). The app runs no command as root. `Computer` is `{ checks, ready }`; `installDocker`, `openDocker`, `openWindowsUpdate` and `restartWindows` are removed, and so is the WASI fallback.
 - The bundled micromamba (pinned by SHA-256, from the micromamba-releases project on GitHub) replaces the bundled wasmtime. The app passes `CODE_LEARN_MICROMAMBA` to its core and to every MCP server it starts.
 - "Not counted" reasons and setup problems use core's kinds: `sandbox`, `sandbox-busy` (`check-timeout`), `disk` and `offline`. The Docker and WASI reasons are removed.
@@ -330,7 +330,7 @@ The learner's home folder, `$CODE_LEARN_HOME` and the rest of the computer are n
 1. The native engine in the core, with tests that run real bubblewrap.
 2. Remove the Docker and WASI engines and their tests from the core, in the same change as phase 1: Docker can't be tested on a computer without it, so the two engines never coexist.
 3. Name everything code-learn: the `code-learn` command, `CODE_LEARN_*` variables, `~/.code-learn`, the `code-learn` MCP server, and code-learn as the desktop app's name. (Done before phase 1.)
-4. Desktop: Linux only (AppImage and pacman package); drop Docker Desktop, WSL and the macOS and Windows code; bundle micromamba; a computer check for the requirements above; a Remove action for tracks.
+4. Desktop: Linux only (AppImage); drop Docker Desktop, WSL and the macOS and Windows code; bundle micromamba; a computer check for the requirements above; a Remove action for tracks.
 5. Journey: a real agent installs a Python and a Java track and passes an exercise in each, from the packaged app.
 
 ## 5. Roadmaps (courses)

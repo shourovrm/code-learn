@@ -1,21 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { packaging, SYSTEM_DEPENDENCIES } from './packaging.cjs';
+import { packaging } from './packaging.cjs';
 
 describe('packaging', () => {
   const config = packaging({});
 
-  it('builds an AppImage and a pacman package for x64 Linux, and nothing else', () => {
-    expect(config.linux.target).toEqual([
-      { target: 'AppImage', arch: ['x64'] },
-      { target: 'pacman', arch: ['x64'] },
-    ]);
+  it('builds an AppImage for x64 Linux, and nothing else', () => {
+    expect(config.linux.target).toEqual([{ target: 'AppImage', arch: ['x64'] }]);
+    expect(config).not.toHaveProperty('pacman');
     expect(config).not.toHaveProperty('mac');
     expect(config).not.toHaveProperty('win');
-  });
-
-  it('makes the pacman package depend on the sandbox and the systemd user session', () => {
-    expect(config.pacman.depends).toEqual(SYSTEM_DEPENDENCIES);
-    expect(SYSTEM_DEPENDENCIES).toEqual(['bubblewrap', 'systemd']);
   });
 
   it('publishes nothing and says the build is unsigned, so the app offers no updates', () => {
