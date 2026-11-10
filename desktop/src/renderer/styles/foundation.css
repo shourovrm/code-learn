@@ -178,7 +178,7 @@ a.inline:hover { color: var(--ink); }
 .side .update { display: flex; flex-direction: column; gap: var(--space-100); margin-bottom: var(--space-100); padding: var(--space-150); border: var(--border) solid var(--garden-line); border-radius: var(--radius-ctl); color: var(--garden-text); font: var(--type-body-small); }
 .side .update a { color: var(--primary); font-weight: 600; }
 /* The theme switch, on the sidebar's garden in both themes. */
-.theme-switch { display: inline-flex; gap: var(--space-025); padding: var(--space-050); border: var(--border) solid var(--line); border-radius: var(--radius-ctl); }
+.theme-switch { display: inline-flex; align-self: flex-start; gap: var(--space-025); padding: var(--space-050); border: var(--border) solid var(--line); border-radius: var(--radius-ctl); }
 .theme-switch button { min-width: var(--space-1000); height: var(--control-h-compact); padding: 0 var(--space-150); border: none; border-radius: var(--radius-tag); background: transparent; color: var(--muted); display: inline-flex; align-items: center; justify-content: center; gap: var(--space-050); font: var(--type-body-small); cursor: pointer; transition: background .2s var(--ease), color .2s var(--ease); }
 .theme-switch button:hover { color: var(--ink); background: var(--soft); }
 .theme-switch button[aria-checked="true"] { background: var(--primary); color: var(--on-primary); font-weight: 700; }
