@@ -54,6 +54,13 @@ const GOOD: Record<Exclude<keyof CodeLearnApi, 'onCheckProgress' | 'onJobProgres
   usage: [],
   update: [],
   restartToUpdate: [],
+  syncView: [],
+  githubRepos: [],
+  createGithubRepo: ['code-learn-sync'],
+  connectSync: [{ via: 'gh', name: 'me/code-learn-sync' }],
+  syncNow: [],
+  disconnectSync: [],
+  quit: [false],
 };
 
 describe('dispatch', () => {

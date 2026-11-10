@@ -44,6 +44,8 @@ const place: Valid = (v) => shape({ lessonId: id })(v) || shape({ activityId: id
 const words = text(LIMITS.words, 1);
 /** A lesson example's number: core keeps at most 5. */
 const exampleNumber: Valid = (v) => Number.isInteger(v) && (v as number) >= 1 && (v as number) <= 5;
+/** A repository to sync with: owner/name through gh, or an address (syncService checks each further). */
+const syncTarget: Valid = (v) => shape({ via: oneOf('gh'), name: text(200, 3) })(v) || shape({ via: oneOf('git'), remote: text(500, 3) })(v);
 const fileText: Valid = (v) => typeof v === 'string' && new TextEncoder().encode(v).length <= MAX_FILE_BYTES;
 
 // onCheckProgress, onJobProgress and onRunOutput are events main sends, never something the renderer may call.
@@ -95,6 +97,13 @@ const ARGS: { [K in Exclude<keyof CodeLearnApi, 'onCheckProgress' | 'onJobProgre
   usage: [],
   update: [],
   restartToUpdate: [],
+  syncView: [],
+  githubRepos: [],
+  createGithubRepo: [text(100, 1)],
+  connectSync: [syncTarget],
+  syncNow: [],
+  disconnectSync: [],
+  quit: [(v) => typeof v === 'boolean'],
 };
 
 /** Validates a renderer call and passes it to codeLearn. Throws on anything unexpected. */

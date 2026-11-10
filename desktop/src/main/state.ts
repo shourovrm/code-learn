@@ -3,7 +3,7 @@
 // atomically, like every code-learn-owned file.
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { AgentId } from '../shared/api';
+import type { AgentId, SyncResult } from '../shared/api';
 
 export interface DesktopState {
   format_version: 1;
@@ -24,6 +24,8 @@ export interface DesktopState {
   models?: Partial<Record<AgentId, string>>;
   /** The instructions given when a topic was last rebuilt, keyed `course|concept`, for its lesson and exercise jobs. */
   rebuildNotes?: Record<string, string>;
+  /** The private GitHub repository the learner syncs with (DESIGN "Sync"), and how its last sync went. */
+  sync?: { via: 'gh' | 'git'; name: string; remote: string; last?: SyncResult };
 }
 
 export const workspaceOf = (state: DesktopState, home: string) => state.workspace ?? join(home, 'code-learn');

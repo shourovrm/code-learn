@@ -394,6 +394,31 @@ export type UpdateStatus =
   | { kind: 'downloading'; version: string }
   | { kind: 'ready'; version: string };
 
+/** How a GitHub sync ended: done, GitHub unreachable (it tries again later), git not signed in, or another failure. */
+export type SyncState = 'synced' | 'offline' | 'signed-out' | 'failed';
+
+export interface SyncResult {
+  state: SyncState;
+  /** When it ended, ISO. */
+  at: string;
+  /** Files both computers changed since the last sync, by their path in the repository. */
+  clashes: string[];
+  /** git's last lines, for a sync that failed. */
+  detail?: string;
+}
+
+/** GitHub sync (DESIGN "Sync"): the GitHub CLI's state, the repository syncing and how the last sync went. */
+export interface SyncView {
+  gh: { state: 'missing' | 'signed-out' | 'ready'; login?: string };
+  /** owner/name through gh, else the repository's address. */
+  repo?: { name: string; via: 'gh' | 'git' };
+  last?: SyncResult;
+  running: boolean;
+}
+
+/** A private repository to sync with: one of the learner's, through gh, or an address git signs in to by itself. */
+export type SyncTarget = { via: 'gh'; name: string } | { via: 'git'; remote: string };
+
 export type Place = { lessonId: string } | { activityId: string };
 
 export interface Message {
@@ -513,6 +538,21 @@ export interface CodeLearnApi {
   update(): Promise<UpdateStatus>;
   /** Quits and installs a downloaded update: a signed build whose update is `ready`. */
   restartToUpdate(): Promise<void>;
+
+  /** GitHub sync's state, for Settings. */
+  syncView(): Promise<SyncView>;
+  /** The learner's GitHub repositories, through gh, to pick one to sync with. */
+  githubRepos(): Promise<{ name: string; private: boolean }[]>;
+  /** Creates a private repository through gh and syncs with it. */
+  createGithubRepo(name: string): Promise<SyncView>;
+  /** Syncs with a repository from now on; through gh, only a private one. Syncs once at once. */
+  connectSync(target: SyncTarget): Promise<SyncView>;
+  /** Syncs now: sends this computer's work and brings in the others'. */
+  syncNow(): Promise<SyncView>;
+  /** Stops syncing. The repository and this computer's files stay as they are. */
+  disconnectSync(): Promise<SyncView>;
+  /** Closes code-learn, first sending to GitHub what it doesn't have yet when `sync` (at most 10 seconds offline). */
+  quit(sync: boolean): Promise<void>;
 }
 
 /** One thing a job did: a web search, an https page (host and path) or one of code-learn's steps (§4.11). */

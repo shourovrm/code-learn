@@ -3,7 +3,7 @@
 // the starter's placeholder; quizzes use a private key. Hidden code results
 // are reported as statuses only.
 import { parse, stringify } from 'yaml';
-import { type CheckProgress, type ExerciseStatus, type JobKind, type JobProgress, type JobStep, type RunOutput, type UpdateStatus, type RunResult,
+import { type CheckProgress, type ExerciseStatus, type JobKind, type JobProgress, type JobStep, type RunOutput, type UpdateStatus, type RunResult, type SyncResult, type SyncView,
   AGENT_FAILED,
   CHANGED,
   NO_AGENT,
@@ -67,6 +67,8 @@ export interface MockOptions {
   runLimitMs?: number;
   /** What the update check says, to see the update notice. */
   update?: UpdateStatus;
+  /** The GitHub CLI, for Settings' sync section: signed in as `me` unless it says otherwise. */
+  gh?: 'missing' | 'signed-out';
   /**
    * Agent jobs take this many course reads per stage (and research per step), and calls such as a roadmap change
    * take this many half seconds, so each staged progress state can be seen (§4.11). Without it, jobs finish at once.
@@ -276,6 +278,20 @@ const MOCK_SOLUTION = 'The mock app shows its reference solution here.\n';
 export function createMock(options: MockOptions = {}): CodeLearnApi {
   const agents = AGENTS.map((a) => ({ ...a, state: (options.agents?.[a.id] === 'missing' ? 'missing' : options.connected === a.id ? 'connected' : 'not-connected') as Agent['state'] }));
   const tracks: Track[] = [];
+  const repos = [{ name: 'me/code-learn-sync', private: true }, { name: 'me/site', private: false }];
+  let syncRepo: SyncView['repo'];
+  let lastSync: SyncResult | undefined;
+  const syncView = (): SyncView => ({
+    gh: options.gh ? { state: options.gh } : { state: 'ready', login: 'me' },
+    ...(syncRepo ? { repo: syncRepo } : {}),
+    ...(lastSync ? { last: lastSync } : {}),
+    running: false,
+  });
+  const connectRepo = (repo: NonNullable<SyncView['repo']>) => {
+    syncRepo = repo;
+    lastSync = { state: 'synced', at: new Date().toISOString(), clashes: [] };
+    return syncView();
+  };
   // The course on screen: its lessons, activities, roadmap and view. Switching swaps them for another course's (§4.13).
   let lessons = new Map<string, Lesson>();
   let activities = new Map<string, { activity: Activity; fails: number; checked?: boolean; checks?: RecordedCheck[] }>();
@@ -1027,5 +1043,31 @@ export function createMock(options: MockOptions = {}): CodeLearnApi {
     async restartToUpdate() {
       if (options.update?.kind !== 'ready') throw new Error('No update is ready.');
     },
+
+    // GitHub sync against an imagined GitHub: two repositories, every sync succeeds at once.
+    syncView: async () => syncView(),
+    async githubRepos() {
+      if (options.gh) throw new Error("The GitHub CLI (gh) isn't installed.");
+      return repos.map((r) => ({ ...r }));
+    },
+    async createGithubRepo(name) {
+      repos.push({ name: `me/${name}`, private: true });
+      return connectRepo({ name: `me/${name}`, via: 'gh' });
+    },
+    async connectSync(target) {
+      if (target.via === 'git') return connectRepo({ name: target.remote, via: 'git' });
+      if (!repos.find((r) => r.name === target.name)?.private) throw new Error(`${target.name} is public. Sync only uses a private repository, since exercises hold their hidden tests.`);
+      return connectRepo({ name: target.name, via: 'gh' });
+    },
+    async syncNow() {
+      if (!syncRepo) throw new Error("code-learn isn't syncing with GitHub. Connect a repository in Settings.");
+      return connectRepo(syncRepo);
+    },
+    async disconnectSync() {
+      syncRepo = undefined;
+      lastSync = undefined;
+      return syncView();
+    },
+    quit: async () => undefined,
   };
 }

@@ -2,8 +2,9 @@
 // found on this computer, and agent jobs whose MCP server is the
 // bundled core run with this app as Node (§2, §7).
 import { app, net } from 'electron';
+import { execFile } from 'node:child_process';
 import { mkdirSync, readFileSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { homedir, hostname } from 'node:os';
 import { join } from 'node:path';
 import { AGENT_CLIS } from './agent/agents';
 import { ask } from './agent/bridge';
@@ -21,6 +22,8 @@ import type { Log } from './log';
 import { codeLearnServer } from './server';
 import { agentSignIn, nodeSignInDeps } from './signIn';
 import { desktopState, workspaceOf } from './state';
+import { createSync } from './sync';
+import { syncService } from './syncService';
 import { usageStore } from './usage';
 import { micromambaIn } from './micromamba';
 
@@ -33,7 +36,7 @@ export interface Places {
   log: Log;
 }
 
-export function liveApi({ coreDir, micromambaDir, userData, log }: Places): Live {
+export function liveApi({ coreDir, micromambaDir, userData, log }: Places): Live & { sync: ReturnType<typeof syncService> } {
   // Core installs track toolchains with micromamba, in-process and in the agent's server (server.ts): the bundled
   // one, else core finds one on PATH.
   const micromamba = micromambaIn(micromambaDir);
@@ -73,7 +76,15 @@ export function liveApi({ coreDir, micromambaDir, userData, log }: Places): Live
     },
   }, log);
 
-  return createLive({
+  // GitHub sync (DESIGN "Sync"): git and gh as installed; without git, Settings says the sync failed.
+  const sync = syncService({
+    state,
+    gh: () => find('gh')?.path ?? null,
+    runGh,
+    sync: createSync({ git: find('git')?.path ?? 'git', dir: join(userData, 'sync'), ws, machine: hostname().replace(/[^A-Za-z0-9._-]/g, '-') || 'computer', core }),
+  });
+
+  const live = createLive({
     core,
     connect,
     computer,
@@ -87,6 +98,16 @@ export function liveApi({ coreDir, micromambaDir, userData, log }: Places): Live
     server: codeLearnServer({ runtime, coreDir, ws, env: process.env }),
     // On Windows, what installers added to the registry's PATH since code-learn started (§3.1): agents rely on it. A steady clock: one set back would hold off the next read.
     livePath: livePath({ platform: process.platform, env: process.env, run: nodeRun, now: () => performance.now() }),
+  });
+  return { ...live, ...sync.api, sync };
+}
+
+/** Runs gh with an argument array; it never prompts, since nobody would answer. */
+function runGh(gh: string, args: string[]): Promise<{ code: number; stdout: string }> {
+  return new Promise((resolve) => {
+    execFile(gh, args, { timeout: 30_000, encoding: 'utf8', env: { ...process.env, GH_PROMPT_DISABLED: '1', NO_COLOR: '1' } }, (error, stdout) => {
+      resolve({ code: error ? (typeof error.code === 'number' ? error.code : -1) : 0, stdout });
+    });
   });
 }
 

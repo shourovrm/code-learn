@@ -54,10 +54,15 @@ function signedBuild(): boolean {
   }
 }
 
-/** Main answers the update calls when it checks for updates. */
+/** Main answers the update calls when it checks for updates, and quits when the learner closes code-learn. */
 function withUpdates(api: CodeLearnApi): CodeLearnApi {
-  if (!updater) return api;
-  return { ...api, update: async () => updater.status(), restartToUpdate: async () => updater.restart() };
+  // The renderer asked before closing (DESIGN "Sync"): what GitHub doesn't have yet goes first, if the learner said so.
+  const quit = async (sync: boolean) => {
+    if (sync) await live?.sync.beforeQuit();
+    app.quit();
+  };
+  if (!updater) return { ...api, quit };
+  return { ...api, quit, update: async () => updater.status(), restartToUpdate: async () => updater.restart() };
 }
 
 function devMock(): CodeLearnApi {
@@ -149,6 +154,8 @@ void app.whenReady().then(() => {
   ipcMain.handle('code-learn', handle);
   createWindow();
   updater?.start();
+  // Brings in what other computers synced, then keeps this one's work on GitHub (DESIGN "Sync").
+  live?.sync.start();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });

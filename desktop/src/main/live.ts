@@ -128,6 +128,11 @@ interface SetupRun {
 /** A course's queues of agent jobs (§3.2): foreground, background (lessons, setup) and the current topic's activity. */
 type Lane = 'fg' | 'bg' | 'activity';
 
+/** What live leaves to main: GitHub sync, before main wires it in. */
+const unavailable = async (): Promise<never> => {
+  throw new Error("GitHub sync isn't available in this build.");
+};
+
 /** Runs work one piece at a time, each once the one before has settled. */
 function turns() {
   let last: Promise<unknown> = Promise.resolve();
@@ -1080,6 +1085,14 @@ export function createLive(d: LiveDeps): Live {
     // Updates are main's (updates.ts), which answers these in place of live.
     update: async () => ({ kind: 'none' }),
     restartToUpdate: async () => undefined,
+    // GitHub sync is syncService's and quitting is main's, which answer these in place of live.
+    syncView: async () => ({ gh: { state: 'missing' }, running: false }),
+    githubRepos: async () => [],
+    createGithubRepo: unavailable,
+    connectSync: unavailable,
+    syncNow: unavailable,
+    disconnectSync: unavailable,
+    quit: async () => undefined,
 
     async stop() {
       stopping = true;

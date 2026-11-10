@@ -5,20 +5,8 @@
 import { execFile } from 'node:child_process';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import type { SyncResult, SyncState } from '../shared/api';
 import type { CoreApp, CoreSyncChange } from './core/types';
-
-/** Where a sync ended: done, GitHub unreachable (it waits for the next try), git not signed in, or another failure. */
-export type SyncState = 'synced' | 'offline' | 'signed-out' | 'failed';
-
-export interface SyncOutcome {
-  state: SyncState;
-  /** When it ended, ISO. */
-  at: string;
-  /** Files both computers changed since the last sync, as sync paths ("workspace/exercises/c/greet/main.c"). */
-  clashes: string[];
-  /** git's own last lines, for a sync that failed. */
-  detail?: string;
-}
 
 /** The repository: its address, and gh's path when git signs in through the GitHub CLI. */
 export interface SyncRepo {
@@ -151,7 +139,7 @@ export function createSync({ git, dir, ws, machine, core }: SyncDeps) {
     return changes;
   }
 
-  async function syncOnce(target: SyncRepo, networkMs: number): Promise<SyncOutcome> {
+  async function syncOnce(target: SyncRepo, networkMs: number): Promise<SyncResult> {
     const at = () => new Date().toISOString();
     try {
       await prepare(target);
@@ -175,7 +163,7 @@ export function createSync({ git, dir, ws, machine, core }: SyncDeps) {
   return {
     dir,
     /** Sends this computer's work, brings in the other computers', and settles clashes. Never throws. */
-    syncNow(target: SyncRepo, networkMs = NETWORK_MS): Promise<SyncOutcome> {
+    syncNow(target: SyncRepo, networkMs = NETWORK_MS): Promise<SyncResult> {
       const turn = last.then(() => syncOnce(target, networkMs));
       last = turn.catch(() => undefined);
       return turn;
