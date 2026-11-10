@@ -11,6 +11,10 @@
         "label": "Opus"
       },
       {
+        "id": "fable",
+        "label": "Fable"
+      },
+      {
         "id": "haiku",
         "label": "Haiku"
       }

@@ -70,6 +70,7 @@ describe('connect (§3.1, §3.3)', () => {
     expect(claude.models).toEqual([
       { id: 'sonnet', label: 'Sonnet', recommended: true },
       { id: 'opus', label: 'Opus', recommended: false },
+      { id: 'fable', label: 'Fable', recommended: false },
       { id: 'haiku', label: 'Haiku', recommended: false },
     ]);
     expect(claude.model).toBe('sonnet');

@@ -79,7 +79,7 @@ describe('connect journey', () => {
     expect(within(claude).queryByRole('combobox', { name: 'Model' })).not.toBeInTheDocument();
     await user.click(within(claude).getByRole('button', { name: 'Connect' }));
     const model = await within(claude).findByRole('combobox', { name: 'Model' });
-    expect(within(model).getAllByRole('option').map((o) => o.textContent)).toEqual(['Sonnet (recommended)', 'Opus', 'Haiku']);
+    expect(within(model).getAllByRole('option').map((o) => o.textContent)).toEqual(['Sonnet (recommended)', 'Opus', 'Fable', 'Haiku']);
     expect(model).toHaveValue('sonnet');
     await user.selectOptions(model, 'opus');
     await vi.waitFor(async () => expect((await api.agents()).find((a) => a.id === 'claude')?.model).toBe('opus'));
