@@ -435,6 +435,21 @@ describe("research and teaching quality", () => {
     }
   });
 
+  it("gives every code exercise's statement the same parts", () => {
+    for (const text of [AUTHOR_AGENT, JOB_BRIEFS.author]) {
+      expect(text).toMatch(/Start it with a `#` title, then say in a sentence or two what to build, fix or set up/);
+      expect(text).toMatch(/a `## Rules` section \(.*\) and a `## Example` section \(/);
+      expect(text).toMatch(/A learner must be able to solve it from this alone/);
+    }
+  });
+
+  // The gate named valid asks a unit exercise for one hidden test file, and an io one for two hidden inputs.
+  it("states the fewest tests an exercise needs as the gate counts them", () => {
+    for (const text of [AUTHOR_AGENT, JOB_BRIEFS.author]) {
+      expect(text).toMatch(/at least 1 visible test, and at least 2 hidden inputs \(io\) or 1 hidden test file \(unit\)/);
+    }
+  });
+
   it("asks research for the page a source's facts are on, since lessons list those links", () => {
     for (const text of [AGENTS_SECTION, JOB_BRIEFS.research]) expect(text).toMatch(/Link the page that covers the topic, not a site's front page/);
   });
