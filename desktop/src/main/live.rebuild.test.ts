@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { live, practising, settle } from './testing/fakes';
+import { live, practising, settle, until } from './testing/fakes';
 
 describe('rebuilding topics', () => {
   it('rebuilds the chosen topics in core, then starts a lesson job for each one', async () => {
@@ -29,6 +29,24 @@ describe('rebuilding topics', () => {
     await t.api.rebuildTopics(['values'], true, 'Use Linux examples');
     await t.api.rebuildTopics(['values'], true);
     expect(t.state.read().rebuildNotes ?? {}).toEqual({});
+  });
+
+  it("writes the current topic's exercise while the other topics' lessons are still queued", async () => {
+    let release: () => void = () => {};
+    const held = new Promise<void>((r) => (release = r));
+    const t = live({
+      lesson: async (job, usual) => {
+        if (job.brief.includes('Concept: state')) await held;
+        return usual();
+      },
+    });
+    await practising(t);
+    const before = t.jobs.ran.length;
+    await t.api.rebuildTopics(['values', 'state'], true);
+    const course = await until(t.api, (c) => c.topics[0].lessons.some((l) => l.state === 'ready'));
+    for (const l of course.topics[0].lessons) await t.api.markRead(l.id);
+    await settle(async () => (await t.api.course(), t.jobs.ran.slice(before).find((j) => j.kind === 'author')), Boolean, 'Author job');
+    release();
   });
 
   it('keeps the old lessons when replace is off', async () => {

@@ -236,7 +236,11 @@ export function fakeCore() {
     markLessonRead: async (_ws, id, bound) => void (c.bound.push(bound), c.reads.add(id)),
     rebuildTopics: async (_ws, course, concepts, { replace }) => {
       c.rebuilt.push({ course, concepts, replace });
-      if (replace) c.lessons = c.lessons.filter((l) => !concepts.includes(l.concept));
+      if (!replace) return;
+      // As core: the topics' lessons, their reads and the exercises only they cover go.
+      for (const l of c.lessons) if (concepts.includes(l.concept)) c.reads.delete(l.id);
+      c.lessons = c.lessons.filter((l) => !concepts.includes(l.concept));
+      for (const [slug, e] of c.exercises) if (concepts.includes(e.concept)) c.exercises.delete(slug);
     },
     readLearnerFiles: (_ws, slug, bound) => (c.bound.push(bound), { 'main.c': { text: c.exercises.get(slug)!.file, digest: c.exercises.get(slug)!.digest } }),
     writeLearnerFile: async (_ws, slug, _path, text, digest, bound) => {

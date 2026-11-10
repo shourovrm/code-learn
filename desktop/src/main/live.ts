@@ -125,6 +125,9 @@ interface SetupRun {
   installs: number;
 }
 
+/** A course's queues of agent jobs (§3.2): foreground, background (lessons, setup) and the current topic's activity. */
+type Lane = 'fg' | 'bg' | 'activity';
+
 /** Runs work one piece at a time, each once the one before has settled. */
 function turns() {
   let last: Promise<unknown> = Promise.resolve();
@@ -298,11 +301,11 @@ export function createLive(d: LiveDeps): Live {
   };
 
   /**
-   * Runs one agent job in a lane: one foreground job and one background queue,
+   * Runs one agent job in a lane: one foreground job, one background queue and one activity queue,
    * each one at a time (§3.2). The job starts only when its turn comes.
    */
   function start(
-    key: string, lane: 'fg' | 'bg', kind: JobKind, brief: string, course: string | undefined, done: Job['done'],
+    key: string, lane: Lane, kind: JobKind, brief: string, course: string | undefined, done: Job['done'],
     { resume, onSource, concept, retry, settled, track, onSession }: {
       /** A session to continue: a tutor's, or another job's, which only its own agent continues. */
       resume?: string | AgentSession; onSource?: Job['onSource']; concept?: string; retry?: JobProgress['retry'];
@@ -329,7 +332,7 @@ export function createLive(d: LiveDeps): Live {
     const job = async (): Promise<JobOutcome> => {
       launched = true;
       // A cancelled job, or background work queued behind its course's stall, never launches.
-      if (stop.signal.aborted || (lane === 'bg' && course !== undefined && stalls.has(course))) return { ok: false, problem: 'failed', text: [] };
+      if (stop.signal.aborted || (lane !== 'fg' && course !== undefined && stalls.has(course))) return { ok: false, problem: 'failed', text: [] };
       // Nor does any job while an agent code-learn couldn't stop may still run (§3.1).
       if (unstoppable) return { ok: false, problem: 'unstoppable', text: [] };
       // The agent, and the code-learn server it starts, inherit PATH as it is now.
@@ -425,7 +428,7 @@ export function createLive(d: LiveDeps): Live {
   function background(
     key: string, kind: JobKind, brief: string, course: string, done: Job['done'],
     { lane = 'bg', concept, retry, track, resume, onSession }: {
-      lane?: 'fg' | 'bg'; concept?: string; retry?: JobProgress['retry']; track?: string; resume?: AgentSession;
+      lane?: Lane; concept?: string; retry?: JobProgress['retry']; track?: string; resume?: AgentSession;
       onSession?: (session: AgentSession) => void;
     } = {},
   ) {
@@ -539,13 +542,15 @@ export function createLive(d: LiveDeps): Live {
       const lane = core.listLessons(ws, course).length === 0 ? 'fg' : 'bg';
       background(`lesson:${course}:${concept.id}`, 'lesson', briefs.lesson(concept.id, concept.title, rebuildNote(course, concept.id)), course, () => lessons() > 0, { lane, concept: concept.id });
     }
-    if (ready && progress.next.kind === 'author') {
+    // The activity is written from the topic's lesson, so it waits for that lesson; the lesson's end schedules it.
+    if (ready && progress.next.kind === 'author' && lessons() > 0) {
       // Done only by a new exercise for this concept at the requested difficulty (§3.2).
       // The agent reads its target and the track's contract from next_step (core JOB_BRIEFS.author).
       const { difficulty } = progress.next;
       const before = new Set(core.listExercises(ws, course).map((e) => e.exercise));
       const made = () => core.listExercises(ws, course).some((e) => !before.has(e.exercise) && e.concepts.includes(concept.id) && e.difficulty === difficulty);
-      background(`author:${course}:${concept.id}:${difficulty}`, 'author', briefs.author(rebuildNote(course, concept.id)), course, made, { concept: concept.id });
+      // Its own lane, so the lessons a rebuild queued for later topics don't hold up the topic the learner is on.
+      background(`author:${course}:${concept.id}:${difficulty}`, 'author', briefs.author(rebuildNote(course, concept.id)), course, made, { lane: 'activity', concept: concept.id });
     }
   }
 
