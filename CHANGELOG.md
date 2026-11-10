@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.4 (2026-11-10)
+
+- A model for each kind of job: Planning, Lessons, Exercises and Tutor. Connect now shows agents only, and the next screen, "Choose a model for each job", offers the models your agent has enabled. Settings has the same four menus. Lessons are most of a course's cost, so a smaller model there saves the most.
+- Depth is kept with the course. The roadmap's review keeps the course at the size you chose, and an overview or in-depth course gets shorter or deeper lessons and exercises. Rebuild has a "How deep" choice for the topics you rebuild.
+- One agent run writes up to three lessons. The lesson you are waiting for is still written alone; the next three topics' lessons are written ahead while you study, once the toolchain is set up.
+- Beside an exercise, the sidebar's Contents button is the one way to the contents; the Brief and Contents tabs are gone.
+- Courses on any subject: the planner is no longer worded for code only, counts laws, regulations, official guidance and reference works as primary sources, and in a lessons-only course keeps every topic.
+
 ## 0.2.3 (2026-11-10)
 
 - Settings replaces Agent in the sidebar, with three cards: Agent, Sync with GitHub and Theme.
