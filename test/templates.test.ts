@@ -450,6 +450,14 @@ describe("research and teaching quality", () => {
     }
   });
 
+  // The rule that a topic without graded practice isn't a topic dropped topics from courses that grade nothing.
+  it("keeps every topic of a lessons-only course, where `practice` says what the learner can do after the lesson", () => {
+    for (const text of [AGENTS_SECTION, JOB_BRIEFS.research]) {
+      expect(text).toMatch(/In a lessons-only course \(`style: none`\) nothing is graded: there, `practice` says what the learner will be able to do or explain after the lesson, and no concept is folded away for lacking a graded activity/);
+    }
+    expect(JOB_BRIEFS.review).toMatch(/Skip this check in a lessons-only course \(`style: none`\)/);
+  });
+
   it("asks research for the page a source's facts are on, since lessons list those links", () => {
     for (const text of [AGENTS_SECTION, JOB_BRIEFS.research]) expect(text).toMatch(/Link the page that covers the topic, not a site's front page/);
   });

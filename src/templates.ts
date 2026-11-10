@@ -39,7 +39,7 @@ const QUALITY =
 
 /** What research records per concept, so lessons and activities build on the sources, not on memory (proposal §3.1). */
 const CONCEPT_FIELDS =
-  `Give every concept a \`practice\` line (at most 300 characters): how a graded activity practises it, one ${GRADEABLE}, such as "fix a loop that retries forever so it stops after a budget". If no graded activity can practise a concept, it isn't a concept: fold it into a neighbouring concept's lesson. Add up to 5 \`pitfalls\` (each at most 200 characters): the common mistakes your sources name, not ones from memory. \`refs\` lists the indexes (from 0) of the \`sources\` each concept's practice and pitfalls come from; with \`sources\`, every concept with \`practice\` or \`pitfalls\` needs at least one. For a topic about building tools or systems rather than a language, a \`practice\` line names one of these: build the piece against a scripted fake; fix an anti-pattern from \`pitfalls\`; write a policy or grader that recorded cases are replayed through; write a schema or config that a scripted consumer reads; or make the smallest change that turns a recorded failure into a pass.`;
+  `Give every concept a \`practice\` line (at most 300 characters): how a graded activity practises it, one ${GRADEABLE}, such as "fix a loop that retries forever so it stops after a budget". If no graded activity can practise a concept, it isn't a concept: fold it into a neighbouring concept's lesson. In a lessons-only course (\`style: none\`) nothing is graded: there, \`practice\` says what the learner will be able to do or explain after the lesson, and no concept is folded away for lacking a graded activity. Add up to 5 \`pitfalls\` (each at most 200 characters): the common mistakes your sources name, not ones from memory. \`refs\` lists the indexes (from 0) of the \`sources\` each concept's practice and pitfalls come from; with \`sources\`, every concept with \`practice\` or \`pitfalls\` needs at least one. For a topic about building tools or systems rather than a language, a \`practice\` line names one of these: build the piece against a scripted fake; fix an anti-pattern from \`pitfalls\`; write a policy or grader that recorded cases are replayed through; write a schema or config that a scripted consumer reads; or make the smallest change that turns a recorded failure into a pass.`;
 
 /**
  * One teaching structure for every lesson (Rosenshine's principles, the worked-example effect, practice testing; proposal §3.6).
@@ -190,7 +190,7 @@ export const JOB_BRIEFS: Record<JobKind, string> = {
    - a core skill from your list is missing;
    - a concept comes before a concept it needs;
    - a concept's \`practice\` or \`pitfalls\` isn't supported by the sources its \`refs\` name;
-   - a \`practice\` that isn't one ${GRADEABLE}: rewrite it into one that is, or fold the concept into a neighbour's lesson;
+   - a \`practice\` that isn't one ${GRADEABLE}: rewrite it into one that is, or fold the concept into a neighbour's lesson. Skip this check in a lessons-only course (\`style: none\`), where nothing is graded;
    - more than half the sources are secondary (${PRIMARY}): swap in primary ones and keep each concept's \`refs\` right;
    - every source is from one organization when the field has several: add primary sources from others.
 3. If anything is wrong, save the whole roadmap with \`save_roadmap\` under the same course id, fixed. Keep the ids, \`title\` and \`goal\`, and keep \`sources\`, adding any you used (at most 10).
