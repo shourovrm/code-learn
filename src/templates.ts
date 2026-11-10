@@ -15,7 +15,7 @@ const PLAIN = "Write learner-facing text in plain words, with no arrows (→) or
 const HINT = `give one hint: name the one thing that's missing or wrong, and ask one question that leads to the next step. Don't state the fix, write the code or list the steps. For example: "Your loop stops before the last item. Which index does the last item have?" Keep a plain tone: no praise or cheerleading ("Great!", "You're almost there!"); say what's right or wrong and the next step. ${PLAIN}`;
 
 const LESSON_FIRST =
-  "On \`practice\`, \`author\` and \`learn\`, a \`lesson\` field means teach first. If it is \`null\`, write a short lesson for the concept with \`save_lesson\`; if it is an id, read that lesson with \`get_lesson\`. Teach it, and call \`mark_lesson_read\` only after the learner says they've read it. Then call \`next_step\` again.";
+  "On \`practice\`, \`author\` and \`learn\`, a \`lesson\` field means teach first. If it is \`null\`, write a short lesson for the concept with \`save_lesson\`, as \"The lesson\" below sets out; if it is an id, read that lesson with \`get_lesson\`. Teach it, and call \`mark_lesson_read\` only after the learner says they've read it. Then call \`next_step\` again.";
 
 const SAVE_RETRIES = "code-learn verifies everything you save by running it in a sandbox, and sends back what failed. Fix it and save again, up to 3 tries, then report what still fails.";
 
@@ -35,7 +35,7 @@ const GRADEABLE = "a test with no model in it can grade: never a real model's be
 
 /** Where research comes from (owner: "always always use the best practices"; proposal §3.6). */
 const QUALITY =
-  `Research the topic's best practices and its common mistakes, not only the order. Use primary sources first, from more than one organization when the field has several. ${PRIMARY}: use them only to find primary ones. In a fast-moving field, prefer sources from the last two years. Order the concepts the way established curricula or official learning paths do, where they exist.`;
+  `Research the topic's best practices and its common mistakes, not only the order. Use primary sources first, from more than one organization when the field has several. ${PRIMARY}: use them only to find primary ones. Link the page that covers the topic, not a site's front page. In a fast-moving field, prefer sources from the last two years. Order the concepts the way established curricula or official learning paths do, where they exist.`;
 
 /** What research records per concept, so lessons and activities build on the sources, not on memory (proposal §3.1). */
 const CONCEPT_FIELDS =
@@ -43,13 +43,24 @@ const CONCEPT_FIELDS =
 
 /**
  * One teaching structure for every lesson (Rosenshine's principles, the worked-example effect, practice testing; proposal §3.6).
- * The names and their order are fixed because lessons written from a looser list opened three different ways.
+ * The names and their order are fixed because lessons written from a looser list opened three different ways; parseLesson
+ * (schemas.ts) checks them on save, and a list is easier for a small model to follow than a paragraph.
  */
-const LESSON_SHAPE =
-  'Every lesson has the same parts, in the same order, under the same names, so the course reads as one book. Use these labels and headings exactly as written; never copy any other words of these instructions into the lesson. No title heading: code-learn shows the title. ' +
-  'Open with two one-line paragraphs: "**Last time:**", a recap of the topics this one builds on (its `requires`; leave it out of the first lesson), and "**You will be able to:**", what the learner will be able to do (from the concept\'s `practice`). ' +
-  'Then these `##` sections: "Why it matters"; "The idea in small steps", with a `###` heading "Step N: ..." for each step, where each step teaches one new thing, builds on the step before, and should show a small example first, then state the rule; "Worked example", one worked example, step by step; "Common mistakes", the common mistakes from the concept\'s `pitfalls`, with one shown and corrected; "Remember", 3 to 5 short facts worth keeping, one line each; "Self-check", two questions the lesson has answered, which ask the learner to use the idea, not to repeat a definition; "Answers", their answers; optionally "Try it", one small task the learner can ask the tutor to review; and last "Sources", the sources it used, from the concept\'s `refs`. ' +
-  "Assume the learner knows only what the earlier topics taught. Define each new term in plain words where it first appears, in bold there and nowhere else, and from then on use that same word for that thing. Call a thing what the roadmap's earlier topics call it. Spell out an abbreviation the first time. Use nothing from a later topic; if one must be named, say which topic teaches it. Before a code block or an example, say in one sentence what it shows. Where it fits, carry one example through the steps, changing one thing at a time, so each step differs from the last only by its new idea. Write short sentences, one idea each, to the learner as \"you\". Keep it to about a five-minute read; a lesson that needs more means the concept is too big.";
+const LESSON_SHAPE = `**The lesson.** Every lesson has the same parts, in the same order, under the same names, so the course reads as one book. Use these labels and headings exactly as written, and never copy any other words of these instructions into the lesson. No title heading: code-learn shows the title. code-learn rejects a lesson that lacks the line saying what the learner will be able to do, or has one of these \`##\` sections missing, repeated or out of order.
+
+1. Two opening lines: "**Last time:**", a recap of the topics this one builds on (its \`requires\`; leave it out of the first lesson), then "**You will be able to:**", what the learner will be able to do (from the concept's \`practice\`).
+2. \`## Why it matters\`: one real situation where the learner needs this, in two or three sentences.
+3. \`## The idea in small steps\`: a \`###\` heading "Step N: ..." for each step. Each step teaches one new thing, builds on the step before, and should show a small example first, then state the rule.
+4. \`## Worked example\`: one worked example, step by step.
+5. \`## Common mistakes\`: the common mistakes from the concept's \`pitfalls\`, with one shown and corrected.
+6. \`## Remember\`: 3 to 5 short facts worth keeping, one line each.
+7. \`## Self-check\`: two questions the lesson has answered, which ask the learner to use the idea, not to repeat a definition.
+8. \`## Answers\`: their answers.
+9. \`## Try it\` (optional): one small task the learner can ask the tutor to review.
+10. \`## Sources\`: the sources it used, from the concept's \`refs\`, each with its title and link.
+
+- Assume the learner knows only what the earlier topics taught. Define each new term in plain words where it first appears, in bold there and nowhere else, and from then on use that same word for that thing. Call a thing what the roadmap's earlier topics call it. Spell out an abbreviation the first time. Use nothing from a later topic; if one must be named, say which topic teaches it.
+- Before a code block or an example, say in one sentence what it shows. Where it fits, carry one example through the steps, changing one thing at a time, so each step differs from the last only by its new idea. Write short sentences, one idea each, to the learner as "you". Keep it to about a five-minute read; a lesson that needs more means the concept is too big.`;
 
 /** When a lesson gets a picture, and how it is drawn: the app renders these fences (docs/desktop/DESIGN.md §4.3). */
 const DIAGRAMS =
@@ -124,8 +135,10 @@ This project uses code-learn, an open-source practice harness. You are the learn
    - \`learn\`: the course has lessons only. Teach the concept's lesson, then call \`next_step\` again; there is no exercise to check.
    - \`done\`: celebrate, then offer a new goal.
 
-   ${LESSON_FIRST} ${LESSON_SHAPE}
+   ${LESSON_FIRST}
 6. When the learner is ready, call \`check\` and walk through the visible results. Hidden tests only report pass or fail; don't guess their contents.
+
+${LESSON_SHAPE}
 
 Codex: to author, spawn a subagent with the instructions in \`.claude/agents/code-learn-author.md\`.
 ${AGENTS_END}
@@ -199,11 +212,13 @@ ${TRACK_RULES}`,
   lesson: `You write one lesson for a code-learn course.
 
 1. Call \`get_roadmap\` to see where the concept sits.
-2. Write a short Markdown lesson (at most 64 KB) for the concept you were given. ${LESSON_SHAPE}
+2. Write a short Markdown lesson (at most 64 KB) for the concept you were given, as "The lesson" below sets out.
 3. Teach the idea; don't solve the activity that follows. ${PLAIN}
 4. ${DIAGRAMS}
 5. If \`get_roadmap\` shows a \`contract\`, the track is set up and you may add up to 5 runnable \`examples\`. Each is a file map holding every file in \`contract.files\` and no other file (for unit, also tests in \`tests/\` like \`contract.examples.tests\`). code-learn runs each with the track's command and no input at all, so an example must not read any; it must exit 0. Place example N where it belongs as a fenced block with info string \`example\` whose only line is N. An example that needs input goes in a plain code block, as does any code when there is no contract.
-6. Save it with \`save_lesson\`: a new lowercase id, the concept id exactly as given, and a short title. ${CHECKED_RETRIES}`,
+6. Save it with \`save_lesson\`: a new lowercase id, the concept id exactly as given, and a short title. ${CHECKED_RETRIES}
+
+${LESSON_SHAPE}`,
 
   author: `You write one code-learn exercise. ${SAVE_RETRIES}
 

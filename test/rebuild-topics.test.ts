@@ -6,6 +6,7 @@ import type { LearnerEvent } from "../src/learner.js";
 import * as store from "../src/store.js";
 import { quizQuestions } from "./quiz-fixture.js";
 import { tempDir } from "./temp.js";
+import { lessonText } from "./lesson-fixture.js";
 
 /** A trackless quiz course, so lessons and exercises save without installing anything. */
 const roadmap = JSON.stringify({ goal: "Judgment", style: "quiz", concepts: [{ id: "a", title: "A" }, { id: "b", title: "B" }] });
@@ -18,7 +19,7 @@ beforeEach(async () => {
 });
 afterEach(() => vi.unstubAllEnvs());
 
-const lesson = (id: string, concept: string) => ({ id, concept, title: `About ${id}`, markdown: `# ${id}\n\nText.` });
+const lesson = (id: string, concept: string) => ({ id, concept, title: `About ${id}`, markdown: lessonText(`# ${id}\n\nText.`) });
 const quiz = (slug: string, concepts: string[]) => ({
   "exercise.yaml": JSON.stringify({ slug, style: "quiz", concepts, difficulty: 1 }),
   "README.md": "# A decision\n\nChoose what to do.",

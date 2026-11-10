@@ -365,10 +365,29 @@ export function exampleRefs(text: string): number[] {
   });
 }
 
+/** The line every lesson opens with, and its `##` sections in order. The agents' instructions (templates.ts) name the same ones. */
+export const LESSON_GOAL = "**You will be able to:**";
+export const LESSON_SECTIONS = ["Why it matters", "The idea in small steps", "Worked example", "Common mistakes", "Remember", "Self-check", "Answers", "Sources"];
+
+/** Every lesson of a course has the same parts in the same order, whichever agent or model wrote it. Other headings are free. */
+function assertLessonParts(text: string): void {
+  if (!text.includes(LESSON_GOAL)) throw new CodeLearnError(`Invalid lesson: open it with a line "${LESSON_GOAL}" that says what the learner will be able to do.`);
+  const tokens = markdown.parse(text, {});
+  const found: string[] = [];
+  for (const [i, token] of tokens.entries()) {
+    if (token.type !== "heading_open" || token.tag !== "h2" || token.level !== 0) continue;
+    const name = tokens[i + 1]!.content.trim();
+    if (LESSON_SECTIONS.includes(name)) found.push(name);
+  }
+  if (found.join("\n") === LESSON_SECTIONS.join("\n")) return;
+  throw new CodeLearnError(`Invalid lesson: it needs these "##" sections, once each and in this order: ${LESSON_SECTIONS.join(", ")}. Found: ${found.join(", ") || "none"}.`);
+}
+
 /** A lesson as the agent saves it: static Markdown for one roadmap concept, and optional runnable examples. */
 export function parseLesson(input: unknown): LessonInput {
   const parsed = LessonInput.safeParse(input);
   if (!parsed.success) throw new CodeLearnError(`Invalid lesson: ${describe(parsed.error)}`);
+  assertLessonParts(parsed.data.markdown);
   const count = parsed.data.examples?.length ?? 0;
   const refs = exampleRefs(parsed.data.markdown);
   const missing = refs.find((n) => n < 1 || n > count);

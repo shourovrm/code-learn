@@ -11,6 +11,7 @@ import * as store from "../src/store.js";
 import { fixtureTrackFiles, installFixtureTrack, installTrack } from "./installed-track.js";
 import { sandboxReady } from "./sandbox-ready.js";
 import { tempDir } from "./temp.js";
+import { lessonText } from "./lesson-fixture.js";
 
 /** The per-job server: `code-learn mcp --tools`, `--course` and `--desktop`. */
 
@@ -70,7 +71,7 @@ describe("--course", () => {
 
     expect(await call("get_roadmap")).toMatchObject({ course: "first", goal: "First" });
     expect(await call("next_step")).toEqual({ kind: "setup", track: "shell-io@1" });
-    await call("save_lesson", { id: "intro", concept: "sh.basics", title: "Intro", markdown: "Hello." });
+    await call("save_lesson", { id: "intro", concept: "sh.basics", title: "Intro", markdown: lessonText("Hello.") });
     expect(app.listLessons(ws, "first").map((l) => l.id)).toEqual(["intro"]);
     expect(app.listLessons(ws)).toEqual([]);
     await call("mark_lesson_read", { id: "intro" });
@@ -163,8 +164,8 @@ describe("lesson tools", () => {
   it("saves, reads and acknowledges a lesson; reading records nothing", async () => {
     await app.saveRoadmap(ws, "first", roadmap("First"));
     const { call } = await connect();
-    expect(await call("save_lesson", { id: "intro", concept: "sh.basics", title: "Intro", markdown: "Hello." })).toEqual({ lesson: "intro" });
-    expect(await call("get_lesson", { id: "intro" })).toEqual({ id: "intro", concept: "sh.basics", title: "Intro", markdown: "Hello.", notes: "", examples: [] });
+    expect(await call("save_lesson", { id: "intro", concept: "sh.basics", title: "Intro", markdown: lessonText("Hello.") })).toEqual({ lesson: "intro" });
+    expect(await call("get_lesson", { id: "intro" })).toEqual({ id: "intro", concept: "sh.basics", title: "Intro", markdown: lessonText("Hello."), notes: "", examples: [] });
     expect(app.listLessons(ws)[0]!.read).toBe(false);
     await call("mark_lesson_read", { id: "intro" });
     expect(app.listLessons(ws)[0]!.read).toBe(true);
@@ -313,7 +314,7 @@ it("returns learn and covered through MCP without a track", async () => {
   const { call } = await connect();
   await call("save_roadmap", { course: "reading", roadmap: "goal: Learn\nstyle: none\nconcepts: [{ id: a, title: A }]" });
   expect(await call("next_step")).toEqual({ kind: "learn", concept: "a", lesson: null });
-  await call("save_lesson", { id: "intro", concept: "a", title: "Intro", markdown: "Read this." });
+  await call("save_lesson", { id: "intro", concept: "a", title: "Intro", markdown: lessonText("Read this.") });
   expect(await call("next_step")).toEqual({ kind: "learn", concept: "a", lesson: "intro" });
   await call("mark_lesson_read", { id: "intro" });
   expect(await call("progress")).toMatchObject({ concepts: [{ covered: true }], next: { kind: "done" } });
