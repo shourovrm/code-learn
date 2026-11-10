@@ -23,6 +23,22 @@ describe('rebuilding topics', () => {
     expect(t.state.read().rebuildNotes).toEqual({ [`${t.c.roadmap!.course}|values`]: 'Use Linux examples' });
   });
 
+  it("rebuilds the chosen topics at a new depth, and keeps it for their exercises and later rebuilds", async () => {
+    const t = live();
+    await practising(t);
+    const key = `${t.c.roadmap!.course}|values`;
+    let before = t.jobs.ran.length;
+    await t.api.rebuildTopics(['values'], true, '', 'in-depth');
+    const lesson = await settle(async () => t.jobs.ran.slice(before).find((j) => j.kind === 'lesson'), Boolean, 'Lesson job');
+    expect(lesson!.brief).toContain('Depth: in depth.');
+    expect(t.state.read().topicDepths).toEqual({ [key]: 'in-depth' });
+    // No depth chosen: the topic keeps the one it has.
+    before = t.jobs.ran.length;
+    await t.api.rebuildTopics(['values'], true);
+    const again = await settle(async () => t.jobs.ran.slice(before).find((j) => j.kind === 'lesson'), Boolean, 'Lesson job');
+    expect(again!.brief).toContain('Depth: in depth.');
+  });
+
   it('forgets earlier instructions when a topic is rebuilt without any', async () => {
     const t = live();
     await practising(t);

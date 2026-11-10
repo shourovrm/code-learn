@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import type { CourseView, Usage } from '../../../shared/api';
+import type { CourseView, Depth, Usage } from '../../../shared/api';
 import { useRouter } from '../../app/router';
 import { useBusy } from '../../app/useBusy';
 import { useApi } from '../../app/api';
@@ -46,12 +46,12 @@ export function CourseMap() {
     setChosen(new Set());
   };
   // Leaves select mode first, then asks core; the map is read again either way, so it shows what core did.
-  async function rebuild(replace: boolean, instructions: string) {
+  async function rebuild(replace: boolean, instructions: string, depth?: Depth) {
     const ids = [...chosen];
     setConfirming(false);
     endPicking();
     try {
-      await api.rebuildTopics(ids, replace, instructions);
+      await api.rebuildTopics(ids, replace, instructions, depth);
     } catch (e) {
       fail(e);
     }

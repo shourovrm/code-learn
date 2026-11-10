@@ -26,6 +26,20 @@ const DEPTH: Record<Depth, string> = {
 export const CHANGE_APPROACH =
   "Your last attempt didn't save an exercise that passed code-learn's checks. Change your approach rather than repeating it: write a smaller task, a different task of the kind the concept needs, or simpler, deterministic tests.";
 
+/** What a depth means for one lesson. Standard is the lesson rules as they stand, so it adds nothing. */
+const LESSON_DEPTH: Record<Depth, string | false> = {
+  overview: 'Depth: an overview. Teach only what the learner needs to use the idea: two or three steps and one mistake, in about a three-minute read. This length replaces the five-minute one above.',
+  standard: false,
+  'in-depth': 'Depth: in depth. Go past the essentials: add steps for the edge cases and for why it works, and show two mistakes corrected, in about an eight-minute read. This length replaces the five-minute one above, and a lesson this long does not mean the concept is too big.',
+};
+
+/** What a depth means for one exercise or quiz. The difficulty still comes from code-learn. */
+const ACTIVITY_DEPTH: Record<Depth, string | false> = {
+  overview: "Depth: an overview. Practise the idea's main use: keep the rules short and leave rare edge cases out.",
+  standard: false,
+  'in-depth': "Depth: in depth. Bring in the edge cases the lesson taught: name them in the statement, and cover them in the hidden tests or the quiz's questions.",
+};
+
 /** What the research brief says about the practice choice: quiz and lessons only have no track, and both needs one. */
 const STYLE: Record<Practice, string | false> = {
   code: false,
@@ -48,7 +62,8 @@ export function briefsFrom(base: Record<JobKind, string>, platform: NodeJS.Platf
         STYLE[practice],
         instructions && `The learner's instructions for the course: ${instructions}`,
       ),
-    review: () => brief('review'),
+    /** The reviewer adds missing skills, so it is told the size to keep. */
+    review: (depth: Depth) => brief('review', `Depth: ${DEPTH[depth]}. Keep the course at about that many topics: to add a missing core skill, fold it into a topic or put it in place of a less central one.`),
     roadmap: (request: string) => brief('roadmap', `The learner asks: ${request}`),
     easier: (concept: string, title: string) => brief('roadmap', `Make "${title}" (${concept}) easier: add one smaller topic that it requires.`),
     /** `concepts`: the course's concept titles, so the track caches every dependency the course will use. */
@@ -61,10 +76,11 @@ export function briefsFrom(base: Record<JobKind, string>, platform: NodeJS.Platf
         problem && `The last proposal failed its checks: ${problem.slice(0, room.problem)}`,
       );
     },
-    /** `instructions`: what the learner asked for when rebuilding this topic, if anything. */
-    lesson: (concept: string, title: string, instructions = '') =>
-      brief('lesson', `Concept: ${concept} (${title})`, instructions && `The learner's instructions for this topic: ${instructions}`),
-    author: (instructions = '') => brief('author', instructions && `The learner's instructions for this topic: ${instructions}`),
+    /** `instructions`: what the learner asked for when rebuilding this topic, if anything. `depth`: the topic's, when one was chosen. */
+    lesson: (concept: string, title: string, instructions = '', depth: Depth = 'standard') =>
+      brief('lesson', `Concept: ${concept} (${title})`, LESSON_DEPTH[depth], instructions && `The learner's instructions for this topic: ${instructions}`),
+    author: (instructions = '', depth: Depth = 'standard') =>
+      brief('author', ACTIVITY_DEPTH[depth], instructions && `The learner's instructions for this topic: ${instructions}`),
     tutor: (place: string, question: string, files?: Record<string, string>) => {
       const code = files && Object.entries(files).map(([path, text]) => `${path}:\n\`\`\`\n${text}\n\`\`\``).join('\n\n').slice(0, room.code);
       return brief('tutor', `The learner is on ${place}.`, code && `Their code:\n\n${code}`, `They ask: ${question}`);

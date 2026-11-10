@@ -27,6 +27,17 @@ describe('desktop.json (§2)', () => {
     });
   });
 
+  it("forgets a deleted course's depth and its topics' depths", () => {
+    const state: DesktopState = {
+      format_version: 1,
+      sessions: {},
+      courses: ['react-1', 'python-2'],
+      courseDepths: { 'react-1': 'overview', 'python-2': 'in-depth' },
+      topicDepths: { 'react-1|values': 'in-depth', 'python-2|loops': 'overview' },
+    };
+    expect(withoutCourse(state, 'react-1')).toMatchObject({ courseDepths: { 'python-2': 'in-depth' }, topicDepths: { 'python-2|loops': 'overview' } });
+  });
+
   it('keeps the course on screen when another course is deleted, and has none left after the last', () => {
     const state: DesktopState = { format_version: 1, sessions: {}, approved: 'react-1', courses: ['react-1', 'python-2'] };
     expect(withoutCourse(state, 'python-2')).toMatchObject({ approved: 'react-1', courses: ['react-1'] });

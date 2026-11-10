@@ -239,6 +239,11 @@ export function createLive(d: LiveDeps): Live {
   const nameOf = (r: CoreRoadmap) => d.state.read().names?.[r.course] ?? r.title ?? r.goal;
   /** What the learner asked for when this topic was last rebuilt, if anything. */
   const rebuildNote = (course: string, concept: string) => d.state.read().rebuildNotes?.[`${course}|${concept}`] ?? '';
+  /** How deep this topic's lesson and exercise go: the depth it was rebuilt at, else the course's. */
+  const depthOf = (course: string, concept: string) => {
+    const state = d.state.read();
+    return state.topicDepths?.[`${course}|${concept}`] ?? state.courseDepths?.[course];
+  };
   /** A roadmap as shown. Its sources are agent text too, so one that quotes hidden material, or can't be checked, is dropped. */
   const roadmapShown = (r: CoreRoadmap): Roadmap => {
     const view = roadmapView(r, Boolean(r.track && installed(r.track)), nameOf(r));
@@ -545,7 +550,7 @@ export function createLive(d: LiveDeps): Live {
     if (progress.next.kind === 'learn' ? progress.next.lesson === null : lessons() === 0) {
       // The course's first lesson runs in the foreground, beside setup (§3.2).
       const lane = core.listLessons(ws, course).length === 0 ? 'fg' : 'bg';
-      background(`lesson:${course}:${concept.id}`, 'lesson', briefs.lesson(concept.id, concept.title, rebuildNote(course, concept.id)), course, () => lessons() > 0, { lane, concept: concept.id });
+      background(`lesson:${course}:${concept.id}`, 'lesson', briefs.lesson(concept.id, concept.title, rebuildNote(course, concept.id), depthOf(course, concept.id)), course, () => lessons() > 0, { lane, concept: concept.id });
     }
     // The activity is written from the topic's lesson, so it waits for that lesson; the lesson's end schedules it.
     if (ready && progress.next.kind === 'author' && lessons() > 0) {
@@ -555,7 +560,7 @@ export function createLive(d: LiveDeps): Live {
       const before = new Set(core.listExercises(ws, course).map((e) => e.exercise));
       const made = () => core.listExercises(ws, course).some((e) => !before.has(e.exercise) && e.concepts.includes(concept.id) && e.difficulty === difficulty);
       // Its own lane, so the lessons a rebuild queued for later topics don't hold up the topic the learner is on.
-      background(`author:${course}:${concept.id}:${difficulty}`, 'author', briefs.author(rebuildNote(course, concept.id)), course, made, { lane: 'activity', concept: concept.id });
+      background(`author:${course}:${concept.id}:${difficulty}`, 'author', briefs.author(rebuildNote(course, concept.id), depthOf(course, concept.id)), course, made, { lane: 'activity', concept: concept.id });
     }
   }
 
@@ -701,6 +706,7 @@ export function createLive(d: LiveDeps): Live {
         };
         // Research counts as running until its sources save and its review ends, so a poll starts no second agent.
         finishing.add(key);
+        d.state.update((st) => ({ ...st, courseDepths: { ...st.courseDepths, [course]: goal.depth } }));
         start(key, 'fg', 'research', briefs.research(course, goal.topic, goal.known, goal.depth, goal.practice, goal.instructions), course, () => roadmapOrNull()?.course === course, { onSource })
           .then(async (o) => {
             if (o.ok) {
@@ -712,7 +718,7 @@ export function createLive(d: LiveDeps): Live {
                 reviewing.add(course);
                 try {
                   const before = JSON.stringify(core.getRoadmap(ws, course));
-                  const review = await start(`review:${course}`, 'fg', 'review', briefs.review(), course, (turn) => turn.ok);
+                  const review = await start(`review:${course}`, 'fg', 'review', briefs.review(goal.depth), course, (turn) => turn.ok);
                   if (!review.ok) log('review-error', { problem: review.problem });
                   else if (JSON.stringify(core.getRoadmap(ws, course)) === before) log('review-no-change', {});
                 } catch (e) {
@@ -1019,15 +1025,18 @@ export function createLive(d: LiveDeps): Live {
       schedule(course);
     },
 
-    async rebuildTopics(concepts, replace, instructions = '') {
+    async rebuildTopics(concepts, replace, instructions = '', depth) {
       const course = core.getRoadmap(ws, approved()).course;
       d.state.update((st) => {
         const notes = { ...st.rebuildNotes };
+        const depths = { ...st.topicDepths };
         for (const concept of concepts) {
           if (instructions) notes[`${course}|${concept}`] = instructions;
           else delete notes[`${course}|${concept}`];
+          // No depth chosen keeps the one the topic has.
+          if (depth) depths[`${course}|${concept}`] = depth;
         }
-        return { ...st, rebuildNotes: notes };
+        return { ...st, rebuildNotes: notes, topicDepths: depths };
       });
       // A job still writing a chosen topic would save its old content back, so it stops first.
       await cancel((key) => concepts.some((c) => key === `lesson:${course}:${c}` || key.startsWith(`author:${course}:${c}:`)));
@@ -1035,7 +1044,7 @@ export function createLive(d: LiveDeps): Live {
       const lessonsOf = (concept: string) => core.listLessons(ws, course).filter((l) => l.concept === concept).length;
       for (const concept of core.getRoadmap(ws, course).concepts.filter((c) => concepts.includes(c.id))) {
         const saved = lessonsOf(concept.id);
-        background(`lesson:${course}:${concept.id}`, 'lesson', briefs.lesson(concept.id, concept.title, instructions), course, () => lessonsOf(concept.id) > saved, { concept: concept.id });
+        background(`lesson:${course}:${concept.id}`, 'lesson', briefs.lesson(concept.id, concept.title, instructions, depthOf(course, concept.id)), course, () => lessonsOf(concept.id) > saved, { concept: concept.id });
       }
       schedule(course);
     },
@@ -1046,7 +1055,7 @@ export function createLive(d: LiveDeps): Live {
       if (!topic) throw new SafeError('That topic isn’t in this course.');
       const lessonsOf = () => core.listLessons(ws, course).filter((l) => l.concept === concept).length;
       // Core saves a lesson for any roadmap topic and leaves the current one where it is.
-      background(`lesson:${course}:${concept}`, 'lesson', briefs.lesson(concept, topic.title, rebuildNote(course, concept)), course, () => lessonsOf() > 0, { concept });
+      background(`lesson:${course}:${concept}`, 'lesson', briefs.lesson(concept, topic.title, rebuildNote(course, concept), depthOf(course, concept)), course, () => lessonsOf() > 0, { concept });
       schedule(course);
     },
 

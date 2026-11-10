@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from 'vitest';
 import { type JobProgress } from '../shared/api';
-import { CANARY, live, practising, researched, until } from './testing/fakes';
+import { CANARY, live, practising, researched, settle, until } from './testing/fakes';
 import { HELD_BACK } from './views';
 
 describe('live CodeLearnApi: research, roadmaps and drafts (§4.2, §4.9)', () => {
@@ -21,6 +21,16 @@ describe('live CodeLearnApi: research, roadmaps and drafts (§4.2, §4.9)', () =
     expect(job.brief).toContain(`Course id: ${course}`);
     // Agents that read config from their working directory get code-learn's own folder, never the workspace.
     expect([job.cwd, job.agentDir]).toEqual(['/Users/me/code-learn', '/userData/agents']);
+  });
+
+  it("keeps the course's depth, and gives it to the roadmap's reviewer", async () => {
+    const t = live();
+    const goal = { topic: 'React', known: '', depth: 'overview' as const, practice: 'code' as const };
+    await t.api.connect('claude');
+    await settle(() => t.api.research(goal), (r) => r.state !== 'running', 'Research');
+    expect(t.state.read().courseDepths).toEqual({ [t.c.roadmap!.course]: 'overview' });
+    await vi.waitFor(() => expect(t.jobs.ran.map((j) => j.kind)).toEqual(['research', 'review']));
+    expect(t.jobs.ran[1].brief).toContain('Depth: an overview, about 8 topics.');
   });
 
   it('reviews once on the same course after sources save, and stays running until review ends', async () => {

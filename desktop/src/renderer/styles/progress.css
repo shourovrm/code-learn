@@ -37,6 +37,9 @@
 .rebuild-list { margin: 0; padding: 0; list-style: none; font: var(--type-body); }
 .rebuild-replace { display: flex; align-items: flex-start; gap: var(--space-100); font: var(--type-body); text-align: left; }
 .rebuild-replace input, .rebuild-all input { accent-color: var(--primary-edge); }
+/* The question takes its own line, so the four choices fit the dialog's width on the next. */
+.rebuild-depth { flex-wrap: wrap; }
+.rebuild-depth .depth-q { flex-basis: 100%; text-align: left; }
 .tally { margin: calc(-1 * var(--space-050)) 0 var(--space-050); color: var(--muted); font: var(--type-body); }
 .tally b { margin-right: var(--space-025); color: var(--ink); font: var(--type-heading-xlarge); }
 .mastery-row { display: flex; flex-direction: column; gap: var(--space-075); }

@@ -90,7 +90,7 @@ const ARGS: { [K in Exclude<keyof CodeLearnApi, 'onCheckProgress' | 'onJobProgre
   ask: [place, words],
   skip: [id],
   easier: [id],
-  rebuildTopics: [topicIds, (v) => typeof v === 'boolean', optional(text(LIMITS.instructions))],
+  rebuildTopics: [topicIds, (v) => typeof v === 'boolean', optional(text(LIMITS.instructions)), optional(oneOf('overview', 'standard', 'in-depth'))],
   writeLesson: [id],
   rebuild: [trackRef],
   removeTrack: [trackRef],

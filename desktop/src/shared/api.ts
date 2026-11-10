@@ -526,7 +526,7 @@ export interface CodeLearnApi {
    * old ones and resets their progress; without it the new ones sit beside the old (core §5, desktop §4.3). `instructions`
    * reach the topics' lesson and exercise jobs; without any, earlier ones for those topics are dropped.
    */
-  rebuildTopics(concepts: string[], replace: boolean, instructions?: string): Promise<void>;
+  rebuildTopics(concepts: string[], replace: boolean, instructions?: string, depth?: Depth): Promise<void>;
   /** Writes the lessons of a topic opened ahead of the path. The current topic stays where it is. */
   writeLesson(concept: string): Promise<void>;
 

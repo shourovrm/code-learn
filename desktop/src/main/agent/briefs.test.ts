@@ -47,7 +47,24 @@ describe('job briefs', () => {
     // The track caches what the whole course will use, so the setup agent hears the course's concepts.
     expect(briefs.setup('django@1', 'unit', undefined, ['Project structure', 'Models and migrations'])).toContain('The course covers: Project structure; Models and migrations.');
     expect(briefs.author()).toBe(JOB_BRIEFS.author);
-    expect(briefs.review()).toBe(JOB_BRIEFS.review);
+  });
+
+  // Depth reached only the roadmap's planner: the reviewer added topics back, and every lesson was written the same.
+  it('tells the reviewer the depth, so it keeps the course at the size the learner chose', () => {
+    const review = briefs.review('overview');
+    expect(review.startsWith(JOB_BRIEFS.review)).toBe(true);
+    expect(review).toContain('Depth: an overview, about 8 topics.');
+    expect(review).toContain('Keep the course at about that many topics');
+  });
+
+  it('gives a lesson and an exercise their own lines for an overview and for in depth, and none for standard', () => {
+    expect(briefs.lesson('values', 'Values', '', 'overview')).toMatch(/Depth: an overview\. .*about a three-minute read/);
+    expect(briefs.lesson('values', 'Values', '', 'in-depth')).toMatch(/Depth: in depth\. .*about an eight-minute read/);
+    expect(briefs.author('', 'overview')).toMatch(/Depth: an overview\. .*main use/);
+    expect(briefs.author('', 'in-depth')).toMatch(/Depth: in depth\. .*edge cases/);
+    for (const brief of [briefs.lesson('values', 'Values', '', 'standard'), briefs.lesson('values', 'Values'), briefs.author('', 'standard'), briefs.author()]) {
+      expect(brief).not.toContain('Depth:');
+    }
   });
 
   it("adds a rebuilt topic's instructions to its lesson and exercise briefs, only when there are some", () => {

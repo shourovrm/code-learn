@@ -47,7 +47,7 @@ const GOOD: Record<Exclude<keyof CodeLearnApi, 'onCheckProgress' | 'onJobProgres
   ask: [{ activityId: 'values-easy-1' }, 'Why?'],
   skip: ['values'],
   easier: ['values'],
-  rebuildTopics: [['values'], true, 'Use Linux examples'],
+  rebuildTopics: [['values'], true, 'Use Linux examples', 'in-depth'],
   writeLesson: ['values'],
   rebuild: ['react@1'],
   removeTrack: ['react@1'],
@@ -114,11 +114,17 @@ describe('dispatch', () => {
     expect(() => dispatch(echo, 'rebuildTopics', [['values']])).toThrow('Bad input');
   });
 
+  it('takes a rebuild depth that is one of the three, or none', () => {
+    expect(() => dispatch(echo, 'rebuildTopics', [['values'], true, '', 'overview'])).not.toThrow();
+    expect(() => dispatch(echo, 'rebuildTopics', [['values'], true, '', undefined])).not.toThrow();
+    expect(() => dispatch(echo, 'rebuildTopics', [['values'], true, '', 'deep'])).toThrow('Bad input');
+  });
+
   it('takes rebuild instructions up to their limit, or none', () => {
-    expect(() => dispatch(echo, 'rebuildTopics', [['values'], true, 'x'.repeat(500)])).not.toThrow();
-    expect(() => dispatch(echo, 'rebuildTopics', [['values'], true, ''])).not.toThrow();
-    expect(() => dispatch(echo, 'rebuildTopics', [['values'], true, 'x'.repeat(501)])).toThrow('Bad input');
-    expect(() => dispatch(echo, 'rebuildTopics', [['values'], true, 7])).toThrow('Bad input');
+    expect(() => dispatch(echo, 'rebuildTopics', [['values'], true, 'x'.repeat(500), undefined])).not.toThrow();
+    expect(() => dispatch(echo, 'rebuildTopics', [['values'], true, '', undefined])).not.toThrow();
+    expect(() => dispatch(echo, 'rebuildTopics', [['values'], true, 'x'.repeat(501), undefined])).toThrow('Bad input');
+    expect(() => dispatch(echo, 'rebuildTopics', [['values'], true, 7, undefined])).toThrow('Bad input');
   });
 
   it('rejects goals and roadmaps with the wrong shape', () => {
