@@ -304,9 +304,10 @@ export function fakeJobs(c: ReturnType<typeof fakeCore>['c'], over: Partial<Reco
     },
     lesson: (job) => {
       const r = c.courses.get(boundOf(job))!;
-      // The concept the brief names (live's briefs.lesson), else the first not mastered.
-      const concept = /^Concept: (\S+)/m.exec(job.brief)?.[1] ?? (r.concepts.find((x) => !c.mastered.has(x.id)) ?? r.concepts[0]).id;
-      c.lessons.push({ id: `${concept}-1`, concept, title: `About ${concept}`, markdown: '# About\n\nText.', notes: '' });
+      // The concepts the brief names (live's briefs.lesson and briefs.lessons), else the first not mastered.
+      const named = [...job.brief.matchAll(/^(?:Concept: |- )(\S+) \(/gm)].map((m) => m[1]);
+      const concepts = named.length > 0 ? named : [(r.concepts.find((x) => !c.mastered.has(x.id)) ?? r.concepts[0]).id];
+      for (const concept of concepts) c.lessons.push({ id: `${concept}-1`, concept, title: `About ${concept}`, markdown: '# About\n\nText.', notes: '' });
       return {};
     },
     author: (job) => {

@@ -152,3 +152,71 @@ it("keeps setup progress working when another course's record is damaged", async
   };
   expect((await t.api.jobProgress()).some((j) => j.kind === 'setup')).toBe(true);
 });
+
+/** A lessons-only course of five topics, with the first topic's lesson written. */
+async function fiveTopics() {
+  const t = live({ research: (job) => {
+    t.c.roadmap = { course: boundOf(job), goal: 'History', style: 'none', concepts: ['a', 'b', 'c', 'd', 'e'].map((id, i, ids) => ({ id, title: id.toUpperCase(), requires: ids.slice(0, i).slice(-1) })) };
+    return {};
+  } });
+  await t.api.connect('claude');
+  const r = await settle(() => t.api.research({ topic: 'History', known: '', depth: 'standard', practice: 'none' }), (r) => r.state === 'done', 'Research');
+  await t.api.approve(r.roadmap!.concepts);
+  await until(t.api, (c) => c.topics[0].lessons.some((l) => l.state === 'ready'));
+  return t;
+}
+const lessonBriefs = (t: Awaited<ReturnType<typeof fiveTopics>>) => t.jobs.ran.filter((j) => j.kind === 'lesson').map((j) => j.brief);
+const topicsOf = (brief: string) => [...brief.matchAll(/^(?:Concept: |- )(\S+) \(/gm)].map((m) => m[1]);
+
+describe('lesson runs of three topics', () => {
+  it("writes the topic the learner is on alone, then the next three topics' lessons in one run, ahead of them", async () => {
+    const t = await fiveTopics();
+    await until(t.api, (c) => c.topics[3].lessons.length > 0);
+    expect(lessonBriefs(t).map(topicsOf)).toEqual([['a'], ['b', 'c', 'd']]);
+    expect((await t.api.course())!.topics.map((x) => x.lessons.length)).toEqual([1, 1, 1, 1, 0]);
+  });
+
+  it('writes the next run only when the topic after the current one has no lesson', async () => {
+    const t = await fiveTopics();
+    await until(t.api, (c) => c.topics[3].lessons.length > 0);
+    const read = async (i: number) => t.api.markRead((await t.api.course())!.topics[i].lessons[0].id);
+    await read(0);
+    await read(1);
+    // On c: d is written already, so nothing starts.
+    expect(lessonBriefs(t)).toHaveLength(2);
+    await read(2);
+    // On d: e, the topic after it, has none.
+    await until(t.api, (c) => c.topics[4].lessons.length > 0);
+    expect(lessonBriefs(t).map(topicsOf)).toEqual([['a'], ['b', 'c', 'd'], ['e']]);
+  });
+
+  it("gives a run of three topics three times one lesson's time, and a run of one the usual time", async () => {
+    const t = await fiveTopics();
+    await until(t.api, (c) => c.topics[3].lessons.length > 0);
+    const jobs = t.jobs.ran.filter((j) => j.kind === 'lesson');
+    expect([jobs[0].deadlineMs, jobs[1].deadlineMs]).toEqual([undefined, 15 * 60_000]);
+  });
+
+  it("leaves the course going when a run written ahead fails, and doesn't try it again by itself", async () => {
+    const t = live({ research: (job) => {
+      t.c.roadmap = { course: boundOf(job), goal: 'History', style: 'none', concepts: ['a', 'b'].map((id) => ({ id, title: id.toUpperCase(), requires: [] })) };
+      return {};
+    }, lesson: (job) => {
+      if (!/^Concept: a /m.test(job.brief)) return { ok: false };
+      t.c.lessons.push({ id: 'a-1', concept: 'a', title: 'About a', markdown: '# About', notes: '' });
+      return {};
+    } });
+    await t.api.connect('claude');
+    const r = await settle(() => t.api.research({ topic: 'History', known: '', depth: 'standard', practice: 'none' }), (r) => r.state === 'done', 'Research');
+    await t.api.approve(r.roadmap!.concepts);
+    await until(t.api, (c) => c.topics[0].lessons.some((l) => l.state === 'ready'));
+    await settle(async () => lessonBriefs(t).length, (n) => n >= 2, 'The run ahead');
+    const course = (await t.api.course())!;
+    expect(course.stalled).toBeUndefined();
+    await t.api.course();
+    expect(lessonBriefs(t).length).toBeLessThanOrEqual(3);
+    const ran = lessonBriefs(t).length;
+    await t.api.course();
+    expect(lessonBriefs(t)).toHaveLength(ran);
+  });
+});

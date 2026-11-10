@@ -29,7 +29,7 @@ import type { McpServer } from './agent/agents';
 import { watchGates } from './agent/gateFile';
 import { jobTracker, type JobTracker } from './agent/progress';
 import { briefsFrom, courseId } from './agent/briefs';
-import { runJob as realRunJob, type Job, type JobKind, type JobOutcome, type JobProblem } from './agent/jobs';
+import { JOBS, runJob as realRunJob, type Job, type JobKind, type JobOutcome, type JobProblem } from './agent/jobs';
 import type { connector } from './connect';
 import { infraOf, kindOf, type Infra } from './core/failures';
 import { errorFields, SafeError } from './errors';
@@ -93,6 +93,10 @@ const stallOf = (problem: JobProblem = 'failed'): Stall => {
 };
 /** What a setup that failed on this computer shows (the setup card has no row for "too busy"). */
 const setupProblemOf = (infra: Infra): SetupProblem => (infra === 'sandbox-busy' ? 'sandbox' : infra);
+/** How many topics one lesson run writes at most: one start of the agent for the three, and lessons that match. */
+const LESSON_RUN = 3;
+/** The topics a lesson job's key names: `lesson:<course>:<id>+<id>`, with the course already taken out. */
+const lessonTopics = (key: string) => (key.startsWith('lesson:') ? key.slice('lesson:'.length).split('+') : []);
 /** Which of the learner's four model choices each job runs with (O6). */
 const MODEL_JOB: Record<JobKind, ModelJob> = { research: 'planning', review: 'planning', roadmap: 'planning', setup: 'planning', lesson: 'lessons', author: 'exercises', tutor: 'tutor' };
 /** How a course's roadmap style is practised: its exercises (code), its quiz, or lessons only. */
@@ -171,6 +175,8 @@ export function createLive(d: LiveDeps): Live {
   const stalls = new Map<string, Stall>();
   /** Per course, the concept whose lesson job's failure is the stall: its row stays, with Try again. */
   const failedLessons = new Map<string, string>();
+  /** Lesson runs written ahead of the learner that failed: left alone until the learner reaches their topics. */
+  const gaveUp = new Set<string>();
   /** Per course, the kind of background work whose stall it is. */
   const stalledWork = new Map<string, NonNullable<CourseView['stalledWork']>>();
   let tutorTurnCount = 0;
@@ -319,9 +325,11 @@ export function createLive(d: LiveDeps): Live {
    */
   function start(
     key: string, lane: Lane, kind: JobKind, brief: string, course: string | undefined, done: Job['done'],
-    { resume, onSource, concept, retry, settled, track, onSession }: {
+    { resume, onSource, concept, retry, settled, track, onSession, deadlineMs }: {
       /** A session to continue: a tutor's, or another job's, which only its own agent continues. */
       resume?: string | AgentSession; onSource?: Job['onSource']; concept?: string; retry?: JobProgress['retry'];
+      /** A longer time limit than the job kind's own: a lesson run of several topics. */
+      deadlineMs?: number;
       /** Hears the session the job's agent left, failed or not. */
       onSession?: (session: AgentSession) => void;
       /** A track's setup: every course on the track hears its progress. */
@@ -378,8 +386,9 @@ export function createLive(d: LiveDeps): Live {
         server: (tools) => d.server(course, tools, gateFile),
         cwd: ws,
         agentDir: d.agentDir,
-        // The learner's model choice, or the recommended one (O6), for every agent with choices.
+        // The learner's model choice for this kind of job, or the recommended one (O6), for every agent with choices.
         model,
+        ...(deadlineMs ? { deadlineMs } : {}),
         resume: typeof resume === 'string' ? resume : resume?.agent === id ? resume.id : undefined,
         signal: stop.signal,
         done,
@@ -440,12 +449,17 @@ export function createLive(d: LiveDeps): Live {
   /** Background work: a failure stalls it until the learner retries, instead of relaunching on every look. */
   function background(
     key: string, kind: JobKind, brief: string, course: string, done: Job['done'],
-    { lane = 'bg', concept, retry, track, resume, onSession }: {
+    { lane = 'bg', concept, retry, track, resume, onSession, deadlineMs, failed, quiet = false }: {
       lane?: Lane; concept?: string; retry?: JobProgress['retry']; track?: string; resume?: AgentSession;
       onSession?: (session: AgentSession) => void;
+      deadlineMs?: number;
+      /** The topic whose lesson a failed lesson run didn't write, when the run has several. */
+      failed?: () => string | undefined;
+      /** Work the learner isn't waiting for: a failure doesn't stall the course, and it isn't tried again by itself. */
+      quiet?: boolean;
     } = {},
   ) {
-    if (stopping || stalls.has(course) || running.has(key)) return;
+    if (stopping || stalls.has(course) || running.has(key) || (quiet && gaveUp.has(key))) return;
     // A track's setup belongs to every course on the track when it ends: they stall and move on together.
     const courses = () => (track ? onTrack(track, course) : [course]);
     // The first stall is the one the learner sees, recorded before the queue moves on, so nothing queued behind it
@@ -453,11 +467,13 @@ export function createLive(d: LiveDeps): Live {
     // still offers Check your agent.
     const stall = (problem: JobProblem) =>
       courses().forEach((c) => {
+        if (quiet) return void gaveUp.add(key);
         if (stalls.has(c)) return;
         const lesson = kind === 'lesson' && problem === 'failed';
         stalls.set(c, lesson ? 'lesson' : stallOf(problem));
         if (kind === 'setup' || kind === 'lesson' || kind === 'author') stalledWork.set(c, kind);
-        if (lesson && concept) failedLessons.set(c, concept);
+        const topic = failed?.() ?? concept;
+        if (lesson && topic) failedLessons.set(c, topic);
       });
     const settled = (r: JobOutcome | Error) => {
       if (r instanceof Error) {
@@ -466,7 +482,7 @@ export function createLive(d: LiveDeps): Live {
       } else if (!r.ok && !running.get(key)?.stop.signal.aborted) stall(r.problem ?? 'failed');
     };
     // A finished job can make its course's next one due: the lesson before the activity, a proposal after gates.
-    start(key, lane, kind, brief, course, done, { concept, retry, settled, track, resume, onSession }).then((o) => o.ok && courses().forEach((c) => schedule(c)), () => undefined);
+    start(key, lane, kind, brief, course, done, { concept, retry, settled, track, resume, onSession, deadlineMs }).then((o) => o.ok && courses().forEach((c) => schedule(c)), () => undefined);
   }
 
   /** Ends a course's stall and starts the work it still needs. */
@@ -551,9 +567,13 @@ export function createLive(d: LiveDeps): Live {
     if (!concept) return;
     const lessons = () => core.listLessons(ws, course).filter((l) => l.concept === concept.id).length;
     if (progress.next.kind === 'learn' ? progress.next.lesson === null : lessons() === 0) {
-      // The course's first lesson runs in the foreground, beside setup (§3.2).
+      // The lesson the learner waits for is written alone, so it arrives soonest, unless a run is writing it already.
+      // The course's first one runs in the foreground, beside setup (§3.2).
       const lane = core.listLessons(ws, course).length === 0 ? 'fg' : 'bg';
-      background(`lesson:${course}:${concept.id}`, 'lesson', briefs.lesson(concept.id, concept.title, rebuildNote(course, concept.id), depthOf(course, concept.id)), course, () => lessons() > 0, { lane, concept: concept.id });
+      if (!beingWritten(course).has(concept.id)) lessonRun(course, [concept], { lane });
+    } else if (ready) {
+      // Once set up, so that lessons written ahead can hold runnable examples.
+      lessonsAhead(course, progress.concepts.slice(progress.concepts.indexOf(concept) + 1));
     }
     // The activity is written from the topic's lesson, so it waits for that lesson; the lesson's end schedules it.
     if (ready && progress.next.kind === 'author' && lessons() > 0) {
@@ -565,6 +585,44 @@ export function createLive(d: LiveDeps): Live {
       // Its own lane, so the lessons a rebuild queued for later topics don't hold up the topic the learner is on.
       background(`author:${course}:${concept.id}:${difficulty}`, 'author', briefs.author(rebuildNote(course, concept.id), depthOf(course, concept.id)), course, made, { lane: 'activity', concept: concept.id });
     }
+  }
+
+  /** The topics whose lessons a running or queued lesson job of this course writes. */
+  const beingWritten = (course: string) => new Set([...running.keys()].flatMap((key) => lessonTopics(key.replace(`:${course}`, ''))));
+
+  /** How many lessons each topic of a course has. */
+  function lessonCounts(course: string) {
+    const counts = new Map<string, number>();
+    for (const lesson of core.listLessons(ws, course)) counts.set(lesson.concept, (counts.get(lesson.concept) ?? 0) + 1);
+    return (concept: string) => counts.get(concept) ?? 0;
+  }
+
+  /** One agent run that writes a new lesson for each of these topics, in order: `LESSON_RUN` of them at most. */
+  function lessonRun(course: string, topics: { id: string; title: string }[], options: { lane?: Lane; quiet?: boolean } = {}) {
+    const before = lessonCounts(course);
+    const unwritten = () => {
+      const now = lessonCounts(course);
+      return topics.filter((t) => now(t.id) <= before(t.id));
+    };
+    const brief = briefs.lessons(topics.map((t) => ({ concept: t.id, title: t.title, instructions: rebuildNote(course, t.id), depth: depthOf(course, t.id) })));
+    background(`lesson:${course}:${topics.map((t) => t.id).join('+')}`, 'lesson', brief, course, () => unwritten().length === 0, {
+      ...options,
+      concept: topics[0].id,
+      failed: () => unwritten()[0]?.id,
+      ...(topics.length > 1 ? { deadlineMs: JOBS.lesson.deadlineMs * topics.length } : {}),
+    });
+  }
+
+  /**
+   * Writes the lessons of the topics after the current one before the learner gets there, `LESSON_RUN` to a run. It
+   * starts only when the very next topic has no lesson, so one run fills the next three, not one topic at a time.
+   */
+  function lessonsAhead(course: string, later: { id: string; title: string }[]) {
+    const count = lessonCounts(course);
+    if (later.length === 0 || count(later[0].id) > 0) return;
+    const writing = beingWritten(course);
+    const topics = later.filter((t) => count(t.id) === 0 && !writing.has(t.id)).slice(0, LESSON_RUN);
+    if (topics.length > 0 && !writing.has(later[0].id)) lessonRun(course, topics, { quiet: true });
   }
 
   async function foreground(key: string, kind: JobKind, brief: string, course: string | undefined, done: Job['done'], resume?: string) {
@@ -778,7 +836,8 @@ export function createLive(d: LiveDeps): Live {
       // The clock, not a learner action, made this review due, so nothing else would start its exercise (core §7).
       if (progress.next.kind === 'author' && progress.next.review) schedule();
       const state = progress.next.kind === 'setup' ? setupState(progress) : ({ state: 'ready' } as const);
-      const jobs = new Set([...running.keys()].map((k) => k.replace(`:${roadmap.course}`, '')));
+      // A lesson run names every topic it writes.
+      const jobs = new Set([...running.keys()].map((k) => k.replace(`:${roadmap.course}`, '')).flatMap((k) => [k, ...lessonTopics(k).map((id) => `lesson:${id}`)]));
       const stalled = stalls.get(roadmap.course);
       const failed = stalled === 'lesson' ? failedLessons.get(roadmap.course) : undefined;
       const view: CourseView = { title: nameOf(roadmap), ...courseView(progress, core.listLessons(ws, roadmap.course), state, jobs, undefined, failed) };
@@ -1042,13 +1101,16 @@ export function createLive(d: LiveDeps): Live {
         return { ...st, rebuildNotes: notes, topicDepths: depths };
       });
       // A job still writing a chosen topic would save its old content back, so it stops first.
-      await cancel((key) => concepts.some((c) => key === `lesson:${course}:${c}` || key.startsWith(`author:${course}:${c}:`)));
+      const writes = (key: string, concept: string) => lessonTopics(key.replace(`:${course}`, '')).includes(concept);
+      await cancel((key) => concepts.some((c) => writes(key, c) || key.startsWith(`author:${course}:${c}:`)));
       await core.rebuildTopics(ws, course, concepts, { replace });
-      const lessonsOf = (concept: string) => core.listLessons(ws, course).filter((l) => l.concept === concept).length;
-      for (const concept of core.getRoadmap(ws, course).concepts.filter((c) => concepts.includes(c.id))) {
-        const saved = lessonsOf(concept.id);
-        background(`lesson:${course}:${concept.id}`, 'lesson', briefs.lesson(concept.id, concept.title, instructions, depthOf(course, concept.id)), course, () => lessonsOf(concept.id) > saved, { concept: concept.id });
-      }
+      // The topic the learner is on gets a run of its own first, so its lesson isn't held up by two others.
+      const current = currentConcept(core.progress(ws, course));
+      const chosen = core.getRoadmap(ws, course).concepts.filter((c) => concepts.includes(c.id));
+      const first = chosen.filter((c) => c.id === current);
+      const rest = chosen.filter((c) => c.id !== current);
+      if (first.length > 0) lessonRun(course, first);
+      for (let i = 0; i < rest.length; i += LESSON_RUN) lessonRun(course, rest.slice(i, i + LESSON_RUN));
       schedule(course);
     },
 
@@ -1056,9 +1118,8 @@ export function createLive(d: LiveDeps): Live {
       const course = core.getRoadmap(ws, approved()).course;
       const topic = core.getRoadmap(ws, course).concepts.find((c) => c.id === concept);
       if (!topic) throw new SafeError('That topic isn’t in this course.');
-      const lessonsOf = () => core.listLessons(ws, course).filter((l) => l.concept === concept).length;
       // Core saves a lesson for any roadmap topic and leaves the current one where it is.
-      background(`lesson:${course}:${concept}`, 'lesson', briefs.lesson(concept, topic.title, rebuildNote(course, concept), depthOf(course, concept)), course, () => lessonsOf() > 0, { concept });
+      lessonRun(course, [topic]);
       schedule(course);
     },
 

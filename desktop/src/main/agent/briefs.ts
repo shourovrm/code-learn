@@ -48,6 +48,14 @@ const STYLE: Record<Practice, string | false> = {
   both: 'Save style: both and a track.',
 };
 
+/** A topic of a lesson run: its concept, and what the learner asked for when rebuilding it, if anything. */
+export interface LessonTopic {
+  concept: string;
+  title: string;
+  instructions?: string;
+  depth?: Depth;
+}
+
 export function briefsFrom(base: Record<JobKind, string>, platform: NodeJS.Platform = process.platform) {
   const room = platform === 'win32' ? WINDOWS_ROOM : ROOM;
   const brief = (kind: JobKind, ...details: (string | false | undefined)[]) => [base[kind], ...details.filter(Boolean)].join('\n\n');
@@ -79,6 +87,22 @@ export function briefsFrom(base: Record<JobKind, string>, platform: NodeJS.Platf
     /** `instructions`: what the learner asked for when rebuilding this topic, if anything. `depth`: the topic's, when one was chosen. */
     lesson: (concept: string, title: string, instructions = '', depth: Depth = 'standard') =>
       brief('lesson', `Concept: ${concept} (${title})`, LESSON_DEPTH[depth], instructions && `The learner's instructions for this topic: ${instructions}`),
+    /**
+     * One run that writes a lesson for each topic, in order: the agent starts once, and neighbouring lessons match
+     * because one agent writes them together. One topic is `lesson`'s brief.
+     */
+    lessons(topics: LessonTopic[]): string {
+      if (topics.length === 1) return this.lesson(topics[0].concept, topics[0].title, topics[0].instructions, topics[0].depth);
+      const lines = topics.map((t) => {
+        const details = [LESSON_DEPTH[t.depth ?? 'standard'], t.instructions && `The learner's instructions for this topic: ${t.instructions}`].filter(Boolean);
+        return details.length > 0 ? `- ${t.concept} (${t.title}). ${details.join(' ')}` : `- ${t.concept} (${t.title})`;
+      });
+      return brief(
+        'lesson',
+        `Concepts, one lesson each, in this order:\n${lines.join('\n')}`,
+        'Follow every step above for each concept. Save each one with `save_lesson` before you start the next, so a finished lesson is kept if a later one fails.',
+      );
+    },
     author: (instructions = '', depth: Depth = 'standard') =>
       brief('author', ACTIVITY_DEPTH[depth], instructions && `The learner's instructions for this topic: ${instructions}`),
     tutor: (place: string, question: string, files?: Record<string, string>) => {

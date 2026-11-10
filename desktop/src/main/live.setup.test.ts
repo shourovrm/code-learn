@@ -8,7 +8,9 @@ describe('live CodeLearnApi: setup consent and install (§4.1)', () => {
   it('proposes setup, builds only the proposal the learner saw, then writes lessons and an activity', async () => {
     const t = live();
     const activity = await practising(t);
-    expect(t.jobs.ran.map((j) => j.kind)).toEqual(['research', 'review', 'setup', 'lesson', 'author']);
+    // The second lesson run writes the next topic's lesson ahead, once the course is set up.
+    expect(t.jobs.ran.map((j) => j.kind).sort()).toEqual(['author', 'lesson', 'lesson', 'research', 'review', 'setup']);
+    expect(t.jobs.ran.filter((j) => j.kind === 'lesson').map((j) => /Concept: (\S+)/.exec(j.brief)![1])).toEqual(['values', 'state']);
     expect(activity).toMatchObject({ id: 'values-easy-1', concept: 'values', title: 'Count up', statement: 'Print one.' });
     expect(JSON.stringify(activity)).not.toContain('/Users/me');
   });

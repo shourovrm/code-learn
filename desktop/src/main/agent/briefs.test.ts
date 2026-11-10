@@ -57,6 +57,20 @@ describe('job briefs', () => {
     expect(review).toContain('Keep the course at about that many topics');
   });
 
+  // One run for several topics: fewer starts of the agent, and neighbouring lessons that match.
+  it('asks one lesson run for several topics in order, each saved before the next, with its own depth and instructions', () => {
+    const brief = briefs.lessons([
+      { concept: 'values', title: 'Values' },
+      { concept: 'state', title: 'State', depth: 'in-depth', instructions: 'Use Linux examples' },
+    ]);
+    expect(brief.startsWith(JOB_BRIEFS.lesson)).toBe(true);
+    expect(brief).toContain('- values (Values)\n- state (State). Depth: in depth.');
+    expect(brief).toMatch(/- state \(State\)\. .* The learner's instructions for this topic: Use Linux examples/);
+    expect(brief).toContain('Save each one with `save_lesson` before you start the next');
+    // One topic is the brief as it always was.
+    expect(briefs.lessons([{ concept: 'values', title: 'Values' }])).toBe(briefs.lesson('values', 'Values'));
+  });
+
   it('gives a lesson and an exercise their own lines for an overview and for in depth, and none for standard', () => {
     expect(briefs.lesson('values', 'Values', '', 'overview')).toMatch(/Depth: an overview\. .*about a three-minute read/);
     expect(briefs.lesson('values', 'Values', '', 'in-depth')).toMatch(/Depth: in depth\. .*about an eight-minute read/);

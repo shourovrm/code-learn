@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { live, practising, settle, until } from './testing/fakes';
+import { boundOf, live, practising, settle, until } from './testing/fakes';
 
 describe('rebuilding topics', () => {
   it('rebuilds the chosen topics in core, then starts a lesson job for each one', async () => {
@@ -39,6 +39,21 @@ describe('rebuilding topics', () => {
     expect(again!.brief).toContain('Depth: in depth.');
   });
 
+  it("rebuilds the topic the learner is on in a run of its own, and the others three to a run in the roadmap's order", async () => {
+    const t = live({ research: (job) => {
+      t.c.roadmap = { course: boundOf(job), goal: 'React', track: 'react@1', style: 'io', concepts: ['values', 'b', 'c', 'd', 'e'].map((id) => ({ id, title: id.toUpperCase(), requires: [] })) };
+      return {};
+    } });
+    await practising(t);
+    await until(t.api, (c) => c.topics[3].lessons.length > 0);
+    const before = t.jobs.ran.length;
+    await t.api.rebuildTopics(['e', 'd', 'c', 'b', 'values'], true, 'Use Linux examples');
+    await until(t.api, (c) => c.topics.every((topic) => topic.lessons.some((l) => l.state !== 'writing')));
+    const runs = t.jobs.ran.slice(before).filter((j) => j.kind === 'lesson').map((j) => [...j.brief.matchAll(/^(?:Concept: |- )(\S+) \(/gm)].map((m) => m[1]));
+    expect(runs).toEqual([['values'], ['b', 'c', 'd'], ['e']]);
+    expect(t.jobs.ran.slice(before).find((j) => j.brief.includes('- b (B)'))!.brief).toContain("- b (B). The learner's instructions for this topic: Use Linux examples\n- c (C). The learner's");
+  });
+
   it('forgets earlier instructions when a topic is rebuilt without any', async () => {
     const t = live();
     await practising(t);
@@ -50,14 +65,17 @@ describe('rebuilding topics', () => {
   it("writes the current topic's exercise while the other topics' lessons are still queued", async () => {
     let release: () => void = () => {};
     const held = new Promise<void>((r) => (release = r));
+    let rebuilding = false;
     const t = live({
       lesson: async (job, usual) => {
-        if (job.brief.includes('Concept: state')) await held;
+        if (rebuilding && job.brief.includes('Concept: state')) await held;
         return usual();
       },
     });
     await practising(t);
+    await until(t.api, (c) => c.topics[1].lessons.some((l) => l.state === 'ready'));
     const before = t.jobs.ran.length;
+    rebuilding = true;
     await t.api.rebuildTopics(['values', 'state'], true);
     const course = await until(t.api, (c) => c.topics[0].lessons.some((l) => l.state === 'ready'));
     for (const l of course.topics[0].lessons) await t.api.markRead(l.id);

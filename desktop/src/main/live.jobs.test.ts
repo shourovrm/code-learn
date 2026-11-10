@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { OFFLINE, PLAN_LIMIT, UNSTOPPABLE, type JobProgress } from '../shared/api';
-import { CANARY, live, practising, researched, until } from './testing/fakes';
+import { CANARY, live, practising, researched, settle, until } from './testing/fakes';
 import { tempDir } from './testing/temp';
 import { desktopState } from './state';
 import { usageStore } from './usage';
@@ -278,11 +278,12 @@ describe('live CodeLearnApi: agent jobs: models, lanes, stalls, the tutor, progr
   });
 
   it('launches no background job queued right behind one that stalled', async () => {
-    let limited = false;
-    const t = live({ lesson: (_job, usual) => (limited ? { ok: false, problem: 'plan-limit' } : usual()) });
+    // The next topic's lesson fails when it is written ahead, which stalls nothing, and again once the learner is on it.
+    const t = live({ lesson: (job, usual) => (job.brief.includes('Concept: state') ? { ok: false, problem: 'plan-limit' } : usual()) });
     const activity = await practising(t);
+    await settle(async () => t.jobs.ran.filter((j) => j.kind === 'lesson').length, (n) => n === 2, 'The lesson written ahead');
+    expect((await t.api.course())!.stalled).toBeUndefined();
     await t.api.saveFile(activity.id, activity.files[0].path, 'count + 1', activity.files[0].digest);
-    limited = true;
     // Mastering the topic queues the next topic's lesson, then its activity, in the background.
     await t.api.check(activity.id, 'run-1');
     await until(t.api, (c) => c.stalled === 'plan-limit');
