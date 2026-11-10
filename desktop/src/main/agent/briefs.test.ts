@@ -164,7 +164,8 @@ describe('each job\'s tools and its brief', () => {
 
 it('carries the lessons-only choice as a research detail', () => {
   expect(briefs.research('course', 'History', '', 'standard', 'none')).toContain('Save style: none and no track.');
-  expect(briefs.research('course', 'History', '', 'standard', 'code')).not.toContain('style: none');
+  // The shared rules name `style: none` for every course; only a lessons-only course is told to save it.
+  expect(briefs.research('course', 'History', '', 'standard', 'code')).not.toContain('Save style: none');
 });
 
 it('carries quiz practice to the research brief without a track', () => {
