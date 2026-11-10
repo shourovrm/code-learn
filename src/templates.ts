@@ -173,7 +173,7 @@ const ROADMAP_YAML =
 
 /** One short, single-purpose brief per job. The app adds the job's own details: the goal, request, concept or track. */
 export const JOB_BRIEFS: Record<JobKind, string> = {
-  research: `You plan a code-learn course. code-learn grades coding practice; you write the roadmap.
+  research: `You plan a code-learn course on any subject. code-learn teaches it with lessons and grades practice, code or quizzes; you write the roadmap.
 
 1. Research the topic first. ${QUALITY}
 2. Unless the course is \`quiz\` or \`none\`, call \`list_tracks\`. If an installed track fits, use it exactly as listed. Otherwise name a new one, like \`name@1\`; code-learn sets it up after the learner agrees.
