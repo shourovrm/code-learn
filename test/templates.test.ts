@@ -368,24 +368,48 @@ describe("research and teaching quality", () => {
 
   it("gives every lesson the same teaching structure, built on the concept's practice and pitfalls", () => {
     for (const text of [AGENTS_SECTION, JOB_BRIEFS.lesson]) {
-      expect(text).toMatch(/what the learner will be able to do, in one line \(from the concept's `practice`\)/);
-      expect(text).toMatch(/one worked example, step by step/);
-      expect(text).toMatch(/the common mistakes from the concept's `pitfalls`, with one shown and corrected/);
-      expect(text).toMatch(/two self-check questions, with their answers under a final "Answers" heading/);
-      expect(text).toMatch(/"try it" prompt/);
+      expect(text).toMatch(/"\*\*You will be able to:\*\*", what the learner will be able to do \(from the concept's `practice`\)/);
+      expect(text).toMatch(/"Worked example", one worked example, step by step/);
+      expect(text).toMatch(/"Common mistakes", the common mistakes from the concept's `pitfalls`, with one shown and corrected/);
+      expect(text).toMatch(/"Self-check", two questions .*; "Answers", their answers/);
+      expect(text).toMatch(/optionally "Try it"/);
+    }
+  });
+
+  // The saved lessons opened with "Recap:", "Last time:" or "Last topic:", and put Sources before or after Try it.
+  it("names every part of a lesson and fixes their order, so every lesson of a course reads the same", () => {
+    for (const text of [AGENTS_SECTION, JOB_BRIEFS.lesson]) {
+      expect(text).toMatch(/the same parts, in the same order, under the same names/);
+      expect(text).toMatch(/never copy any other words of these instructions into the lesson/);
+      expect(text).toMatch(/No title heading/);
+      const names = ["**Last time:**", "**You will be able to:**", "Why it matters", "New words", "The idea in small steps", "Worked example", "Common mistakes", "Remember", "Self-check", "Answers", "Try it", "Sources"];
+      const places = names.map((name) => text.indexOf(`"${name}"`));
+      expect(places).not.toContain(-1);
+      expect(places).toEqual([...places].sort((a, b) => a - b));
     }
   });
 
   it("writes every lesson for a beginner who knows only the earlier topics, ending with a short Remember section", () => {
     for (const text of [AGENTS_SECTION, JOB_BRIEFS.lesson]) {
-      expect(text).toMatch(/a one-line recap of the previous topic/);
-      expect(text).toMatch(/a "New words" list: each new term with its meaning in one plain line/);
+      expect(text).toMatch(/a recap of the topics this one builds on \(its `requires`; leave it out of the first lesson\)/);
+      expect(text).toMatch(/"New words", a list of each new term with its meaning in one plain line/);
       expect(text).toMatch(/show a small example first, then state the rule/);
-      expect(text).toMatch(/a "Remember" section: 3 to 5 short facts worth keeping, one line each/);
+      expect(text).toMatch(/"Remember", 3 to 5 short facts worth keeping, one line each/);
       expect(text).toMatch(/Assume the learner knows only what the earlier topics taught/);
       expect(text).toMatch(/Define each new term in plain words where it first appears/);
       expect(text).toMatch(/Use nothing from a later topic/);
       expect(text).toMatch(/about a five-minute read/);
+    }
+  });
+
+  it("keeps a lesson's steps in sequence and its words the same throughout", () => {
+    for (const text of [AGENTS_SECTION, JOB_BRIEFS.lesson]) {
+      expect(text).toMatch(/each step teaches one new thing, builds on the step before/);
+      expect(text).toMatch(/use that same word for that thing/);
+      expect(text).toMatch(/Call a thing what the roadmap's earlier topics call it/);
+      expect(text).toMatch(/Spell out an abbreviation the first time/);
+      expect(text).toMatch(/Before a code block or an example, say in one sentence what it shows/);
+      expect(text).toMatch(/carry one example through the steps, changing one thing at a time/);
     }
   });
 
