@@ -1,8 +1,9 @@
 # Changelog
 
-## Unreleased
+## 0.2.5 (2026-11-11)
 
 - Lessons no longer follow one fixed outline. Each lesson takes the shape its idea needs, and its headings name its subject. code-learn shows the same frame around every lesson: what you will be able to do at the top, a self-check with hidden answers, and the topic's sources at the end. A lesson written in the old outline says so; rebuild its topic to rewrite it.
+- A quiz shows its questions as numbered cards with A, B and C on each choice, how many you have answered beside Check, and after Check a note under each question. The Contents button opens the topic's contents beside a quiz, as beside a lesson or a code exercise.
 
 ## 0.2.4 (2026-11-10)
 
