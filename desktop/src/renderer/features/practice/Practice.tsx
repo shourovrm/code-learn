@@ -53,11 +53,9 @@ export function Practice({ concept }: { concept: string }) {
     waited.current = true;
     return <><Sidebar slim /><Waiting topic={data.topic!} course={data.course} stale={stale} retry={reload} /></>;
   }
-  // A quiz has no brief column, so no contents beside it.
-  const contentsButton = data.activity.style !== 'quiz' && <ContentsButton shown={tab === 'contents'} onToggle={toggleContents} />;
   return (
     <>
-      <Sidebar slim>{contentsButton}</Sidebar>
+      <Sidebar slim><ContentsButton shown={tab === 'contents'} onToggle={toggleContents} /></Sidebar>
       <Workspace key={data.activity.id} activity={data.activity} course={data.course} focus={waited.current} tab={tab} onTab={setTab} />
     </>
   );
@@ -168,14 +166,14 @@ function Workspace({ activity, course, focus, tab, onTab }: { activity: Activity
 
   return (
     <div className={`ws${activity.style === 'quiz' ? ' quiz' : ''}`}>
-      {activity.style !== 'quiz' && <section className="stmt" aria-labelledby="activity-title">
-        <div className="stmt-panel" hidden={tab !== 'brief'}>
+      {(activity.style !== 'quiz' || tab === 'contents') && <section className="stmt" aria-labelledby="activity-title">
+        {activity.style !== 'quiz' && <div className="stmt-panel" hidden={tab !== 'brief'}>
           {status?.solved && <Solved solved={status.solved} />}
           {topic?.review === 'due' && <span className="pill" style={{ alignSelf: 'flex-start' }}>Review</span>}
           <h1 className="h2" id="activity-title" ref={title} tabIndex={-1}>{activity.title}</h1>
           <Markdown text={activity.statement} />
           <ExerciseNav topics={course.topics} concept={activity.concept} />
-        </div>
+        </div>}
         <div className="stmt-panel" role="region" aria-label="Contents" hidden={tab !== 'contents'}>
           {topic && <Outline topic={topic} next={course.topics[course.topics.indexOf(topic) + 1]} onHide={() => onTab('brief')} />}
         </div>

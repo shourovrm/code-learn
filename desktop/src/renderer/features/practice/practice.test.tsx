@@ -771,6 +771,22 @@ describe('Run', () => {
   });
 });
 
+it("shows the topic's contents beside a quiz from the sidebar's Contents button", async () => {
+  const { user } = await open(undefined, (api) => {
+    api.activity = async (concept) => ({
+      id: 'quiz', style: 'quiz', concept, title: 'Click Counter', statement: 'Choose what to do.', visibleTests: [],
+      questions: [{ text: 'Situation 1?', choices: [{ text: 'Bound work' }, { text: 'Retry forever' }] }],
+      files: [{ path: 'answers.yaml', text: '1: null\n', digest: 'first' }],
+    });
+  });
+  expect(screen.queryByRole('region', { name: 'Contents' })).not.toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Contents' }));
+  expect(within(screen.getByRole('region', { name: 'Contents' })).getByRole('button', { name: 'Exercise' })).toHaveAttribute('aria-current', 'page');
+  expect(screen.getByRole('group', { name: 'Situation 1?' })).toBeVisible();
+  await user.click(screen.getByRole('button', { name: 'Contents' }));
+  expect(screen.queryByRole('region', { name: 'Contents' })).not.toBeInTheDocument();
+});
+
 it('shows quiz choices, saves answers before Check, and explains only picked wrong choices', async () => {
   const writes: string[] = [];
   const { user } = await open(undefined, (api) => {

@@ -20,7 +20,7 @@
 .ws { flex: 1; min-height: 0; min-width: 0; display: grid; grid-template-columns: var(--task-w) minmax(0, 1fr) auto; grid-template-rows: minmax(0, 1fr); }
 /* With the tutor folded to its strip, the task takes some of the room. */
 .ws:has(> .coach.folded) { grid-template-columns: var(--task-wide-w) minmax(0, 1fr) auto; }
-.ws.quiz, .ws.quiz:has(> .coach.folded) { grid-template-columns: minmax(0, 1fr) auto; }
+.ws.quiz:not(:has(> .stmt)), .ws.quiz:not(:has(> .stmt)):has(> .coach.folded) { grid-template-columns: minmax(0, 1fr) auto; }
 .ws.quiz .mid { overflow: auto; }
 .quiz-form { overflow: visible; flex-shrink: 0; border-right: 0; }
 .quiz-questions fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
