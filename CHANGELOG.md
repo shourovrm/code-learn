@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.6 (2026-11-11)
+
+- New lesson instructions. The lesson writer is told who the learner is, what the lesson must let them do, how to teach it, which form fits which content (a table for a comparison, a numbered list for steps, paragraphs for reasoning), and to leave out any figure, date or rule number it isn't sure of. A lesson's goal now completes "You will be able to:".
+- Lessons show tables with ruled cells and a shaded header, and space their lists and quotes.
+- The tutor reviews the small task a lesson may end with, saying what is right, what is wrong and why.
+
 ## 0.2.5 (2026-11-11)
 
 - Lessons no longer follow one fixed outline. Each lesson takes the shape its idea needs, and its headings name its subject. code-learn shows the same frame around every lesson: what you will be able to do at the top, a self-check with hidden answers, and the topic's sources at the end. A lesson written in the old outline says so; rebuild its topic to rewrite it.
