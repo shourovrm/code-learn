@@ -150,9 +150,10 @@ describe("the save_lesson description", () => {
   it("asks for the goal and the self-check as fields, not as headings", async () => {
     const { client: c } = await connect({ tools: ["save_lesson"] });
     const { description } = (await c.listTools()).tools[0];
-    expect(description).toMatch(/goal is one sentence: what the learner will be able to do/);
+    expect(description).toMatch(/goal \(at most 300 characters\) is shown after the words "You will be able to:", so it is the phrase that completes them, starting with a verb/);
     expect(description).toMatch(/selfCheck holds 1 to 3 questions with their answers/);
-    expect(description).toMatch(/code-learn shows the goal, the self-check and the concept's sources around the Markdown/);
+    expect(description).toMatch(/shown after the lesson under "Check yourself"/);
+    expect(description).toMatch(/code-learn shows the title, the goal, the self-check and the concept's sources around the Markdown/);
   });
 
   it("says a lesson may hold diagrams and charts, and when", async () => {

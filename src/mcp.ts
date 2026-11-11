@@ -149,8 +149,9 @@ export function createServer(ws: string, version: string, { course, tools, deskt
     {
       description:
         "Save a lesson for one roadmap concept: Markdown (at most 64 KB) the learner reads before the activity, and up to 5 runnable examples. " +
-        "goal is one sentence: what the learner will be able to do after it. selfCheck holds 1 to 3 questions with their answers, which ask the learner to use the idea. " +
-        "code-learn shows the goal, the self-check and the concept's sources around the Markdown, so the Markdown doesn't repeat them. " +
+        "goal (at most 300 characters) is shown after the words \"You will be able to:\", so it is the phrase that completes them, starting with a verb. " +
+        "selfCheck holds 1 to 3 questions with their answers, which ask the learner to use the idea; it is shown after the lesson under \"Check yourself\". " +
+        "code-learn shows the title, the goal, the self-check and the concept's sources around the Markdown, so the Markdown doesn't repeat them. " +
         "Each example is a file map with exactly the track's learner files (for unit, plus tests/ files); code-learn runs each in the sandbox with no input and it must exit 0. " +
         "Place example N in the Markdown as a fenced block with info string example whose only line is N. An example that needs input goes in a plain code block. " +
         "Diagrams and charts go in fenced blocks with info string mermaid (flowchart, sequenceDiagram, stateDiagram-v2, classDiagram, pie, xychart), only when a picture teaches better than words; give each an accTitle and accDescr for screen readers. Node labels with symbols such as / ( ) [ ] { } : go in double quotes, e.g. C[\"/tmp/main\"]. " +

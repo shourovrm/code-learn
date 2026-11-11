@@ -216,13 +216,16 @@ describe("desktop job briefs (docs/desktop/DESIGN.md §3.2, §8)", () => {
   const kinds = Object.keys(JOB_BRIEFS) as JobKind[];
 
   // The desktop checks each brief against its job's tools (desktop/src/main/agent/briefs.test.ts).
+  const LINE_CAPS: Partial<Record<string, number>> = { setup: 32, lesson: 100 };
+
   it("has a brief for every job in the spec", () => {
     expect(kinds.sort()).toEqual(["author", "lesson", "research", "review", "roadmap", "setup", "tutor"]);
   });
 
   // Setup carries both engines' track contracts: Docker's, and WASI's for computers without one (DESIGN §4.5).
-  it.each(kinds)("keeps the %s brief within 25 lines (setup 32)", (kind) => {
-    expect(JOB_BRIEFS[kind].split("\n").length).toBeLessThanOrEqual(kind === "setup" ? 32 : 25);
+  // The lesson brief carries the lesson rules (who the learner is, layout, accuracy), so it has its own cap.
+  it.each(kinds)("keeps the %s brief within 25 lines (setup 32, lesson 100)", (kind) => {
+    expect(JOB_BRIEFS[kind].split("\n").length).toBeLessThanOrEqual(LINE_CAPS[kind] ?? 25);
   });
 
   it("gives setup and author the same bench-checked rules as the terminal subagent", () => {
@@ -276,14 +279,13 @@ describe("roadmap granularity", () => {
 describe("diagrams in lessons", () => {
   it("tells the lesson writer when a picture helps and how to draw it, short and without naming a language", () => {
     const brief = JOB_BRIEFS.lesson;
-    expect(brief).toMatch(/Add a diagram only when a picture teaches better than words/);
+    expect(brief).toMatch(/Add one only when a picture teaches better than words/);
     expect(brief).toMatch(/control flow, a data structure, the steps of an algorithm or how cost grows/);
     expect(brief).toMatch(/fenced block with info string `mermaid`/);
     expect(brief).toMatch(/flowchart, sequenceDiagram, stateDiagram-v2, classDiagram, pie or xychart/);
     expect(brief).toMatch(/`accTitle` and a one-line `accDescr`/);
-    expect(brief).toMatch(/shown as code if it doesn't draw/);
-    expect(brief).toMatch(/a node label with symbols such as `\/ \( \) \[ \] \{ \} :` in double quotes, e\.g\. `C\["\/tmp\/main"\]`/);
-    expect(brief.split("\n").length).toBeLessThanOrEqual(25);
+    expect(brief).toMatch(/a diagram that doesn't draw is shown as code/);
+    expect(brief).toMatch(/a node label that contains symbols such as `\/ \( \) \[ \] \{ \} :` in double quotes, for example `C\["\/tmp\/main"\]`/);
   });
 
   it("leaves diagrams to the lesson job: other briefs don't ask for them", () => {
@@ -295,9 +297,9 @@ describe("lesson examples and learner-facing text (learner walkthrough W-2)", ()
   it("tells the lesson writer that an example gets no input, holds exactly the track's learner files, and what to do otherwise", () => {
     const brief = JOB_BRIEFS.lesson;
     expect(brief).toMatch(/holding every file in `contract.files` and no other file/);
-    expect(brief).toMatch(/no input at all, so an example must not read any/);
+    expect(brief).toMatch(/no input at all, so an example must not read any input/);
     expect(brief).toMatch(/An example that needs input goes in a plain code block/);
-    expect(brief.split("\n").length).toBeLessThanOrEqual(25);
+    expect(brief).toMatch(/code the learner will rely on is best shown as one/);
   });
 
   it.each([
@@ -371,45 +373,68 @@ describe("research and teaching quality", () => {
   // A fixed outline ("Why it matters", "Worked example", "Common mistakes"...) made every lesson the same recipe.
   it("lets the subject shape each lesson, with headings that name the subject", () => {
     for (const text of [AGENTS_SECTION, JOB_BRIEFS.lesson]) {
-      expect(text).toMatch(/There is no fixed outline/);
-      expect(text).toMatch(/name each heading after its subject, such as "When the rules and the Act disagree", never after its role in the lesson/);
-      expect(text).toMatch(/Never copy any other words of these instructions into the lesson/);
-      expect(text).toMatch(/No title heading/);
+      expect(text).toMatch(/There is no fixed outline: give the lesson the order its idea needs/);
+      expect(text).toMatch(/Name each heading after its subject, such as "When the rules and the Act disagree"/);
+      expect(text).toMatch(/so the Markdown has no title heading/);
       expect(text).not.toMatch(/`## (Why it matters|The idea in small steps|Worked example|Common mistakes|Remember|Self-check|Answers|Sources)`/);
     }
   });
 
-  it("passes the goal and the self-check as fields, and takes the sources from the concept's refs", () => {
+  it("chooses each part's form by the shape of its content", () => {
     for (const text of [AGENTS_SECTION, JOB_BRIEFS.lesson]) {
-      expect(text).toMatch(/`goal`: one sentence: what the learner will be able to do after this lesson, from the concept's `practice`/);
-      expect(text).toMatch(/`selfCheck`: two questions, each with a `question` and an `answer`, that ask the learner to use the idea, not to repeat a definition/);
-      expect(text).toMatch(/code-learn lists the sources from the concept's `refs`; don't list them/);
+      expect(text).toMatch(/Layout is part of the teaching/);
+      expect(text).toMatch(/\| things compared on the same points, such as an old rule and a new one, or two methods \| a table \|/);
+      expect(text).toMatch(/\| steps carried out in order \| a numbered list, one step per item \|/);
+      expect(text).toMatch(/Reasoning cut into bullets loses the "because"/);
+    }
+  });
+
+  it("passes the title, goal and self-check as fields, and takes the sources from the concept's refs", () => {
+    for (const text of [AGENTS_SECTION, JOB_BRIEFS.lesson]) {
+      expect(text).toMatch(/`goal`: what the learner will be able to do after this lesson, from the concept's `practice`, in at most 300 characters/);
+      expect(text).toMatch(/after the words "You will be able to:", so write the phrase that completes them, starting with a verb/);
+      expect(text).toMatch(/`selfCheck`: one to three questions, usually two, each with a `question` and an `answer`/);
+      expect(text).toMatch(/code-learn lists the sources from the concept's `refs`, so don't list them/);
     }
   });
 
   it("keeps the teaching moves, placed where the content needs them", () => {
     for (const text of [AGENTS_SECTION, JOB_BRIEFS.lesson]) {
-      expect(text).toMatch(/Show before you tell: a small, concrete example comes before the rule it shows/);
-      expect(text).toMatch(/Work at least one complete example through/);
-      expect(text).toMatch(/Take up each mistake from the concept's `pitfalls` where it happens/);
-      expect(text).toMatch(/Don't gather them into a list at the end/);
+      expect(text).toMatch(/It shows before it tells/);
+      expect(text).toMatch(/It works at least one complete example through, the way the learner will have to, and says why each step is taken/);
+      expect(text).toMatch(/It takes up each mistake from the concept's `pitfalls` at the point where the learner would make it/);
       expect(text).toMatch(/carry one example through the lesson, changing one thing at a time/);
+      expect(text).toMatch(/Teach the idea with a different example from that task, so the task is still theirs to solve/);
       expect(text).toMatch(/one small task the learner can ask the tutor to review/);
     }
   });
 
-  it("writes every lesson for a beginner who knows only the earlier topics", () => {
+  it("writes every lesson for a learner who knows only the earlier topics, and checks it against the practice line", () => {
     for (const text of [AGENTS_SECTION, JOB_BRIEFS.lesson]) {
-      expect(text).toMatch(/Assume the learner knows only what the earlier topics taught/);
+      expect(text).toMatch(/The learner studies alone and cannot ask the writer a question/);
+      expect(text).toMatch(/Check the finished lesson against that line/);
       expect(text).toMatch(/Define each new term in plain words where it first appears, in bold there/);
       // A list of terms before the steps defined words the learner had no example for yet, and defined each one twice.
       expect(text).not.toMatch(/New words/);
-      expect(text).toMatch(/Use nothing from a later topic/);
+      expect(text).toMatch(/It uses nothing from a later topic/);
       expect(text).toMatch(/about a five-minute read/);
       expect(text).toMatch(/use that same word for that thing/);
       expect(text).toMatch(/Call a thing what the roadmap's earlier topics call it/);
       expect(text).toMatch(/Spell out an abbreviation the first time/);
       expect(text).toMatch(/Before a code block or an example, say in one sentence what it shows/);
+    }
+  });
+
+  it("keeps uncertain facts out of a lesson", () => {
+    for (const text of [AGENTS_SECTION, JOB_BRIEFS.lesson]) {
+      expect(text).toMatch(/A specific figure, date, rule number, quotation or detail of an API goes in the lesson only if the roadmap states it/);
+      expect(text).toMatch(/Where you are not certain, teach how to find and check the value/);
+    }
+  });
+
+  it("has the tutor review the small task a lesson may end with", () => {
+    for (const text of [AGENTS_SECTION, JOB_BRIEFS.tutor]) {
+      expect(text).toMatch(/A lesson may end with one small task\. It isn't graded: when the learner shows you their work on it, say what is right, what is wrong and why/);
     }
   });
 
@@ -425,7 +450,7 @@ describe("research and teaching quality", () => {
       expect(text).toMatch(/`goal` \(one sentence: what the learner will be able to do, and what they already know\)/);
     }
     for (const text of [AGENTS_SECTION, JOB_BRIEFS.lesson]) {
-      expect(text).toMatch(/and what the roadmap's `goal` says they already know/);
+      expect(text).toMatch(/They know what the roadmap's `goal` says they already know/);
     }
   });
 

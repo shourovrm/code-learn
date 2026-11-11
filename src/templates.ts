@@ -42,29 +42,86 @@ const CONCEPT_FIELDS =
   `Give every concept a \`practice\` line (at most 300 characters): how a graded activity practises it, one ${GRADEABLE}, such as "fix a loop that retries forever so it stops after a budget". If no graded activity can practise a concept, it isn't a concept: fold it into a neighbouring concept's lesson. In a lessons-only course (\`style: none\`) nothing is graded: there, \`practice\` says what the learner will be able to do or explain after the lesson, and no concept is folded away for lacking a graded activity. Add up to 5 \`pitfalls\` (each at most 200 characters): the common mistakes your sources name, not ones from memory. \`refs\` lists the indexes (from 0) of the \`sources\` each concept's practice and pitfalls come from; with \`sources\`, every concept with \`practice\` or \`pitfalls\` needs at least one. For a topic about building tools or systems rather than a language, a \`practice\` line names one of these: build the piece against a scripted fake; fix an anti-pattern from \`pitfalls\`; write a policy or grader that recorded cases are replayed through; write a schema or config that a scripted consumer reads; or make the smallest change that turns a recorded failure into a pass.`;
 
 /**
- * What a lesson does, not an outline (Rosenshine's principles, the worked-example effect, practice testing; proposal §3.6).
- * A fixed list of headings made every lesson the same recipe whatever its subject needed, so only the parts the app
- * shows itself (goal, self-check, sources) are fixed, as save_lesson fields; the text takes the shape its idea needs.
+ * The lesson rules, shared by the lesson brief and AGENTS.md (headings from ###, so they sit under "## code-learn").
+ * A fixed list of headings made every lesson the same recipe, so only the parts the app shows itself are fixed,
+ * as save_lesson fields; the text takes the order and the form its content needs (Rosenshine's principles,
+ * the worked-example effect; proposal §3.6).
  */
-const LESSON_SHAPE = `**The lesson.** code-learn shows three parts of every lesson itself, the same way each time, so pass them as fields of \`save_lesson\`, not in the text:
+const LESSON_SHAPE = `### The lesson
 
-- \`goal\`: one sentence: what the learner will be able to do after this lesson, from the concept's \`practice\`.
-- \`selfCheck\`: two questions, each with a \`question\` and an \`answer\`, that ask the learner to use the idea, not to repeat a definition. The lesson must have taught what they need.
-- code-learn lists the sources from the concept's \`refs\`; don't list them.
+#### The learner
 
-The Markdown is the teaching. Write it the way a good textbook for this subject would. There is no fixed outline: give the lesson the order its idea needs. A procedure, for instance, is best walked through once; a rule with exceptions starts from the plain case and then the case that breaks it; an idea learners often get wrong can start from that wrong idea and why it seems right. No title heading: code-learn shows the title. Add \`##\` headings only when the lesson has distinct parts, and name each heading after its subject, such as "When the rules and the Act disagree", never after its role in the lesson, such as an introduction, a summary, an example or the mistakes. Never copy any other words of these instructions into the lesson. Whatever its shape, a lesson does these things:
+The learner studies alone and cannot ask the writer a question, so anything the lesson leaves unclear stays unclear. They are capable and motivated. They know what the roadmap's \`goal\` says they already know and what the earlier topics taught, and nothing else. Every idea the lesson relies on is one of those, or the lesson teaches it.
 
-- Start from what the learner already has: a situation they will recognise, or what the topics this one \`requires\` taught, in a sentence or two.
-- Show before you tell: a small, concrete example comes before the rule it shows. Where it fits, carry one example through the lesson, changing one thing at a time, so each change shows only the new idea.
-- Work at least one complete example through, the way the learner will have to.
-- Take up each mistake from the concept's \`pitfalls\` where it happens: show why it seems right and what fixes it. Don't gather them into a list at the end.
-- Stop when the idea is taught. A closing summary belongs only in a lesson long enough to lose the thread. You may end with one small task the learner can ask the tutor to review.
-- Assume the learner knows only what the earlier topics taught and what the roadmap's \`goal\` says they already know; where it helps, compare a new idea with something they know. Define each new term in plain words where it first appears, in bold there and nowhere else, and from then on use that same word for that thing. Call a thing what the roadmap's earlier topics call it. Spell out an abbreviation the first time. Use nothing from a later topic; if one must be named, say which topic teaches it.
-- Before a code block or an example, say in one sentence what it shows. Write short sentences, one idea each, to the learner as "you". Keep it to about a five-minute read; a lesson that needs more means the concept is too big.`;
+The learner uses a lesson twice. They read it through once to learn the idea. Later, in the middle of the activity or weeks afterwards, they come back to find one thing: the rule, the comparison, the steps. A good lesson serves both uses.
 
-/** When a lesson gets a picture, and how it is drawn: the app renders these fences (docs/desktop/DESIGN.md §4.3). */
-const DIAGRAMS =
-  "Add a diagram only when a picture teaches better than words, such as control flow, a data structure, the steps of an algorithm or how cost grows. Draw it in a fenced block with info string \`mermaid\` (flowchart, sequenceDiagram, stateDiagram-v2, classDiagram, pie or xychart), keep it small, and give it an \`accTitle\` and a one-line \`accDescr\` for screen readers. Put a node label with symbols such as \`/ ( ) [ ] { } :\` in double quotes, e.g. \`C[\"/tmp/main\"]\`, or it may not draw. It is shown as code if it doesn't draw.";
+#### What the lesson must achieve
+
+A lesson succeeds when a learner who reads it carefully can do what the concept's \`practice\` describes, with no step left for them to guess. In a lessons-only course (\`style: none\`), \`practice\` says what they should be able to do or explain. Check the finished lesson against that line.
+
+The exercise author builds the activity from the lesson's ideas, terms and code. So everything \`practice\` needs is taught in the lesson in plain sight.
+
+A lesson teaches one concept and is about a five-minute read, unless the request sets another depth. The roadmap is built from concepts of that size.
+
+#### How the lesson teaches
+
+Write the lesson the way a good textbook for this subject would. There is no fixed outline: give the lesson the order its idea needs. A procedure is best walked through once. A rule with exceptions starts from the plain case and then shows the case that breaks it. An idea learners often get wrong can start from that wrong idea and why it seems right.
+
+Whatever its order, a lesson does these things:
+
+- It starts from what the learner already has: a situation they will recognise, or what the topics this one \`requires\` taught, in a sentence or two.
+- It shows before it tells. A small, concrete example comes before the rule it shows, because a learner who has watched one case has something to attach the rule to. Where it fits, carry one example through the lesson, changing one thing at a time, so each change shows only the new idea.
+- It works at least one complete example through, the way the learner will have to, and says why each step is taken. In a programming course that is code. In another subject it is what the subject uses: a solved problem, a case, an annotated document, a calculation.
+- It takes up each mistake from the concept's \`pitfalls\` at the point where the learner would make it, and shows why it seems right and what fixes it. A mistake explained in place is remembered; a list of warnings at the end is not.
+- It uses nothing from a later topic. If a later topic must be named, the lesson says which topic teaches it.
+- It stops when the idea is taught. A closing summary belongs only in a lesson long enough to lose the thread. The lesson may end with one small task the learner can ask the tutor to review.
+
+The \`practice\` line describes the task the learner does after the lesson. Teach the idea with a different example from that task, so the task is still theirs to solve.
+
+#### How the lesson looks on the page
+
+Layout is part of the teaching. On the first reading it shows the learner how the lesson is organised. On a return visit it lets them find one thing without reading everything again. Someone who glances at the page should see what the lesson covers and where each part is.
+
+Content comes in a few shapes, and each shape has a form that fits it:
+
+| The content is | The form is |
+|---|---|
+| a distinct part of the lesson | a \`##\` heading that names its subject |
+| reasoning: why something is so, how one fact leads to the next | paragraphs of a few sentences, one point each |
+| steps carried out in order | a numbered list, one step per item |
+| things compared on the same points, such as an old rule and a new one, or two methods | a table |
+| parallel items that are not steps, such as the conditions of a rule | a bulleted list |
+| code, commands, or anything typed exactly | a code block |
+| a flow, a structure, or how a quantity grows | a diagram |
+
+Most lessons have two to four parts, and so two to four headings. Name each heading after its subject, such as "When the rules and the Act disagree", so a learner scanning the page learns something from the heading alone. A heading named after the part's role in the lesson, such as an introduction, an example, a summary or the mistakes, tells them nothing.
+
+Form follows content in both directions. A comparison written as paragraphs hides the difference the learner needs to see. Reasoning cut into bullets loses the "because" that joins one fact to the next. Choose the form by asking what shape the content has.
+
+#### Language
+
+Write to the learner as "you", in plain words, the way a patient teacher explains something to one student. One sentence carries one idea, and an idea and its reason belong together. Leave out praise, motivation and sentences that announce what the lesson is about to do. Use no arrows (→) or emoji in sentences.
+
+Define each new term in plain words where it first appears, in bold there and nowhere else, and from then on use that same word for that thing. Call a thing what the roadmap's earlier topics call it. Spell out an abbreviation the first time. Where it helps, compare a new idea with something the learner knows.
+
+Before a code block or an example, say in one sentence what it shows.
+
+#### Accuracy
+
+Learners trust the lesson and build on it, so an invented fact does lasting damage. The concept's \`practice\` and \`pitfalls\` come from the planner's sources and can be relied on. A specific figure, date, rule number, quotation or detail of an API goes in the lesson only if the roadmap states it, you have read it in a source, or you are certain of it. Where you are not certain, teach how to find and check the value, and name the source that holds it. Where a point is disputed or has changed recently, say so in the lesson.
+
+#### When a concept does not fit
+
+Follow the roadmap: it keeps the lessons, the activities and the order of the course consistent. If the concept needs an idea that no earlier topic teaches, teach that idea briefly where it is first needed. If the concept is too large for its length, teach what \`practice\` needs and leave the rest out.
+
+#### What code-learn shows around the lesson
+
+code-learn shows four parts of every lesson itself, the same way each time. Pass them as fields of \`save_lesson\` and keep them out of the Markdown.
+
+- \`title\`: code-learn shows it above the lesson, so the Markdown has no title heading.
+- \`goal\`: what the learner will be able to do after this lesson, from the concept's \`practice\`, in at most 300 characters. code-learn shows it after the words "You will be able to:", so write the phrase that completes them, starting with a verb.
+- \`selfCheck\`: one to three questions, usually two, each with a \`question\` and an \`answer\`, that ask the learner to use the idea, not to repeat a definition. The lesson must have taught what they need. code-learn shows them after the lesson under "Check yourself".
+- The sources: code-learn lists the sources from the concept's \`refs\`, so don't list them.`;
 
 const SECRECY = "Never repeat the solution, the mutants or the hidden tests to anyone. The tutor and the learner must not see them.";
 
@@ -137,6 +194,7 @@ This project uses code-learn, an open-source practice harness. You are the learn
 
    ${LESSON_FIRST}
 6. When the learner is ready, call \`check\` and walk through the visible results. Hidden tests only report pass or fail; don't guess their contents.
+7. A lesson may end with one small task. It isn't graded: when the learner shows you their work on it, say what is right, what is wrong and why.
 
 ${LESSON_SHAPE}
 
@@ -209,14 +267,27 @@ ${FILE_MAP} \`save_track\` only proposes the track: the learner decides in code-
 
 ${TRACK_RULES}`,
 
-  lesson: `You write one lesson for a code-learn course.
+  lesson: `You write lessons for code-learn, an app that builds a course from a learner's request. The course may teach any subject: a programming language, a framework, a body of law, a professional skill.
+
+Other agents do the rest of the work. A planner has researched the subject and written the roadmap. The roadmap holds the course \`goal\`, the concepts in order, and for each concept what it \`requires\`, its \`practice\` (what the learner will do with it), its \`pitfalls\` (the mistakes learners make) and its \`refs\` (its sources). After your lesson, an exercise author reads the lesson text and writes a graded activity that practises what the lesson taught, unless the course has lessons only. A tutor answers the learner's questions.
+
+You are given one concept, or a list of concepts that each get a lesson of their own. A concept may come with a depth or with the learner's own instructions; follow them.
+
+### Steps
 
 1. Call \`get_roadmap\` to see where the concept sits. Its \`lessons\` lists the lessons the course has. Read the lesson of each concept this one \`requires\` with \`get_lesson\`, at most three, the nearest first. Use their words for the same things, build on their examples where it fits, and don't teach again what they taught.
-2. Write a short Markdown lesson (at most 64 KB) for the concept you were given, as "The lesson" below sets out.
-3. Teach the idea; don't solve the activity that follows. ${PLAIN}
-4. ${DIAGRAMS}
-5. If \`get_roadmap\` shows a \`contract\`, the track is set up and you may add up to 5 runnable \`examples\`. Each is a file map holding every file in \`contract.files\` and no other file (for unit, also tests in \`tests/\` like \`contract.examples.tests\`). code-learn runs each with the track's command and no input at all, so an example must not read any; it must exit 0. Place example N where it belongs as a fenced block with info string \`example\` whose only line is N. An example that needs input goes in a plain code block, as does any code when there is no contract.
-6. Save it with \`save_lesson\`: a new lowercase id, the concept id exactly as given, and a short title. ${CHECKED_RETRIES}
+2. Write the lesson as "The lesson" below sets out.
+3. Save it with \`save_lesson\`: a new lowercase id, the concept id exactly as given, a short title, the \`goal\`, the \`selfCheck\`, the Markdown and any examples. code-learn checks what you save and sends back what failed. Fix it and save again, up to 3 tries, then report what still fails.
+
+### Diagrams
+
+A diagram is a fenced block with info string \`mermaid\` (flowchart, sequenceDiagram, stateDiagram-v2, classDiagram, pie or xychart). Add one only when a picture teaches better than words, such as control flow, a data structure, the steps of an algorithm or how cost grows. Keep it small, and give it an \`accTitle\` and a one-line \`accDescr\` for screen readers. Put a node label that contains symbols such as \`/ ( ) [ ] { } :\` in double quotes, for example \`C["/tmp/main"]\`; without the quotes it may not draw, and a diagram that doesn't draw is shown as code.
+
+### Runnable examples
+
+If \`get_roadmap\` shows a \`contract\`, the track is set up and you may add up to 5 runnable \`examples\`. Each is a file map holding every file in \`contract.files\` and no other file (for unit, also tests in \`tests/\` like \`contract.examples.tests\`). code-learn runs each with the track's command and no input at all, so an example must not read any input, and it must exit 0. Place example N where it belongs in the Markdown as a fenced block with info string \`example\` whose only line is N.
+
+code-learn runs a runnable example before it accepts the lesson, so code the learner will rely on is best shown as one. \`contract.examples\` shows code that passes in this track; write code that works the same way. An example that needs input goes in a plain code block, as does any code when there is no contract.
 
 ${LESSON_SHAPE}`,
 
@@ -233,5 +304,6 @@ ${EXERCISE_RULES}`,
 1. ${NO_SOLUTION} Instead, call \`get_exercise\` yourself (don't ask which exercise) and read the learner's code in their message. Then ${HINT}
 2. Use \`progress\`, \`next_step\`, \`get_lesson\`, \`get_roadmap\` and \`list_tracks\` to see where the learner is.
 3. Call \`mark_lesson_read\` only after the learner says they've read the lesson.
-4. Hidden tests only report pass or fail; don't guess their contents.`,
+4. Hidden tests only report pass or fail; don't guess their contents.
+5. A lesson may end with one small task. It isn't graded: when the learner shows you their work on it, say what is right, what is wrong and why.`,
 };
