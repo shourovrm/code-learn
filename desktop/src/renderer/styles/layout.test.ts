@@ -39,3 +39,16 @@ describe('code shows the characters typed', () => {
     for (const line of mono) expect(line).toMatch(/var\(--mono\).*font-variant-ligatures: none/);
   });
 });
+
+// The lesson rules ask for a table when things are compared on the same points; browser defaults draw it without lines.
+describe("a lesson's tables, lists and quotes", () => {
+  it('rules every cell and sets the header row apart', () => {
+    expect(rule('.md :is(th, td)')).toMatch(/border: var\(--border\) solid var\(--line\)/);
+    expect(rule('.md th')).toMatch(/background: var\(--soft\)/);
+  });
+
+  it('spaces lists and marks a quote', () => {
+    expect(rule('.md :is(ul, ol)')).toMatch(/margin: 0 0 var\(--space-150\)/);
+    expect(rule('.md blockquote')).toMatch(/border-left: var\(--border-bold\) solid var\(--line\)/);
+  });
+});

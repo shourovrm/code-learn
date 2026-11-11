@@ -166,6 +166,12 @@ textarea.field { height: auto; resize: vertical; }
 .md code { font-family: var(--mono); font-variant-ligatures: none; font-size: .92em; }
 .md :not(pre) > code { padding: 0 var(--space-050); border-radius: var(--radius-tag); background: var(--soft); }
 .md a { color: var(--blue); }
+.md :is(ul, ol) { margin: 0 0 var(--space-150); padding-left: var(--space-250); }
+.md li + li { margin-top: var(--space-050); }
+.md blockquote { margin: 0 0 var(--space-150); padding-left: var(--space-200); border-left: var(--border-bold) solid var(--line); color: var(--muted); }
+.md table { margin: 0 0 var(--space-150); border-collapse: collapse; font: var(--type-body); }
+.md :is(th, td) { padding: var(--space-075) var(--space-150); border: var(--border) solid var(--line); text-align: left; vertical-align: top; }
+.md th { background: var(--soft); font-weight: 600; }
 .md.small { font: var(--type-body); }
 .md.small p:last-child { margin-bottom: 0; }
 .md.small pre { padding: var(--space-100) var(--space-150); font: var(--type-code-small); }
