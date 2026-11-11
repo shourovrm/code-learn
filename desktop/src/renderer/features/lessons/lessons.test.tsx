@@ -79,7 +79,34 @@ describe('the lesson page (steps through the chapter)', () => {
     expect(await screen.findByText(new RegExp(`^Lesson 1 of ${topic.lessons.length} · about \\d+ min$`))).toBeInTheDocument();
   });
 
-  it('keeps the self-check answers behind Show answers', async () => {
+  it('shows the goal above the text, then the self-check with each answer closed, then the sources', async () => {
+    const user = userEvent.setup();
+    const { api, course } = await mockWithCourse();
+    const lesson = api.lesson.bind(api);
+    api.lesson = async (id) => ({
+      ...(await lesson(id)), goal: 'Read two words from input.', selfCheck: [{ question: 'What does `read a b` store in b?', answer: 'The second word.' }],
+      sources: [{ title: 'POSIX shell', url: 'https://example.com/posix' }],
+    });
+    renderApp({ to: 'lesson', lessonId: course.topics[0].lessons[0].id }, api);
+    expect(await screen.findByText('Read two words from input.')).toBeInTheDocument();
+    const check = screen.getByRole('region', { name: 'Check yourself' });
+    const answer = within(check).getByText('The second word.');
+    expect(answer).not.toBeVisible();
+    await user.click(within(check).getByText('Show answer'));
+    expect(answer).toBeVisible();
+    expect(within(screen.getByRole('region', { name: 'Sources' })).getByRole('link', { name: 'POSIX shell' })).toBeInTheDocument();
+  });
+
+  it('says an old-format lesson is rewritten when its topic is rebuilt', async () => {
+    const { api, course } = await mockWithCourse();
+    const lesson = api.lesson.bind(api);
+    api.lesson = async (id) => ({ ...(await lesson(id)), goal: undefined, selfCheck: undefined, outdated: true });
+    renderApp({ to: 'lesson', lessonId: course.topics[0].lessons[0].id }, api);
+    expect(await screen.findByText(/older format/)).toBeInTheDocument();
+  });
+
+  // Lessons saved before the self-check was a field carry it as headings in their text.
+  it('keeps an old lesson\'s self-check answers behind Show answers', async () => {
     const user = userEvent.setup();
     const { api, course } = await mockWithCourse();
     const lesson = api.lesson.bind(api);

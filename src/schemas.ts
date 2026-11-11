@@ -332,12 +332,19 @@ export type LearnerEventRecord = z.infer<typeof LearnerEventSchema>;
 
 const MAX_LESSON_BYTES = 65_536;
 const mapBytes = (m: Record<string, string>) => Object.values(m).reduce((n, t) => n + Buffer.byteLength(t), 0);
+/** What the learner will be able to do after the lesson. code-learn shows it above the text. */
+const LessonGoal = z.string().min(1).max(300);
+/** Questions the lesson has answered, shown after the text with their answers hidden until asked. */
+const LessonSelfCheck = z.array(z.object({ question: z.string().min(1).max(500), answer: z.string().min(1).max(1000) }).strict()).min(1).max(3);
+
 const LessonInput = z
   .object({
     id: Id,
     concept: Id,
     title: z.string().min(1).max(200),
     markdown: z.string().min(1),
+    goal: LessonGoal,
+    selfCheck: LessonSelfCheck,
     /** Runnable examples: file maps that follow the installed track's contract (checked by save_lesson). */
     examples: z
       .array(z.record(z.string(), z.string()).refine((m) => mapBytes(m) <= MAX_LESSON_BYTES, "an example is larger than 64 KB"))
@@ -365,29 +372,10 @@ export function exampleRefs(text: string): number[] {
   });
 }
 
-/** The line every lesson opens with, and its `##` sections in order. The agents' instructions (templates.ts) name the same ones. */
-export const LESSON_GOAL = "**You will be able to:**";
-export const LESSON_SECTIONS = ["Why it matters", "The idea in small steps", "Worked example", "Common mistakes", "Remember", "Self-check", "Answers", "Sources"];
-
-/** Every lesson of a course has the same parts in the same order, whichever agent or model wrote it. Other headings are free. */
-function assertLessonParts(text: string): void {
-  if (!text.includes(LESSON_GOAL)) throw new CodeLearnError(`Invalid lesson: open it with a line "${LESSON_GOAL}" that says what the learner will be able to do.`);
-  const tokens = markdown.parse(text, {});
-  const found: string[] = [];
-  for (const [i, token] of tokens.entries()) {
-    if (token.type !== "heading_open" || token.tag !== "h2" || token.level !== 0) continue;
-    const name = tokens[i + 1]!.content.trim();
-    if (LESSON_SECTIONS.includes(name)) found.push(name);
-  }
-  if (found.join("\n") === LESSON_SECTIONS.join("\n")) return;
-  throw new CodeLearnError(`Invalid lesson: it needs these "##" sections, once each and in this order: ${LESSON_SECTIONS.join(", ")}. Found: ${found.join(", ") || "none"}.`);
-}
-
 /** A lesson as the agent saves it: static Markdown for one roadmap concept, and optional runnable examples. */
 export function parseLesson(input: unknown): LessonInput {
   const parsed = LessonInput.safeParse(input);
   if (!parsed.success) throw new CodeLearnError(`Invalid lesson: ${describe(parsed.error)}`);
-  assertLessonParts(parsed.data.markdown);
   const count = parsed.data.examples?.length ?? 0;
   const refs = exampleRefs(parsed.data.markdown);
   const missing = refs.find((n) => n < 1 || n > count);
@@ -405,10 +393,15 @@ export function assertNotes(text: string): string {
 }
 
 /** With examples: how many, and the track and style they were checked with, which they always run with. */
-export const LessonRecord = z.object({
-  format_version: z.literal(1), id: Id, concept: Id, title: z.string(), created: z.string(),
+const LessonMeta = {
+  id: Id, concept: Id, title: z.string(), created: z.string(),
   examples: z.number().int().nonnegative().optional(), track: z.string().optional(), style: Style.optional(),
-});
+};
+export const LessonRecord = z.discriminatedUnion("format_version", [
+  z.object({ format_version: z.literal(2), goal: LessonGoal, selfCheck: LessonSelfCheck, ...LessonMeta }),
+  /** Saved when the goal and self-check were headings in the text: still shown, marked for a rewrite. */
+  z.object({ format_version: z.literal(1), ...LessonMeta }),
+]);
 export type LessonRecord = z.infer<typeof LessonRecord>;
 
 /** A track the agent proposed in the desktop app, waiting for the learner's consent. */

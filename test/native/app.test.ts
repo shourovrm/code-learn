@@ -8,7 +8,7 @@ import { fakeMicromamba } from "../fake-micromamba.js";
 import { sandboxReady } from "../sandbox-ready.js";
 import { tempDir } from "../temp.js";
 import { FIXTURES, fixtureTrackFiles } from "./helpers.js";
-import { lessonText } from "../lesson-fixture.js";
+import { lessonFields } from "../lesson-fixture.js";
 
 const roadmap = (name: string) => readFileSync(join(FIXTURES, "roadmaps", `${name}.yaml`), "utf8");
 const exercise = (name: string) => readFileMap(join(FIXTURES, "exercises", name));
@@ -214,7 +214,7 @@ describe.runIf(sandboxReady())("app (native sandbox, end to end)", () => {
   });
 
   it("runs a lesson's examples in the sandbox before saving it, and runs one again on request without recording", async () => {
-    const lesson = (id: string, files: Record<string, string>) => ({ id, concept: "sh.basics", title: "Echo", markdown: lessonText("Run this:\n\n```example\n1\n```\n"), examples: [files] });
+    const lesson = (id: string, files: Record<string, string>) => ({ id, concept: "sh.basics", title: "Echo", ...lessonFields("Run this:\n\n```example\n1\n```\n"), examples: [files] });
     await expect(app.saveLesson(ws, lesson("broken", { "main.sh": "echo oops >&2\nexit 3\n" }), "shell")).rejects.toThrow(/Example 1 didn't run cleanly \(exit 3\)[\s\S]*oops/);
     expect(await app.saveLesson(ws, lesson("echo", { "main.sh": "echo hello\n" }), "shell")).toEqual({ lesson: "echo" });
     expect(app.getLesson(ws, "echo", "shell").examples).toEqual([{ "main.sh": "echo hello\n" }]);

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Lessons no longer follow one fixed outline. Each lesson takes the shape its idea needs, and its headings name its subject. code-learn shows the same frame around every lesson: what you will be able to do at the top, a self-check with hidden answers, and the topic's sources at the end. A lesson written in the old outline says so; rebuild its topic to rewrite it.
+
 ## 0.2.4 (2026-11-10)
 
 - A model for each kind of job: Planning, Lessons, Exercises and Tutor. Connect now shows agents only, and the next screen, "Choose a model for each job", offers the models your agent has enabled. Settings has the same four menus. Lessons are most of a course's cost, so a smaller model there saves the most.

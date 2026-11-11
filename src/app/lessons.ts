@@ -74,7 +74,7 @@ export async function saveLesson(ws: string, input: unknown, bound?: string): Pr
     }
     const { markdown, examples: _, ...meta } = lesson;
     const checked = examples.length ? { examples: examples.length, track: course.track, style } : {};
-    store.writeLesson(courseId, { format_version: 1, ...meta, created: new Date().toISOString(), ...checked }, markdown, examples);
+    store.writeLesson(courseId, { format_version: 2, ...meta, created: new Date().toISOString(), ...checked }, markdown, examples);
   };
   // Examples run on the track's image, so hold its lock too (course, then track, as saveExercise does).
   await store.withLock(store.courseLockPath(courseId), async () => {
@@ -116,9 +116,14 @@ export async function runExample(ws: string, lessonId: string, index: number, bo
 
 /** The lesson and the learner's notes. Reading records nothing: only markLessonRead does. */
 export function getLesson(ws: string, id: string, bound?: string) {
-  const { record, markdown, notes, examples } = store.readLesson(activeCourse(ws, bound).course, id);
+  const course = activeCourse(ws, bound);
+  const { record, markdown, notes, examples } = store.readLesson(course.course, id);
+  const frame = record.format_version === 2 ? { goal: record.goal, selfCheck: record.selfCheck } : { outdated: true };
+  // The research already chose each concept's sources; its refs index the roadmap's list.
+  const refs = course.concepts.find((c) => c.id === record.concept)?.refs ?? [];
+  const sources = refs.flatMap((i) => course.sources?.[i] ?? []);
   // The style says how its examples run: io ones take typed input (runExampleLive), unit ones run as tests.
-  return { id: record.id, concept: record.concept, title: record.title, markdown, notes, examples, ...(record.style ? { style: record.style } : {}) };
+  return { id: record.id, concept: record.concept, title: record.title, markdown, ...frame, sources, notes, examples, ...(record.style ? { style: record.style } : {}) };
 }
 
 /**

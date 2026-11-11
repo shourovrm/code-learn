@@ -42,25 +42,25 @@ const CONCEPT_FIELDS =
   `Give every concept a \`practice\` line (at most 300 characters): how a graded activity practises it, one ${GRADEABLE}, such as "fix a loop that retries forever so it stops after a budget". If no graded activity can practise a concept, it isn't a concept: fold it into a neighbouring concept's lesson. In a lessons-only course (\`style: none\`) nothing is graded: there, \`practice\` says what the learner will be able to do or explain after the lesson, and no concept is folded away for lacking a graded activity. Add up to 5 \`pitfalls\` (each at most 200 characters): the common mistakes your sources name, not ones from memory. \`refs\` lists the indexes (from 0) of the \`sources\` each concept's practice and pitfalls come from; with \`sources\`, every concept with \`practice\` or \`pitfalls\` needs at least one. For a topic about building tools or systems rather than a language, a \`practice\` line names one of these: build the piece against a scripted fake; fix an anti-pattern from \`pitfalls\`; write a policy or grader that recorded cases are replayed through; write a schema or config that a scripted consumer reads; or make the smallest change that turns a recorded failure into a pass.`;
 
 /**
- * One teaching structure for every lesson (Rosenshine's principles, the worked-example effect, practice testing; proposal §3.6).
- * The names and their order are fixed because lessons written from a looser list opened three different ways; parseLesson
- * (schemas.ts) checks them on save, and a list is easier for a small model to follow than a paragraph.
+ * What a lesson does, not an outline (Rosenshine's principles, the worked-example effect, practice testing; proposal §3.6).
+ * A fixed list of headings made every lesson the same recipe whatever its subject needed, so only the parts the app
+ * shows itself (goal, self-check, sources) are fixed, as save_lesson fields; the text takes the shape its idea needs.
  */
-const LESSON_SHAPE = `**The lesson.** Every lesson has the same parts, in the same order, under the same names, so the course reads as one book. Use these labels and headings exactly as written, and never copy any other words of these instructions into the lesson. No title heading: code-learn shows the title. code-learn rejects a lesson that lacks the line saying what the learner will be able to do, or has one of these \`##\` sections missing, repeated or out of order.
+const LESSON_SHAPE = `**The lesson.** code-learn shows three parts of every lesson itself, the same way each time, so pass them as fields of \`save_lesson\`, not in the text:
 
-1. Two opening lines: "**Last time:**", a recap of the topics this one builds on (its \`requires\`; leave it out of the first lesson), then "**You will be able to:**", what the learner will be able to do (from the concept's \`practice\`).
-2. \`## Why it matters\`: one real situation where the learner needs this, in two or three sentences.
-3. \`## The idea in small steps\`: a \`###\` heading "Step N: ..." for each step. Each step teaches one new thing, builds on the step before, and should show a small example first, then state the rule.
-4. \`## Worked example\`: one worked example, step by step.
-5. \`## Common mistakes\`: the common mistakes from the concept's \`pitfalls\`, with one shown and corrected.
-6. \`## Remember\`: 3 to 5 short facts worth keeping, one line each.
-7. \`## Self-check\`: two questions the lesson has answered, which ask the learner to use the idea, not to repeat a definition.
-8. \`## Answers\`: their answers.
-9. \`## Try it\` (optional): one small task the learner can ask the tutor to review.
-10. \`## Sources\`: the sources it used, from the concept's \`refs\`, each with its title and link.
+- \`goal\`: one sentence: what the learner will be able to do after this lesson, from the concept's \`practice\`.
+- \`selfCheck\`: two questions, each with a \`question\` and an \`answer\`, that ask the learner to use the idea, not to repeat a definition. The lesson must have taught what they need.
+- code-learn lists the sources from the concept's \`refs\`; don't list them.
 
+The Markdown is the teaching. Write it the way a good textbook for this subject would. There is no fixed outline: give the lesson the order its idea needs. A procedure, for instance, is best walked through once; a rule with exceptions starts from the plain case and then the case that breaks it; an idea learners often get wrong can start from that wrong idea and why it seems right. No title heading: code-learn shows the title. Add \`##\` headings only when the lesson has distinct parts, and name each heading after its subject, such as "When the rules and the Act disagree", never after its role in the lesson, such as an introduction, a summary, an example or the mistakes. Never copy any other words of these instructions into the lesson. Whatever its shape, a lesson does these things:
+
+- Start from what the learner already has: a situation they will recognise, or what the topics this one \`requires\` taught, in a sentence or two.
+- Show before you tell: a small, concrete example comes before the rule it shows. Where it fits, carry one example through the lesson, changing one thing at a time, so each change shows only the new idea.
+- Work at least one complete example through, the way the learner will have to.
+- Take up each mistake from the concept's \`pitfalls\` where it happens: show why it seems right and what fixes it. Don't gather them into a list at the end.
+- Stop when the idea is taught. A closing summary belongs only in a lesson long enough to lose the thread. You may end with one small task the learner can ask the tutor to review.
 - Assume the learner knows only what the earlier topics taught and what the roadmap's \`goal\` says they already know; where it helps, compare a new idea with something they know. Define each new term in plain words where it first appears, in bold there and nowhere else, and from then on use that same word for that thing. Call a thing what the roadmap's earlier topics call it. Spell out an abbreviation the first time. Use nothing from a later topic; if one must be named, say which topic teaches it.
-- Before a code block or an example, say in one sentence what it shows. Where it fits, carry one example through the steps, changing one thing at a time, so each step differs from the last only by its new idea. Write short sentences, one idea each, to the learner as "you". Keep it to about a five-minute read; a lesson that needs more means the concept is too big.`;
+- Before a code block or an example, say in one sentence what it shows. Write short sentences, one idea each, to the learner as "you". Keep it to about a five-minute read; a lesson that needs more means the concept is too big.`;
 
 /** When a lesson gets a picture, and how it is drawn: the app renders these fences (docs/desktop/DESIGN.md §4.3). */
 const DIAGRAMS =

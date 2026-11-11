@@ -70,8 +70,12 @@ export function lessonView(l: CoreLesson): Lesson {
     concept: l.concept,
     title: l.title,
     markdown: l.markdown,
+    ...(l.goal ? { goal: l.goal } : {}),
+    ...(l.selfCheck ? { selfCheck: l.selfCheck.map((c) => ({ question: c.question, answer: c.answer })) } : {}),
+    ...(l.outdated ? { outdated: true } : {}),
     notes: l.notes,
     examples: l.examples.map((files) => ({ files: Object.entries(files).map(([path, text]) => ({ path, text })) })),
+    sources: l.sources.filter((s) => isSafeLink(s.url)).map((s) => ({ title: s.title, url: s.url })),
     ...(l.style ? { style: l.style } : {}),
   };
 }

@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { afterEach, expect, it, vi } from 'vitest';
 import * as core from '../../../src/app';
-import { lessonText } from '../../../test/lesson-fixture';
+import { lessonFields } from '../../../test/lesson-fixture';
 import { quizFiles, quizRoadmap } from '../../../test/quiz-fixture';
 import { desktopState } from './state';
 import { fakeCore, live, until } from './testing/fakes';
@@ -13,7 +13,7 @@ it('checks a quiz through live core, then opens a new quiz and restores the styl
   vi.stubEnv('CODE_LEARN_HOME', tempDir());
   const ws = tempDir();
   await core.saveRoadmap(ws, 'quiz', quizRoadmap);
-  await core.saveLesson(ws, { id: 'intro', concept: 'a', title: 'A', markdown: lessonText('Read this.') });
+  await core.saveLesson(ws, { id: 'intro', concept: 'a', title: 'A', ...lessonFields('Read this.') });
   await core.markLessonRead(ws, 'intro');
   await core.saveExercise(ws, quizFiles());
   const state = desktopState(tempDir());

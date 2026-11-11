@@ -1,0 +1,120 @@
+- generic [active] [ref=f2e1]:
+  - navigation [ref=f2e2]:
+    - generic [ref=f2e3]: cl
+    - button "Learn" [ref=f2e4] [cursor=pointer]
+    - button "Practice" [ref=f2e7] [cursor=pointer]
+    - button "Progress" [ref=f2e10] [cursor=pointer]
+    - button "Contents" [ref=f2e13] [cursor=pointer]
+  - region "Contents" [ref=f2e16]:
+    - generic [ref=f2e17]: Procurement law
+    - heading "Contents" [level=2] [ref=f2e18]
+    - generic [ref=f2e19]: Lessons
+    - generic [ref=f2e20]: The Act and its rules
+    - generic [ref=f2e22]: Who issues guidance
+    - generic [ref=f2e24]: Amending a rule
+    - generic [ref=f2e26]: Practice
+    - generic [ref=f2e27]: "Exercise: Act and rules"
+    - generic [ref=f2e29]: "Review: bid deadlines"
+  - main [ref=f2e31]:
+    - generic [ref=f2e32]:
+      - generic [ref=f2e33]: Practice
+      - heading "Act and rules" [level=1] [ref=f2e34]
+      - paragraph [ref=f2e35]: Pick one answer for each question. Nothing is graded until you press Check.
+      - group "Question 1 of 5" [ref=f2e37]:
+        - heading "The unit wants current guidance on the rules. Which body should it check?" [level=2] [ref=f2e38]
+        - generic [ref=f2e39]:
+          - generic [ref=f2e40] [cursor=pointer]:
+            - radio "A CPTU, which still issues the current guidance under that name" [ref=f2e41]
+            - generic [ref=f2e42]: A
+            - generic [ref=f2e43]: CPTU, which still issues the current guidance under that name
+          - generic [ref=f2e44] [cursor=pointer]:
+            - radio "B The ministry's own IT unit, which writes the binding guidance" [ref=f2e45]
+            - generic [ref=f2e46]: B
+            - generic [ref=f2e47]: The ministry's own IT unit, which writes the binding guidance
+          - generic [ref=f2e48] [cursor=pointer]:
+            - radio "C BPPA, which was formerly known as CPTU" [checked] [ref=f2e49]
+            - generic [ref=f2e50]: C
+            - generic [ref=f2e51]: BPPA, which was formerly known as CPTU
+      - group "Question 2 of 5" [ref=f2e53]:
+        - heading "The Act gives a bid deadline of 14 days and the rules say 10. Which one applies?" [level=2] [ref=f2e54]
+        - generic [ref=f2e55]:
+          - generic [ref=f2e56] [cursor=pointer]:
+            - radio "A The Act, because rules cannot override it" [checked] [ref=f2e57]
+            - generic [ref=f2e58]: A
+            - generic [ref=f2e59]: The Act, because rules cannot override it
+          - generic [ref=f2e60] [cursor=pointer]:
+            - radio "B The rules, because they are newer and more specific" [ref=f2e61]
+            - generic [ref=f2e62]: B
+            - generic [ref=f2e63]: The rules, because they are newer and more specific
+          - generic [ref=f2e64] [cursor=pointer]:
+            - radio "C Whichever is better for the bidder" [ref=f2e65]
+            - generic [ref=f2e66]: C
+            - generic [ref=f2e67]: Whichever is better for the bidder
+      - group "Question 3 of 5" [ref=f2e69]:
+        - heading "How is a rule made under the Act changed?" [level=2] [ref=f2e70]
+        - generic [ref=f2e71]:
+          - generic [ref=f2e72] [cursor=pointer]:
+            - radio "A By the authority the Act names, following the Act's procedure" [ref=f2e73]
+            - generic [ref=f2e74]: A
+            - generic [ref=f2e75]: By the authority the Act names, following the Act's procedure
+          - generic [ref=f2e76] [cursor=pointer]:
+            - radio "B By a circular from the procuring entity" [ref=f2e77]
+            - generic [ref=f2e78]: B
+            - generic [ref=f2e79]: By a circular from the procuring entity
+          - generic [ref=f2e80] [cursor=pointer]:
+            - radio "C By a court order on a bidder's request" [ref=f2e81]
+            - generic [ref=f2e82]: C
+            - generic [ref=f2e83]: By a court order on a bidder's request
+      - group "Question 4 of 5" [ref=f2e85]:
+        - heading "A rule cites section 12 of the Act, and the Act has since been renumbered. What should the unit do?" [level=2] [ref=f2e86]
+        - generic [ref=f2e87]:
+          - generic [ref=f2e88] [cursor=pointer]:
+            - radio "A Treat the citation as void until the rule is reissued" [ref=f2e89]
+            - generic [ref=f2e90]: A
+            - generic [ref=f2e91]: Treat the citation as void until the rule is reissued
+          - generic [ref=f2e92] [cursor=pointer]:
+            - radio "B Check the amendment's table to find the provision the rule meant" [ref=f2e93]
+            - generic [ref=f2e94]: B
+            - generic [ref=f2e95]: Check the amendment's table to find the provision the rule meant
+          - generic [ref=f2e96] [cursor=pointer]:
+            - radio "C Read it as section 12 of the current Act" [checked] [ref=f2e97]
+            - generic [ref=f2e98]: C
+            - generic [ref=f2e99]: Read it as section 12 of the current Act
+      - group "Question 5 of 5" [ref=f2e101]:
+        - heading "The unit's template contract quotes a rule that has been replaced. When must it be updated?" [level=2] [ref=f2e102]
+        - generic [ref=f2e103]:
+          - generic [ref=f2e104] [cursor=pointer]:
+            - radio "A Before its next use, once the replacement is in force" [checked] [ref=f2e105]
+            - generic [ref=f2e106]: A
+            - generic [ref=f2e107]: Before its next use, once the replacement is in force
+          - generic [ref=f2e108] [cursor=pointer]:
+            - radio "B Only when a bidder complains" [ref=f2e109]
+            - generic [ref=f2e110]: B
+            - generic [ref=f2e111]: Only when a bidder complains
+          - generic [ref=f2e112] [cursor=pointer]:
+            - 'radio "C Never: signed templates stay valid" [ref=f2e113]'
+            - generic [ref=f2e114]: C
+            - generic [ref=f2e115]: "Never: signed templates stay valid"
+    - generic [ref=f2e117]:
+      - generic "Answered" [ref=f2e118]:
+        - generic [ref=f2e119]: "1"
+        - generic [ref=f2e120]: "2"
+        - generic [ref=f2e121]: "3"
+        - generic [ref=f2e122]: "4"
+        - generic [ref=f2e123]: "5"
+      - generic [ref=f2e124]: 4 of 5 answered, question 3 left
+      - button "Check" [ref=f2e125] [cursor=pointer]
+  - complementary "Tutor" [ref=f2e126]:
+    - heading "Tutor" [level=3] [ref=f2e127]
+    - generic [ref=f2e128]:
+      - button "Hint" [ref=f2e129] [cursor=pointer]
+      - button "Show me" [ref=f2e130] [cursor=pointer]
+    - generic [ref=f2e131]: Stuck on a question? Ask for a hint. I will not give you the answer to a question you have not tried.
+    - generic [ref=f2e132]: What is the difference between an Act and its rules?
+    - generic [ref=f2e133]: The Act is the law Parliament passed. The rules fill in how it is carried out, and they can only do what the Act allows.
+    - textbox "Ask the tutor" [ref=f2e135]:
+      - /placeholder: Ask about this exercise
+  - generic [ref=f2e136]:
+    - button "Before Check" [ref=f2e137] [cursor=pointer]
+    - button "After Check" [ref=f2e138] [cursor=pointer]
+    - button "Contents" [ref=f2e139] [cursor=pointer]

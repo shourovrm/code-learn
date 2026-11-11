@@ -1,7 +1,10 @@
-import { LESSON_GOAL, LESSON_SECTIONS } from "../src/schemas.js";
+/** What every lesson carries besides its text: the goal and the self-check code-learn shows around the text. */
+export const LESSON_FRAME = {
+  goal: "Read two words from input.",
+  selfCheck: [{ question: "What does `read a b` store in `b`?", answer: "The second word." }],
+};
 
-/** A lesson's Markdown with every part code-learn asks for, and `body` as its opening text. */
-export function lessonText(body = "Text."): string {
-  const sections = LESSON_SECTIONS.map((name) => `## ${name}\n\nText.`);
-  return [`${LESSON_GOAL} do it.`, body, ...sections].join("\n\n");
+/** A lesson's fields for `save_lesson`, with `markdown` as its text. */
+export function lessonFields(markdown = "Text.") {
+  return { markdown, ...LESSON_FRAME };
 }

@@ -256,6 +256,14 @@ export interface Lesson {
   title: string;
   /** Static Markdown, rendered with raw HTML stripped (§2.1). It places example N as a fenced block `example` holding N. */
   markdown: string;
+  /** What the learner will be able to do, shown above the text. Absent on an `outdated` lesson. */
+  goal?: string;
+  /** Self-check questions, shown after the text with each answer closed until asked. Absent on an `outdated` lesson. */
+  selfCheck?: { question: string; answer: string }[];
+  /** The sources the concept's research named, from the roadmap. */
+  sources: { title: string; url: string }[];
+  /** Saved when a lesson's goal and self-check were fixed headings in its text: rebuilding its topic rewrites it. */
+  outdated?: boolean;
   notes: string;
   /** Runnable examples, in order: each runs in the sandbox on request and is never recorded (§4.3). */
   examples: { files: { path: string; text: string }[] }[];

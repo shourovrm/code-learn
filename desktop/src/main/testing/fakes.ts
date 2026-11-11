@@ -207,7 +207,7 @@ export function fakeCore() {
       return c.install(ref, digest);
     },
     dropProposal: async (ref) => void (c.proposals = c.proposals.filter((p) => p.track !== ref)),
-    getLesson: (_ws, id, bound) => (c.bound.push(bound), { examples: [], ...c.lessons.find((l) => l.id === id)! }),
+    getLesson: (_ws, id, bound) => (c.bound.push(bound), { examples: [], sources: [], ...c.lessons.find((l) => l.id === id)! }),
     // Run: asks for a name and greets it; stops when killed.
     runInteractive: async (_ws, slug, bound, output, options) => {
       c.bound.push(bound);

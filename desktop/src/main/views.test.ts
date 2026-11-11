@@ -64,9 +64,18 @@ describe('views (§2.2, D4)', () => {
   });
 
   it('builds a lesson from named fields only, so nothing core adds later reaches the window', () => {
-    const lesson = { id: 'l1', concept: 'values', title: 'Values', markdown: '# Values', notes: 'mine', examples: [{ 'main.py': 'print(1)' }], style: 'io' as const, solution: 'SECRET' };
-    expect(lessonView(lesson)).toEqual({ id: 'l1', concept: 'values', title: 'Values', markdown: '# Values', notes: 'mine', examples: [{ files: [{ path: 'main.py', text: 'print(1)' }] }], style: 'io' });
+    const lesson = { id: 'l1', concept: 'values', title: 'Values', markdown: '# Values', notes: 'mine', examples: [{ 'main.py': 'print(1)' }], style: 'io' as const, sources: [], solution: 'SECRET' };
+    expect(lessonView(lesson)).toEqual({ id: 'l1', concept: 'values', title: 'Values', markdown: '# Values', notes: 'mine', examples: [{ files: [{ path: 'main.py', text: 'print(1)' }] }], sources: [], style: 'io' });
     expect(lessonView({ ...lesson, style: undefined })).not.toHaveProperty('style');
+  });
+
+  it("passes a lesson's goal, self-check and safe sources, and marks an old lesson", () => {
+    const frame = { goal: 'Read two words.', selfCheck: [{ question: 'Q?', answer: 'A.' }] };
+    const sources = [{ title: 'Spec', url: 'https://example.com/spec' }, { title: 'Bad', url: 'javascript:alert(1)' }];
+    const lesson = { id: 'l1', concept: 'values', title: 'Values', markdown: 'x', notes: '', examples: [], ...frame, sources };
+    expect(lessonView(lesson)).toMatchObject({ ...frame, sources: [sources[0]] });
+    expect(lessonView(lesson)).not.toHaveProperty('outdated');
+    expect(lessonView({ ...lesson, goal: undefined, selfCheck: undefined, outdated: true })).toMatchObject({ outdated: true, sources: [sources[0]] });
   });
 
   it("builds an example's run from named fields only", () => {

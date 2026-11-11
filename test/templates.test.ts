@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { AGENTS_SECTION, AUTHOR_AGENT, JOB_BRIEFS, type JobKind } from "../src/templates.js";
-import { LESSON_GOAL, LESSON_SECTIONS } from "../src/schemas.js";
 
 // Each rule below closes a failure the cross-model bench observed (docs/bench/results.md).
 describe("tutor instructions (AGENTS.md section)", () => {
@@ -369,55 +368,48 @@ describe("research and teaching quality", () => {
     expect(brief).toMatch(/If nothing should change, don't save, and say why/);
   });
 
-  it("gives every lesson the same teaching structure, built on the concept's practice and pitfalls", () => {
+  // A fixed outline ("Why it matters", "Worked example", "Common mistakes"...) made every lesson the same recipe.
+  it("lets the subject shape each lesson, with headings that name the subject", () => {
     for (const text of [AGENTS_SECTION, JOB_BRIEFS.lesson]) {
-      expect(text).toMatch(/"\*\*You will be able to:\*\*", what the learner will be able to do \(from the concept's `practice`\)/);
-      expect(text).toMatch(/`## Worked example`: one worked example, step by step/);
-      expect(text).toMatch(/`## Common mistakes`: the common mistakes from the concept's `pitfalls`, with one shown and corrected/);
-      expect(text).toMatch(/`## Self-check`: two questions .*\n\d+\. `## Answers`: their answers/);
-      expect(text).toMatch(/`## Try it` \(optional\)/);
-      expect(text).toMatch(/`## Why it matters`: one real situation where the learner needs this/);
-    }
-  });
-
-  // The saved lessons opened with "Recap:", "Last time:" or "Last topic:", and put Sources before or after Try it.
-  it("names every part of a lesson as a numbered list in the order code-learn checks on save", () => {
-    for (const text of [AGENTS_SECTION, JOB_BRIEFS.lesson]) {
-      expect(text).toMatch(/the same parts, in the same order, under the same names/);
-      expect(text).toMatch(/never copy any other words of these instructions into the lesson/);
+      expect(text).toMatch(/There is no fixed outline/);
+      expect(text).toMatch(/name each heading after its subject, such as "When the rules and the Act disagree", never after its role in the lesson/);
+      expect(text).toMatch(/Never copy any other words of these instructions into the lesson/);
       expect(text).toMatch(/No title heading/);
-      expect(text).toMatch(/code-learn rejects a lesson/);
-      const names = ['"**Last time:**"', `"${LESSON_GOAL}"`, ...LESSON_SECTIONS.map((name) => `\`## ${name}\`:`)];
-      const places = names.map((name) => text.indexOf(name));
-      expect(places).not.toContain(-1);
-      expect(places).toEqual([...places].sort((x, y) => x - y));
-      expect(text.indexOf("`## Try it`")).toBeGreaterThan(text.indexOf("`## Answers`"));
-      expect(text.indexOf("`## Try it`")).toBeLessThan(text.indexOf("`## Sources`"));
+      expect(text).not.toMatch(/`## (Why it matters|The idea in small steps|Worked example|Common mistakes|Remember|Self-check|Answers|Sources)`/);
     }
   });
 
-  it("writes every lesson for a beginner who knows only the earlier topics, ending with a short Remember section", () => {
+  it("passes the goal and the self-check as fields, and takes the sources from the concept's refs", () => {
     for (const text of [AGENTS_SECTION, JOB_BRIEFS.lesson]) {
-      expect(text).toMatch(/a recap of the topics this one builds on \(its `requires`; leave it out of the first lesson\)/);
-      expect(text).toMatch(/show a small example first, then state the rule/);
-      expect(text).toMatch(/`## Remember`: 3 to 5 short facts worth keeping, one line each/);
+      expect(text).toMatch(/`goal`: one sentence: what the learner will be able to do after this lesson, from the concept's `practice`/);
+      expect(text).toMatch(/`selfCheck`: two questions, each with a `question` and an `answer`, that ask the learner to use the idea, not to repeat a definition/);
+      expect(text).toMatch(/code-learn lists the sources from the concept's `refs`; don't list them/);
+    }
+  });
+
+  it("keeps the teaching moves, placed where the content needs them", () => {
+    for (const text of [AGENTS_SECTION, JOB_BRIEFS.lesson]) {
+      expect(text).toMatch(/Show before you tell: a small, concrete example comes before the rule it shows/);
+      expect(text).toMatch(/Work at least one complete example through/);
+      expect(text).toMatch(/Take up each mistake from the concept's `pitfalls` where it happens/);
+      expect(text).toMatch(/Don't gather them into a list at the end/);
+      expect(text).toMatch(/carry one example through the lesson, changing one thing at a time/);
+      expect(text).toMatch(/one small task the learner can ask the tutor to review/);
+    }
+  });
+
+  it("writes every lesson for a beginner who knows only the earlier topics", () => {
+    for (const text of [AGENTS_SECTION, JOB_BRIEFS.lesson]) {
       expect(text).toMatch(/Assume the learner knows only what the earlier topics taught/);
       expect(text).toMatch(/Define each new term in plain words where it first appears, in bold there/);
       // A list of terms before the steps defined words the learner had no example for yet, and defined each one twice.
       expect(text).not.toMatch(/New words/);
       expect(text).toMatch(/Use nothing from a later topic/);
       expect(text).toMatch(/about a five-minute read/);
-    }
-  });
-
-  it("keeps a lesson's steps in sequence and its words the same throughout", () => {
-    for (const text of [AGENTS_SECTION, JOB_BRIEFS.lesson]) {
-      expect(text).toMatch(/Each step teaches one new thing, builds on the step before/);
       expect(text).toMatch(/use that same word for that thing/);
       expect(text).toMatch(/Call a thing what the roadmap's earlier topics call it/);
       expect(text).toMatch(/Spell out an abbreviation the first time/);
       expect(text).toMatch(/Before a code block or an example, say in one sentence what it shows/);
-      expect(text).toMatch(/carry one example through the steps, changing one thing at a time/);
     }
   });
 

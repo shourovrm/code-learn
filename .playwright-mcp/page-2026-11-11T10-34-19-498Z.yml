@@ -1,0 +1,128 @@
+- generic [active] [ref=e1]:
+  - navigation [ref=e2]:
+    - generic [ref=e3]: cl
+    - button "Learn" [ref=e4] [cursor=pointer]
+    - button "Practice" [ref=e7] [cursor=pointer]
+    - button "Progress" [ref=e10] [cursor=pointer]
+    - button "Contents" [ref=e13] [cursor=pointer]
+  - region "Contents" [ref=e16]:
+    - generic [ref=e17]: Procurement law
+    - heading "Contents" [level=2] [ref=e18]
+    - generic [ref=e19]: Lessons
+    - generic [ref=e20]: The Act and its rules
+    - generic [ref=e22]: Who issues guidance
+    - generic [ref=e24]: Amending a rule
+    - generic [ref=e26]: Practice
+    - generic [ref=e27]: "Exercise: Act and rules"
+    - generic [ref=e29]: "Review: bid deadlines"
+  - main [ref=e31]:
+    - generic [ref=e32]:
+      - generic [ref=e33]:
+        - generic [ref=e34]: Practice
+        - heading "Act and rules" [level=1] [ref=e35]
+        - paragraph [ref=e36]: Five situations. Pick one answer for each, then press Check.
+      - group "Question 1 of 5" [ref=e38]:
+        - heading "The unit wants current guidance on the rules. Which body should it check?" [level=2] [ref=e40]
+        - generic [ref=e41]:
+          - generic:
+            - radio "A CPTU, which still issues the current guidance under that name"
+            - generic: A
+            - generic: CPTU, which still issues the current guidance under that name
+          - generic:
+            - radio "B The ministry's own IT unit, which writes the binding guidance"
+            - generic: B
+            - generic: The ministry's own IT unit, which writes the binding guidance
+          - generic:
+            - radio "C BPPA, which was formerly known as CPTU Your pick" [checked]
+            - generic: C
+            - generic: BPPA, which was formerly known as CPTU
+            - generic: Your pick
+        - status [ref=e42]:
+          - generic [ref=e43]: Not quite
+          - text: This reverses the change of name. The unit would be looking for guidance under a name that no longer issues it.
+      - group "Question 2 of 5" [ref=e45]:
+        - heading "The Act gives a bid deadline of 14 days and the rules say 10. Which one applies?" [level=2] [ref=e47]
+        - generic [ref=e48]:
+          - generic:
+            - radio "A The Act, because rules cannot override it Your pick" [checked]
+            - generic: A
+            - generic: The Act, because rules cannot override it
+            - generic: Your pick
+          - generic:
+            - radio "B The rules, because they are newer and more specific"
+            - generic: B
+            - generic: The rules, because they are newer and more specific
+          - generic:
+            - radio "C Whichever is better for the bidder"
+            - generic: C
+            - generic: Whichever is better for the bidder
+        - status [ref=e49]: Correct
+      - group "Question 3 of 5" [ref=e51]:
+        - heading "How is a rule made under the Act changed?" [level=2] [ref=e53]
+        - generic [ref=e54]:
+          - generic:
+            - radio "A By the authority the Act names, following the Act's procedure"
+            - generic: A
+            - generic: By the authority the Act names, following the Act's procedure
+          - generic:
+            - radio "B By a circular from the procuring entity"
+            - generic: B
+            - generic: By a circular from the procuring entity
+          - generic:
+            - radio "C By a court order on a bidder's request"
+            - generic: C
+            - generic: By a court order on a bidder's request
+        - status [ref=e55]: Correct
+      - group "Question 4 of 5" [ref=e57]:
+        - heading "A rule cites section 12 of the Act, and the Act has since been renumbered. What should the unit do?" [level=2] [ref=e59]
+        - generic [ref=e60]:
+          - generic:
+            - radio "A Treat the citation as void until the rule is reissued"
+            - generic: A
+            - generic: Treat the citation as void until the rule is reissued
+          - generic:
+            - radio "B Check the amendment's table to find the provision the rule meant"
+            - generic: B
+            - generic: Check the amendment's table to find the provision the rule meant
+          - generic:
+            - radio "C Read it as section 12 of the current Act Your pick" [checked]
+            - generic: C
+            - generic: Read it as section 12 of the current Act
+            - generic: Your pick
+        - status [ref=e61]:
+          - generic [ref=e62]: Not quite
+          - text: Section numbers can move when an Act is renumbered, so the number alone does not say which provision is meant.
+      - group "Question 5 of 5" [ref=e64]:
+        - heading "The unit's template contract quotes a rule that has been replaced. When must it be updated?" [level=2] [ref=e66]
+        - generic [ref=e67]:
+          - generic:
+            - radio "A Before its next use, once the replacement is in force Your pick" [checked]
+            - generic: A
+            - generic: Before its next use, once the replacement is in force
+            - generic: Your pick
+          - generic:
+            - radio "B Only when a bidder complains"
+            - generic: B
+            - generic: Only when a bidder complains
+          - generic:
+            - 'radio "C Never: signed templates stay valid"'
+            - generic: C
+            - generic: "Never: signed templates stay valid"
+        - status [ref=e68]: Correct
+      - generic [ref=e69]:
+        - button "Check" [ref=e70] [cursor=pointer]
+        - status [ref=e71]: 3 of 5 correct. Read the notes on questions 1 and 4, then change your picks and Check again.
+  - complementary "Tutor" [ref=e72]:
+    - heading "Tutor" [level=3] [ref=e73]
+    - generic [ref=e74]:
+      - button "Hint" [ref=e75] [cursor=pointer]
+      - button "Show me" [ref=e76] [cursor=pointer]
+    - generic [ref=e77]: Stuck on a question? Ask for a hint. I will not give you the answer to a question you have not tried.
+    - generic [ref=e78]: What is the difference between an Act and its rules?
+    - generic [ref=e79]: The Act is the law Parliament passed. The rules fill in how it is carried out, and they can only do what the Act allows.
+    - textbox "Ask the tutor" [ref=e81]:
+      - /placeholder: Ask about this exercise
+  - generic [ref=e82]:
+    - button "Before Check" [ref=e83] [cursor=pointer]
+    - button "After Check" [ref=e84] [cursor=pointer]
+    - button "Contents" [ref=e85] [cursor=pointer]

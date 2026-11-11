@@ -339,13 +339,19 @@ export function createMock(options: MockOptions = {}): CodeLearnApi {
   }
 
   function addConcept(concept: Concept) {
+    const frame = {
+      goal: `Explain ${concept.title.toLowerCase()} in your own words.`,
+      selfCheck: [{ question: `When would you reach for ${concept.title.toLowerCase()}?`, answer: 'When the screen must change after the learner acts.' }],
+      sources: [{ title: 'React: Learn', url: 'https://react.dev/learn' }],
+    };
     const own: Omit<Lesson, 'examples'>[] = [
-      { id: `${concept.id}-1`, concept: concept.id, title: `What ${concept.title.toLowerCase()} is`, markdown: `# ${concept.title}\n\n${concept.title} in one idea, before any code.`, notes: '' },
+      { id: `${concept.id}-1`, concept: concept.id, title: `What ${concept.title.toLowerCase()} is`, markdown: `# ${concept.title}\n\n${concept.title} in one idea, before any code.`, ...frame, notes: '' },
       {
         id: `${concept.id}-2`,
         concept: concept.id,
         title: 'useState',
         markdown: '# useState\n\nA value React remembers. Set it, and the screen updates.\n\n```\nconst [count, setCount] = useState(0);\n```\n\nAfter two clicks on **Add one**, the counter shows `Count: 2`.',
+        ...frame,
         notes: '',
       },
     ];

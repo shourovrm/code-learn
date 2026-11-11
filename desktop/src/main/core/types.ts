@@ -67,6 +67,14 @@ export interface CoreLesson {
   concept: string;
   title: string;
   markdown: string;
+  /** What the learner will be able to do, shown above the text. Absent on an `outdated` lesson. */
+  goal?: string;
+  /** Self-check questions, shown after the text with each answer closed until asked. Absent on an `outdated` lesson. */
+  selfCheck?: { question: string; answer: string }[];
+  /** The sources the concept's research named, from the roadmap. */
+  sources: { title: string; url: string }[];
+  /** Saved when a lesson's goal and self-check were fixed headings in its text: rebuilding its topic rewrites it. */
+  outdated?: boolean;
   notes: string;
   /** Runnable examples: file maps that follow the track's contract. */
   examples: Record<string, string>[];

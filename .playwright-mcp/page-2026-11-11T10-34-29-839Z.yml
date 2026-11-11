@@ -1,0 +1,54 @@
+- generic [active] [ref=f1e1]:
+  - navigation [ref=f1e2]:
+    - generic [ref=f1e3]: cl
+    - button "Learn" [ref=f1e4] [cursor=pointer]
+    - button "Practice" [ref=f1e7] [cursor=pointer]
+    - button "Progress" [ref=f1e10] [cursor=pointer]
+    - button "Contents" [ref=f1e13] [cursor=pointer]
+  - main [ref=f1e16]:
+    - generic [ref=f1e17]:
+      - generic [ref=f1e18]: Practice / Act and rules
+      - group "Progress" [ref=f1e19]:
+        - button "1 ×" [ref=f1e20] [cursor=pointer]
+        - button "2 ✓" [ref=f1e21] [cursor=pointer]
+        - button "3 ✓" [ref=f1e22] [cursor=pointer]
+        - button "4 ×" [ref=f1e23] [cursor=pointer]
+        - button "5 ✓" [ref=f1e24] [cursor=pointer]
+      - group "Question 4 of 5" [ref=f1e27]:
+        - heading "A rule cites section 12 of the Act, and the Act has since been renumbered. What should the unit do?" [level=2] [ref=f1e29]
+        - generic [ref=f1e30]:
+          - generic:
+            - radio "A Treat the citation as void until the rule is reissued"
+            - generic: A
+            - generic: Treat the citation as void until the rule is reissued
+          - generic:
+            - radio "B Check the amendment's table to find the provision the rule meant"
+            - generic: B
+            - generic: Check the amendment's table to find the provision the rule meant
+          - generic:
+            - radio "C Read it as section 12 of the current Act Your pick" [checked]
+            - generic: C
+            - generic: Read it as section 12 of the current Act
+            - generic: Your pick
+        - status [ref=f1e31]:
+          - generic [ref=f1e32]: Not quite
+          - text: Section numbers can move when an Act is renumbered, so the number alone does not say which provision is meant.
+      - generic [ref=f1e33]:
+        - button "Back" [ref=f1e34] [cursor=pointer]
+        - generic [ref=f1e35]: 4 of 5 answered
+        - button "Next" [ref=f1e36] [cursor=pointer]
+        - button "Check" [ref=f1e37] [cursor=pointer]
+  - complementary "Tutor" [ref=f1e38]:
+    - heading "Tutor" [level=3] [ref=f1e39]
+    - generic [ref=f1e40]:
+      - button "Hint" [ref=f1e41] [cursor=pointer]
+      - button "Show me" [ref=f1e42] [cursor=pointer]
+    - generic [ref=f1e43]: Stuck on a question? Ask for a hint. I will not give you the answer to a question you have not tried.
+    - generic [ref=f1e44]: What is the difference between an Act and its rules?
+    - generic [ref=f1e45]: The Act is the law Parliament passed. The rules fill in how it is carried out, and they can only do what the Act allows.
+    - textbox "Ask the tutor" [ref=f1e47]:
+      - /placeholder: Ask about this exercise
+  - generic [ref=f1e48]:
+    - button "Before Check" [ref=f1e49] [cursor=pointer]
+    - button "After Check" [ref=f1e50] [cursor=pointer]
+    - button "Contents" [ref=f1e51] [cursor=pointer]

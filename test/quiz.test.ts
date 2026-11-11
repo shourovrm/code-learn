@@ -8,7 +8,7 @@ import * as store from "../src/store.js";
 import { parseTrackYaml } from "../src/schemas.js";
 import { quizFiles, quizQuestions, quizRoadmap } from "./quiz-fixture.js";
 import { tempDir } from "./temp.js";
-import { lessonText } from "./lesson-fixture.js";
+import { lessonFields } from "./lesson-fixture.js";
 
 vi.mock("node:crypto", async (importOriginal) => {
   const crypto = await importOriginal<typeof import("node:crypto")>();
@@ -127,7 +127,7 @@ it("records one concurrent check and progresses to a new quiz, then stuck after 
 
 it("retries a stuck quiz concept only after its lesson is acknowledged, without re-recording checks", async () => {
   await app.saveRoadmap(ws, "quiz", JSON.stringify({ goal: "Judgment", style: "quiz", concepts: [{ id: "a", title: "A" }, { id: "b", title: "B" }] }));
-  await app.saveLesson(ws, { id: "intro", concept: "a", title: "Intro", markdown: lessonText("Read this.") });
+  await app.saveLesson(ws, { id: "intro", concept: "a", title: "Intro", ...lessonFields("Read this.") });
   await app.markLessonRead(ws, "intro");
   for (const slug of ["first", "second"]) {
     await saved(slug); await answer(key(slug), slug); await app.checkExercise(ws, slug);
@@ -135,7 +135,7 @@ it("retries a stuck quiz concept only after its lesson is acknowledged, without 
   const before = app.progress(ws).concepts[0];
   expect(app.nextStep(ws)).toEqual({ kind: "stuck", concept: "a" });
   app.getLesson(ws, "intro");
-  await app.saveLesson(ws, { id: "other", concept: "b", title: "Other", markdown: lessonText("Another concept.") });
+  await app.saveLesson(ws, { id: "other", concept: "b", title: "Other", ...lessonFields("Another concept.") });
   await app.markLessonRead(ws, "other");
   expect(app.nextStep(ws)).toEqual({ kind: "stuck", concept: "a" });
   await app.markLessonRead(ws, "intro");
@@ -151,7 +151,7 @@ it("retries a stuck quiz concept only after its lesson is acknowledged, without 
     await saved(slug); await answer(key(slug), slug); await app.checkExercise(ws, slug);
   }
   expect(app.nextStep(ws)).toEqual({ kind: "stuck", concept: "a" });
-  await app.saveLesson(ws, { id: "reteach", concept: "a", title: "Again", markdown: lessonText("Try this explanation.") });
+  await app.saveLesson(ws, { id: "reteach", concept: "a", title: "Again", ...lessonFields("Try this explanation.") });
   await app.markLessonRead(ws, "reteach");
   expect(app.nextStep(ws)).toMatchObject({ kind: "author", concept: "a", difficulty: 1, style: "quiz" });
 });

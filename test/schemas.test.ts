@@ -1,6 +1,6 @@
-import { lessonText } from "./lesson-fixture.js";
+import { LESSON_FRAME, lessonFields } from "./lesson-fixture.js";
 import { describe, expect, it } from "vitest";
-import { codeStyleOf, CourseRecord, exampleRefs, LearnerEventSchema, parseExerciseYaml, parseLesson, LESSON_GOAL, LESSON_SECTIONS, parseQuizYaml, parseRoadmapYaml, parseTrackYaml, TrackRecord } from "../src/schemas.js";
+import { codeStyleOf, CourseRecord, exampleRefs, LearnerEventSchema, parseExerciseYaml, parseLesson, parseQuizYaml, parseRoadmapYaml, parseTrackYaml, TrackRecord } from "../src/schemas.js";
 import { quizQuestions } from "./quiz-fixture.js";
 
 describe("quiz text limits", () => {
@@ -242,7 +242,7 @@ describe("roadmap practice and sources", () => {
 
 describe("lesson examples", () => {
   const fence = (n: number) => "```example\n" + n + "\n```";
-  const lesson = (body: string, examples?: Record<string, string>[]) => ({ id: "l", concept: "c", title: "L", markdown: lessonText(body), ...(examples ? { examples } : {}) });
+  const lesson = (body: string, examples?: Record<string, string>[]) => ({ id: "l", concept: "c", title: "L", ...lessonFields(body), ...(examples ? { examples } : {}) });
   const ex = { "main.sh": "echo hi\n" };
 
   it("finds example references: a fenced block with info string example and the example's number", () => {
@@ -285,7 +285,7 @@ describe("lesson examples", () => {
 });
 
 describe("lesson diagrams", () => {
-  const lesson = (body: string, examples?: Record<string, string>[]) => ({ id: "l", concept: "c", title: "L", markdown: lessonText(body), ...(examples ? { examples } : {}) });
+  const lesson = (body: string, examples?: Record<string, string>[]) => ({ id: "l", concept: "c", title: "L", ...lessonFields(body), ...(examples ? { examples } : {}) });
   const diagram = "```mermaid\nflowchart TD\n  A --> B\n```";
 
   // The text is checked for structure only: the app draws a diagram, and shows its source if it can't (desktop §4.3).
@@ -342,32 +342,18 @@ describe("mixed course style", () => {
 });
 
 describe("lesson parts", () => {
-  const lesson = (markdown: string) => ({ id: "l", concept: "c", title: "L", markdown });
-  const without = (name: string) => lessonText().replace(`## ${name}\n\nText.`, "");
+  const lesson = (fields: object) => ({ id: "l", concept: "c", title: "L", ...lessonFields("Body."), ...fields });
 
-  it("accepts a lesson with every part in order, with or without the optional Try it", () => {
-    expect(parseLesson(lesson(lessonText())).id).toBe("l");
-    expect(parseLesson(lesson(lessonText().replace("## Sources", "## Try it\n\nText.\n\n## Sources"))).id).toBe("l");
+  // Fixed headings made every lesson the same recipe, whatever its subject needed.
+  it("leaves the lesson's text and headings to its writer", () => {
+    expect(parseLesson(lesson({ markdown: "## When the rules and the Act disagree\n\nThe Act wins." })).id).toBe("l");
   });
 
-  it.each(LESSON_SECTIONS)("refuses a lesson without its %s section, naming the order", (name) => {
-    expect(() => parseLesson(lesson(without(name)))).toThrow(/once each and in this order: Why it matters, .*, Sources/);
-  });
-
-  it("refuses sections out of order or repeated, saying what it found", () => {
-    const swapped = lessonText().replace("## Remember", "## X").replace("## Self-check", "## Remember").replace("## X", "## Self-check");
-    expect(() => parseLesson(lesson(swapped))).toThrow(/Found: .*Self-check, Remember, Answers/);
-    expect(() => parseLesson(lesson(`${lessonText()}\n\n## Sources\n\nAgain.`))).toThrow(/Found: .*Sources, Sources/);
-    expect(() => parseLesson(lesson(`${LESSON_GOAL} do it.`))).toThrow(/Found: none/);
-  });
-
-  it("looks only at top-level `##` headings", () => {
-    const quoted = lessonText().replace("## Remember", "> ## Remember");
-    expect(() => parseLesson(lesson(quoted))).toThrow(/in this order/);
-    expect(() => parseLesson(lesson(lessonText().replace("## Remember", "### Remember")))).toThrow(/in this order/);
-  });
-
-  it("refuses a lesson that doesn't open by saying what the learner will be able to do", () => {
-    expect(() => parseLesson(lesson(lessonText().replace(LESSON_GOAL, "**Goal:**")))).toThrow(/"\*\*You will be able to:\*\*"/);
+  it("needs a goal and one to three self-check questions, each with an answer", () => {
+    expect(() => parseLesson(lesson({ goal: undefined }))).toThrow(/goal/);
+    expect(() => parseLesson(lesson({ selfCheck: [] }))).toThrow(/selfCheck/);
+    const four = Array.from({ length: 4 }, () => LESSON_FRAME.selfCheck[0]);
+    expect(() => parseLesson(lesson({ selfCheck: four }))).toThrow(/selfCheck/);
+    expect(() => parseLesson(lesson({ selfCheck: [{ question: "Why?" }] }))).toThrow(/answer/);
   });
 });

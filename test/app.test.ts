@@ -10,7 +10,7 @@ import { fixtureTrackFiles, installFixtureTrack, installTrack } from "./installe
 import { quizFiles } from "./quiz-fixture.js";
 import { sandboxReady } from "./sandbox-ready.js";
 import { tempDir } from "./temp.js";
-import { lessonText } from "./lesson-fixture.js";
+import { LESSON_FRAME, lessonFields } from "./lesson-fixture.js";
 
 /** Use cases that need no installing: tracks and exercises are written straight into the store. */
 
@@ -210,7 +210,7 @@ describe("an author step's learner context", () => {
   it("carries the concept's lesson text and the learner's last result on it: its exercise and counts", async () => {
     installFake();
     await app.saveRoadmap(ws, "shell", roadmap());
-    await app.saveLesson(ws, { id: "basics-intro", concept: "sh.basics", title: "Reading input", markdown: lessonText("# Reading input\n\nUse `read a b` to read two words.\n") });
+    await app.saveLesson(ws, { id: "basics-intro", concept: "sh.basics", title: "Reading input", ...lessonFields("# Reading input\n\nUse `read a b` to read two words.\n") });
     addExercise("shell", "sum-two", "sh.basics", "shell-io@1", "# Sum two numbers\n\nRead two integers and print their sum.\n");
     store.appendEvent("shell", event({ kind: "check", at: new Date().toISOString(), exercise: "sum-two", concepts: ["sh.basics"], difficulty: 1, passed: 3, total: 3, assisted: false }));
     const step = app.nextStep(ws);
@@ -225,15 +225,15 @@ describe("an author step's learner context", () => {
     // Two saves in one millisecond would tie on `created`; fix the clock so "Again" is newer.
     vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-01-01T00:00:00Z") });
     try {
-      await app.saveLesson(ws, { id: "basics-long", concept: "sh.basics", title: "Long", markdown: lessonText(`# Long\n\n${"é".repeat(30_000)}\n`) });
+      await app.saveLesson(ws, { id: "basics-long", concept: "sh.basics", title: "Long", ...lessonFields(`# Long\n\n${"é".repeat(30_000)}\n`) });
       vi.setSystemTime(new Date("2026-01-01T00:00:01Z"));
-      await app.saveLesson(ws, { id: "basics-again", concept: "sh.basics", title: "Again", markdown: lessonText("# Again\n\nThe re-teach.\n") });
+      await app.saveLesson(ws, { id: "basics-again", concept: "sh.basics", title: "Again", ...lessonFields("# Again\n\nThe re-teach.\n") });
     } finally {
       vi.useRealTimers();
     }
     await app.saveNotes(ws, "basics-again", "MY PRIVATE NOTE");
     const step = app.nextStep(ws) as { lessonText: string };
-    expect(step.lessonText.startsWith(lessonText("# Again\n\nThe re-teach.\n"))).toBe(true);
+    expect(step.lessonText.startsWith("# Again\n\nThe re-teach.\n")).toBe(true);
     expect(Buffer.byteLength(step.lessonText)).toBeLessThanOrEqual(32_768);
     expect(step.lessonText).not.toContain("MY PRIVATE NOTE");
   });
@@ -356,7 +356,7 @@ describe("a solution the learner may see", () => {
 });
 
 describe("lessons", () => {
-  const lesson = (id: string, concept = "sh.basics") => ({ id, concept, title: `About ${id}`, markdown: lessonText(`# ${id}\n\nText.`) });
+  const lesson = (id: string, concept = "sh.basics") => ({ id, concept, title: `About ${id}`, ...lessonFields(`# ${id}\n\nText.`) });
 
   beforeEach(async () => {
     await app.saveRoadmap(ws, "shell", roadmap());
@@ -364,17 +364,35 @@ describe("lessons", () => {
 
   it("saves a lesson before the track is installed, and reads it with notes", async () => {
     expect(await app.saveLesson(ws, lesson("intro"))).toEqual({ lesson: "intro" });
-    expect(app.getLesson(ws, "intro")).toEqual({ id: "intro", concept: "sh.basics", title: "About intro", markdown: lessonText("# intro\n\nText."), notes: "", examples: [] });
+    expect(app.getLesson(ws, "intro")).toEqual({ id: "intro", concept: "sh.basics", title: "About intro", markdown: "# intro\n\nText.", ...LESSON_FRAME, sources: [], notes: "", examples: [] });
     await app.saveNotes(ws, "intro", "remember $1");
     expect(app.getLesson(ws, "intro").notes).toBe("remember $1");
     const record = JSON.parse(readFileSync(join(process.env.CODE_LEARN_HOME!, "courses", "shell", "lessons", "intro", "lesson.json"), "utf8"));
-    expect(record).toMatchObject({ format_version: 1, id: "intro", concept: "sh.basics" });
+    expect(record).toMatchObject({ format_version: 2, id: "intro", concept: "sh.basics", ...LESSON_FRAME });
+  });
+
+  // The research already chose the sources per concept, so the writer doesn't type them again.
+  it("shows the sources its concept's refs name", async () => {
+    const yaml = roadmap('  - { id: sh.basics, title: Basics, practice: "Fix a loop", refs: [1] }\n')
+      + 'sources: [{ title: Guide, url: "https://example.com/guide" }, { title: Spec, url: "https://example.com/spec" }]\n';
+    await app.saveRoadmap(ws, "shell", yaml);
+    await app.saveLesson(ws, lesson("intro"));
+    expect(app.getLesson(ws, "intro").sources).toEqual([{ title: "Spec", url: "https://example.com/spec" }]);
+  });
+
+  it("still reads a lesson saved before goals and self-checks, marked for a rewrite", async () => {
+    await app.saveLesson(ws, lesson("intro"));
+    const path = join(process.env.CODE_LEARN_HOME!, "courses", "shell", "lessons", "intro", "lesson.json");
+    const { goal: _, check: __, ...old } = JSON.parse(readFileSync(path, "utf8"));
+    writeFileSync(path, JSON.stringify({ ...old, format_version: 1 }));
+    expect(app.getLesson(ws, "intro")).toMatchObject({ id: "intro", outdated: true });
+    expect(app.getLesson(ws, "intro")).not.toHaveProperty("goal");
   });
 
   it.each([
     ["a taken id", () => lesson("intro"), /already used/],
     ["a concept outside the roadmap", () => lesson("x", "sh.nope"), /not in the roadmap/],
-    ["more than 64 KB", () => ({ ...lesson("big"), markdown: lessonText("x").repeat(65_537) }), /64 KB/],
+    ["more than 64 KB", () => ({ ...lesson("big"), markdown: "x".repeat(65_537) }), /64 KB/],
     ["an unsafe id", () => lesson("../up"), /id/],
   ])("refuses %s", async (_label, input, error) => {
     await app.saveLesson(ws, lesson("intro"));
@@ -382,7 +400,7 @@ describe("lessons", () => {
   });
 
   it("refuses examples before the track is set up, and examples that don't follow its contract, without running anything", async () => {
-    const withExample = (files: Record<string, string>) => ({ ...lesson("ex"), markdown: lessonText("Try it:\n\n```example\n1\n```\n"), examples: [files] });
+    const withExample = (files: Record<string, string>) => ({ ...lesson("ex"), ...lessonFields("Try it:\n\n```example\n1\n```\n"), examples: [files] });
     await expect(app.saveLesson(ws, withExample({ "main.sh": "echo 1\n" }))).rejects.toThrow(/isn't set up yet/);
     installFake();
     await expect(app.saveLesson(ws, withExample({ "other.sh": "echo 1\n" }))).rejects.toThrow(/Example 1 must hold exactly the track's learner files \(main\.sh\)/);
@@ -598,12 +616,12 @@ describe("lessons only", () => {
     await app.saveRoadmap(ws, "shell", lessonsOnly());
     expect(app.nextStep(ws)).toEqual({ kind: "learn", concept: "sh.basics", lesson: null });
     expect(app.progress(ws).concepts[0]).toMatchObject({ covered: false });
-    await app.saveLesson(ws, { id: "intro", concept: "sh.basics", title: "Intro", markdown: lessonText("Read this.") });
+    await app.saveLesson(ws, { id: "intro", concept: "sh.basics", title: "Intro", ...lessonFields("Read this.") });
     expect(app.nextStep(ws)).toEqual({ kind: "learn", concept: "sh.basics", lesson: "intro" });
     await app.markLessonRead(ws, "intro");
     expect(app.progress(ws).concepts[0]).toMatchObject({ covered: true, mastery: 0.5 });
     expect(app.progress(ws).next).toEqual({ kind: "learn", concept: "sh.loops", lesson: null });
-    await app.saveLesson(ws, { id: "more", concept: "sh.basics", title: "More", markdown: lessonText("Read more.") });
+    await app.saveLesson(ws, { id: "more", concept: "sh.basics", title: "More", ...lessonFields("Read more.") });
     expect(app.progress(ws).concepts[0]).toMatchObject({ covered: false });
   });
   it.each(["getExercise", "checkExercise", "testExercise", "saveExercise"] as const)("refuses %s before looking up a track or exercise", async (operation) => {
@@ -616,7 +634,7 @@ describe("lessons only", () => {
     await app.saveRoadmap(ws, "shell", roadmap());
     addExercise("shell", "e", "sh.basics");
     store.appendEvent("shell", event({ kind: "check", exercise: "e", concepts: ["sh.basics"], difficulty: 1, passed: 1, total: 1, assisted: false }));
-    await app.saveLesson(ws, { id: "intro", concept: "sh.basics", title: "Intro", markdown: lessonText("Read this.") });
+    await app.saveLesson(ws, { id: "intro", concept: "sh.basics", title: "Intro", ...lessonFields("Read this.") });
     await app.markLessonRead(ws, "intro");
     const log = store.readEvents("shell");
     const mastery = app.progress(ws).concepts[0]!.mastery;
@@ -665,7 +683,7 @@ describe("mixed course", () => {
       await app.checkExercise(ws, slug);
     }
     expect(app.nextStep(ws)).toEqual({ kind: "stuck", concept: "sh.basics" });
-    await app.saveLesson(ws, { id: "intro", concept: "sh.basics", title: "Intro", markdown: lessonText("Read this.") });
+    await app.saveLesson(ws, { id: "intro", concept: "sh.basics", title: "Intro", ...lessonFields("Read this.") });
     await app.markLessonRead(ws, "intro");
     expect(app.nextStep(ws)).toMatchObject({ kind: "author", concept: "sh.basics" });
   });
@@ -691,7 +709,7 @@ it.runIf(sandboxReady())("keeps lesson examples on a retained track's coding sty
   await app.saveRoadmap(ws, "shell", roadmap().replace("style: io", "style: none"));
   expect(app.getRoadmap(ws, undefined, true).contract).toMatchObject({ run: "sh main.sh" });
   // A valid io example runs in the sandbox, rather than being mistaken for a unit example needing tests/.
-  await expect(app.saveLesson(ws, { id: "ex", concept: "sh.basics", title: "Example", markdown: lessonText("```example\n1\n```"), examples: [{ "main.sh": "echo 1" }] })).resolves.toEqual({ lesson: "ex" });
+  await expect(app.saveLesson(ws, { id: "ex", concept: "sh.basics", title: "Example", ...lessonFields("```example\n1\n```"), examples: [{ "main.sh": "echo 1" }] })).resolves.toEqual({ lesson: "ex" });
   expect(app.listLessons(ws)).toHaveLength(1);
 });
 

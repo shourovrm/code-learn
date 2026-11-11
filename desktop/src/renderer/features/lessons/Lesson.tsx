@@ -12,13 +12,15 @@ import { Sidebar } from '../../app/Sidebar';
 import { useLoad } from '../../app/useLoad';
 import { Button } from '../../ui/Button';
 import { Icon } from '../../ui/Icon';
-import { useLessonParts } from '../../ui/Markdown';
+import { ExternalLink } from '../../ui/ExternalLink';
+import { Markdown, useLessonParts } from '../../ui/Markdown';
 import { stagger } from '../../ui/motion';
 import { Rail } from '../../ui/Rail';
 import { Diagram } from './Diagram';
 import { Example } from './Example';
 import { NoteEditor } from './NoteEditor';
 import { Outline } from './Outline';
+import { SelfCheck } from './SelfCheck';
 import { SetupOffer } from './SetupConsent';
 
 function neighbours(topic: TopicView, lessonId: string): { prev: Route; next: (course: CourseView) => Route } {
@@ -167,6 +169,8 @@ function Reader({ lesson, course, topic, contents, onHideContents, onSaved, onNo
             </Button>
           )}
         </div>
+        {lesson.outdated && <p className="quiet-text">This lesson is in an older format. Rebuild its topic from the course map to rewrite it.</p>}
+        {lesson.goal && <Markdown className="md goal a-up" text={`**You will be able to:** ${lesson.goal}`} />}
         <div className="a-up">
           {parts.map((part, i) =>
             'example' in part ? (
@@ -184,6 +188,17 @@ function Reader({ lesson, course, topic, contents, onHideContents, onSaved, onNo
             ),
           )}
         </div>
+        {lesson.selfCheck && <SelfCheck questions={lesson.selfCheck} />}
+        {lesson.sources.length > 0 && (
+          <section className="sources" aria-labelledby="lesson-sources-t">
+            <h2 className="h2" id="lesson-sources-t">Sources</h2>
+            <ul>
+              {lesson.sources.map((s) => (
+                <li key={s.url}><ExternalLink href={s.url}>{s.title}</ExternalLink></li>
+              ))}
+            </ul>
+          </section>
+        )}
         {editing ? (
           <NoteEditor note={notes} onSave={save} onCancel={() => setEditing(false)} />
         ) : (
