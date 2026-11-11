@@ -224,14 +224,10 @@ function TestLines({ tests, visibleTests }: { tests: TestView[]; visibleTests: V
 }
 
 
-/** A quiz reports only right or wrong and the picked choice's explanation. A failed quiz needs a new activity. */
+/** A quiz's total and the way on; each question's verdict is under that question. A failed quiz needs a new activity. */
 function QuizResults({ result, ways }: { result: Extract<CheckResult, { kind: 'graded' }>; ways: Ways }) {
   return <div className="stack quiz-results">
     <h2 className="h3">{result.passed} of {result.total} right</h2>
-    {result.tests.map((t) => !t.hidden && <div key={t.name}>
-      <p>Question {t.name}: {t.status === 'pass' ? 'Right' : 'Wrong'}</p>
-      {t.status !== 'pass' && t.message && <p className="sub">{t.message}</p>}
-    </div>)}
     {!result.recorded && <p className="quiet-text">{result.note ?? "This check wasn't recorded."}</p>}
     <div className="actions">
       {result.stuck ? <>

@@ -187,7 +187,7 @@ test('the quiz journey passes WCAG AA checks', async ({ launch }) => {
   await button(page, 'Check').click();
   const results = page.getByRole('region', { name: 'Results' });
   await expect(results.getByRole('heading', { name: '4 of 5 right' })).toBeVisible();
-  await expect(results.getByText('Changing a local variable does not update the screen.')).toBeVisible();
+  await expect(questions.nth(0).getByText('Changing a local variable does not update the screen.')).toBeVisible();
   await audit(page, 'quiz results');
   if (process.env.QUIZ_SHOTS) await page.screenshot({ path: join(process.env.QUIZ_SHOTS, 'quiz-results.png') });
   await app.close();

@@ -23,9 +23,21 @@
 .ws.quiz:not(:has(> .stmt)), .ws.quiz:not(:has(> .stmt)):has(> .coach.folded) { grid-template-columns: minmax(0, 1fr) auto; }
 .ws.quiz .mid { overflow: auto; }
 .quiz-form { overflow: visible; flex-shrink: 0; border-right: 0; }
+.quiz-form { background: var(--ground); }
+.quiz-form > * { width: 100%; max-width: var(--measure); margin-inline: auto; flex-shrink: 0; }
+.quiz-questions { list-style: none; padding: 0; display: flex; flex-direction: column; gap: var(--space-300); }
+.quiz-card { padding: var(--space-300); background: var(--card); border: var(--border) solid var(--line); border-radius: var(--radius-card); }
 .quiz-questions fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
-.quiz-questions legend { margin-bottom: var(--space-200); }
-.quiz-questions .opt { white-space: normal; }
+.quiz-questions legend { margin-bottom: var(--space-150); }
+.quiz-number { display: block; font: var(--type-heading-xsmall); color: var(--muted); }
+.quiz-questions .opt { display: flex; align-items: flex-start; gap: var(--space-150); padding: var(--space-150) var(--space-200); border-radius: var(--radius-card); font: var(--type-body-large); font-weight: 400; white-space: normal; }
+.quiz-questions .opt.on { background: var(--green-soft); }
+.opt-mark { flex: none; width: var(--space-300); height: var(--space-300); display: grid; place-items: center; border: var(--border-bold) solid var(--ctl); border-radius: var(--radius-round); font: var(--type-heading-xsmall); color: var(--muted); background: var(--card); }
+.opt.on .opt-mark { background: var(--green-ink); border-color: var(--green-ink); color: var(--on-garden); }
+.quiz-verdict { padding: var(--space-150) var(--space-200); border-radius: var(--radius-card); border-left: var(--space-050) solid; }
+.quiz-verdict.right { background: var(--res-ok); border-color: var(--ok); color: var(--green-ink); }
+.quiz-verdict.wrong { background: var(--res-nok); border-color: var(--bad); }
+.quiz-verdict.wrong strong { color: var(--bad); }
 .quiz-results { padding: var(--space-300); }
 .ws.lesson, .ws.lesson:has(> .coach.folded) { grid-template-columns: var(--column-w) minmax(0, 1fr) auto; }
 /* The lesson's contents hidden: the lesson takes the room. */

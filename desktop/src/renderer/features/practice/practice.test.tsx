@@ -806,15 +806,22 @@ it('shows quiz choices, saves answers before Check, and explains only picked wro
   expect(screen.queryByRole('button', { name: 'Try it' })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Run' })).not.toBeInTheDocument();
   expect(screen.queryByRole('textbox', { name: 'answers.yaml' })).not.toBeInTheDocument();
+  // A quiz has no Results panel until it is checked.
+  expect(screen.queryByRole('region', { name: 'Results' })).not.toBeInTheDocument();
+  expect(screen.getByText('0 of 5 answered')).toBeInTheDocument();
   await user.click(within(screen.getByRole('group', { name: 'Situation 1?' })).getByRole('radio', { name: 'Retry forever' }));
   await user.click(within(screen.getByRole('group', { name: 'Situation 2?' })).getByRole('radio', { name: 'Bound work' }));
+  expect(screen.getByText('2 of 5 answered')).toBeInTheDocument();
   // Checking one answer at a time would reveal the key, so Check waits for every answer.
   expect(screen.getByRole('button', { name: 'Check' })).toBeDisabled();
   for (const n of [3, 4, 5]) await user.click(within(screen.getByRole('group', { name: `Situation ${n}?` })).getByRole('radio', { name: 'Bound work' }));
   await user.click(screen.getByRole('button', { name: 'Check' }));
-  expect(await within(results()).findByText('No stopping rule')).toBeInTheDocument();
-  expect(results()).toHaveTextContent('Question 1: Wrong');
-  expect(results()).toHaveTextContent('Question 2: Right');
+  // Each question's verdict sits under it; only a wrong pick has its explanation.
+  const first = within(screen.getByRole('group', { name: 'Situation 1?' }));
+  expect(await first.findByText('No stopping rule')).toBeInTheDocument();
+  expect(first.getByText('Wrong')).toBeInTheDocument();
+  expect(within(screen.getByRole('group', { name: 'Situation 2?' })).getByText('Right')).toBeInTheDocument();
+  expect(results()).toHaveTextContent('1 of 5 right');
   expect(results()).not.toHaveTextContent('Bound work');
 });
 

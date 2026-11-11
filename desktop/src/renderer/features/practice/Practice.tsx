@@ -14,7 +14,7 @@ import { Markdown } from '../../ui/Markdown';
 import { stagger } from '../../ui/motion';
 import { Rail } from '../../ui/Rail';
 import { Terminal, type TerminalHandle } from '../../ui/Terminal';
-import { answeredAll, QuizAnswers } from './QuizAnswers';
+import { answeredAll, answeredCount, QuizAnswers } from './QuizAnswers';
 import { Editor } from './Editor';
 import { Results } from './Results';
 import { useAttempt } from './useAttempt';
@@ -141,6 +141,7 @@ function Workspace({ activity, course, focus, tab, onTab }: { activity: Activity
     }
   }
 
+  const graded = shown.kind === 'check' && shown.result.kind === 'graded' ? shown.result.tests : undefined;
   const lastLesson = topic?.lessons[topic.lessons.length - 1];
   const ways = {
     retry: () => (shown.kind === 'try' ? tryIt() : check()),
@@ -183,11 +184,15 @@ function Workspace({ activity, course, focus, tab, onTab }: { activity: Activity
           {status?.solved && <Solved solved={status.solved} />}
           <h1 className="h2" id="activity-title" ref={title} tabIndex={-1}>{activity.title}</h1>
           <Markdown text={activity.statement} />
-          <QuizAnswers questions={activity.questions} text={files[0].text} disabled={busy} onChange={(text) => {
+          <QuizAnswers questions={activity.questions} text={files[0].text} disabled={busy} graded={graded} onChange={(text) => {
             edit('answers.yaml', text);
             setShown({ kind: 'idle' });
           }} />
-          <div className="actions"><Button disabled={busy || !answeredAll(activity.questions, files[0].text)} onClick={check}>Check</Button></div>
+          <div className="actions">
+            <Button disabled={busy || !answeredAll(activity.questions, files[0].text)} onClick={check}>Check</Button>
+            <span className="quiet-text">{answeredCount(files[0].text)} of {activity.questions.length} answered</span>
+          </div>
+          {shown.kind !== 'idle' && <Results quiz shown={shown} name={course.track} topic={topic?.title ?? ''} visibleTests={[]} ways={ways} last={status?.last} />}
           <ExerciseNav topics={course.topics} concept={activity.concept} />
         </section> : <>
         {solution && <p className="quiet-text solution-note">Read only. Your file is unchanged.</p>}
@@ -204,13 +209,13 @@ function Workspace({ activity, course, focus, tab, onTab }: { activity: Activity
             <Button disabled={busy} onClick={check}>Check</Button>
           </>}
         />
-        </>}
         <OutputDock
           tab={output}
           onTab={setOutput}
           terminal={activity.run && ran ? <Terminal ref={terminal} label={`Terminal for ${activity.title}`} status={program.status} onInput={program.input} onEnd={program.end} /> : undefined}
-          results={<Results quiz={activity.style === 'quiz'} shown={shown} name={course.track} topic={topic?.title ?? ''} visibleTests={activity.visibleTests} ways={ways} last={status?.last} />}
+          results={<Results shown={shown} name={course.track} topic={topic?.title ?? ''} visibleTests={activity.visibleTests} ways={ways} last={status?.last} />}
         />
+        </>}
       </div>
       <Rail messages={chat.messages} onAsk={ask} busy={chat.busy} answering={chat.answering} name={course.track}>
         <div className="actions">
