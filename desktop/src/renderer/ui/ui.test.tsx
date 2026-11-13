@@ -114,7 +114,9 @@ describe('Rail', () => {
     await waitFor(() => expect(log.querySelector('code.language-js .hljs-keyword')).toHaveTextContent('let'));
     expect(loaded).toHaveBeenCalledTimes(1);
     expect(log.querySelector('code.language-js')).toHaveTextContent('let count = 0;');
-    expect(log.querySelector('code.language-zzz')!.innerHTML).toBe('let other = 1;\n');
+    // Plain: split into lines like any fence (§2.1), with no colors.
+    expect(log.querySelector('code.language-zzz [class^="hljs"]')).toBeNull();
+    expect(log.querySelector('code.language-zzz')!.textContent).toBe('let other = 1;\n');
   });
 
   it('renders a colored reply once, not again on each keystroke while the learner asks', async () => {

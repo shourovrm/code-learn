@@ -98,7 +98,9 @@ describe("the statement's colors (§2.1)", () => {
     const user = await practice({ statement: 'Count the clicks.\n\n```js\nlet count = 0;\n```\n\n```zzz\nlet other = 1;\n```' });
     const statement = screen.getByRole('region', { name: 'Click Counter' });
     await waitFor(() => expect(statement.querySelector('code.language-js .hljs-keyword')).toHaveTextContent('let'));
-    expect(statement.querySelector('code.language-zzz')!.innerHTML).toBe('let other = 1;\n');
+    // Plain: split into lines like any fence (§2.1), with no colors.
+    expect(statement.querySelector('code.language-zzz [class^="hljs"]')).toBeNull();
+    expect(statement.querySelector('code.language-zzz')!.textContent).toBe('let other = 1;\n');
     const parse = vi.spyOn(MarkdownIt.prototype, 'parse');
     try {
       await user.type(editor('Counter.jsx'), 'x');
