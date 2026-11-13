@@ -27,8 +27,8 @@ export function TextSizeButtons() {
   return (
     <div className="text-size" role="group" aria-label="Text size">
       <button type="button" aria-label="Smaller text" onClick={() => stepTextSize(-1)}>A−</button>
-      <button type="button" aria-label="Larger text" onClick={() => stepTextSize(1)}>A+</button>
       <span>{`${size}%`}</span>
+      <button type="button" aria-label="Larger text" onClick={() => stepTextSize(1)}>A+</button>
     </div>
   );
 }
