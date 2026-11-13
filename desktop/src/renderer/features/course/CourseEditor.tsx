@@ -188,7 +188,7 @@ export function CourseEditor({ roadmap }: { roadmap: Roadmap }) {
                       <Button variant="primary" onClick={() => setToolchainKept(true)}>Use {roadmap.track}</Button>
                     </div>
                     <form className="practice-actions" onSubmit={suggest}>
-                      <Field aria-label="Or tell the agent what you'd like instead" value={suggestion} maxLength={LIMITS.words} disabled={working} onChange={(e) => setSuggestion(e.target.value)} />
+                      <Field aria-label="Or tell the agent what you'd like instead" placeholder="Or tell the agent what you'd like instead" value={suggestion} maxLength={LIMITS.words} disabled={working} onChange={(e) => setSuggestion(e.target.value)} />
                       <Button type="submit" variant="ghost" disabled={!suggestion.trim() || working}>Suggest</Button>
                     </form>
                   </>
