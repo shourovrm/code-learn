@@ -18,7 +18,7 @@ topic, `small` 16/20 card or topic name, `xsmall` 14/20, `xxsmall` 12/16 sidebar
 `code` 14/24 editor and code blocks, `code-small` 12/16 file tabs, diffs and terminal.
 
 Weights 400, 500, 600, 700 (Atlassian's 653 needs a variable face; the bundled faces stop at 700). Headings
-track at -0.02em. Body measure at most 72ch.
+track at -0.02em. Body measure at most 72ch, except a lesson, which fills its reading pane at the learner's request.
 
 ## Space
 

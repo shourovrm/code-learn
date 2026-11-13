@@ -350,6 +350,7 @@ concepts:
     refs: [0]
 sources:                    # optional: the roadmaps and docs the agent used, at most 10
   - { title: "React docs: Thinking in React", url: "https://react.dev/learn/thinking-in-react" }
+practice_note: "..."        # optional: why code exercises may not fit the subject, at most 300 characters
 ```
 
 - **First save** creates the course. Concept order in the file is the tie-break order.
@@ -357,6 +358,7 @@ sources:                    # optional: the roadmaps and docs the agent used, at
 - **Sources** are optional: at most 10, each a `title` of at most 120 characters and an https `url` with no credentials. The app shows them and opens them only in the learner's browser.
 - **Practice and pitfalls** are optional on each concept: `practice` is trimmed, 1 to 300 characters; `pitfalls` has at most 5 strings, each 1 to 200 characters. They are checked for structure only.
 - **Lessons only.** In a course with `style: none` nothing is graded. `practice` says what the learner will be able to do or explain after the lesson, and no concept is folded away for lacking a graded activity.
+- **Practice note** is optional, at most 300 characters: the planner's note, when code practice was asked for, that code exercises may not fit the subject, and what fits better. It changes no rule; the desktop app shows it before approval.
 - **Refs** are optional on each concept: at most 10 distinct nonnegative integer indexes into `sources`, starting at 0. Every ref must be in range. When sources are nonempty, a concept with `practice` or nonempty `pitfalls` must have at least one ref.
 - **Lessons only.** `style: none` needs no track. `CourseStyle` is `ExerciseStyle | "none" | "both"`; `ExerciseStyle` is `Style | "quiz"`. `Style` stays `io | unit` for tracks and lesson examples. A course may keep its track when activities are off. Exercise saves, `get_exercise`, `check` and `test` are refused; lessons, notes and reads still work. Examples need an installed track.
 - **Quiz.** `style: quiz` has no track. It needs no setup, Docker or WASI. Tracks cannot offer quiz. Quiz and lessons only can switch both ways without changing history. A quiz course with exercises cannot become a code course, since that would change its track.
