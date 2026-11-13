@@ -25,10 +25,11 @@ export function TextSizeSwitch() {
 export function TextSizeButtons() {
   const size = useTextSize();
   return (
-    <div className="text-size" role="group" aria-label="Text size">
-      <button type="button" aria-label="Smaller text" onClick={() => stepTextSize(-1)}>A−</button>
+    <div className="text-size">
+      {/* The name is the words, not "A−", which a screen reader can't say well. */}
+      <button type="button" onClick={() => stepTextSize(-1)}><span aria-hidden="true">A−</span><span className="sr-only">Smaller text</span></button>
       <span>{`${size}%`}</span>
-      <button type="button" aria-label="Larger text" onClick={() => stepTextSize(1)}>A+</button>
+      <button type="button" onClick={() => stepTextSize(1)}><span aria-hidden="true">A+</span><span className="sr-only">Larger text</span></button>
     </div>
   );
 }

@@ -49,7 +49,8 @@
 .depth .opt, .quiz-questions .opt { position: relative; padding: var(--space-075) var(--space-200); border-radius: var(--radius-ctl); border: var(--border) solid var(--ctl); background: var(--card); font: var(--type-body); font-weight: 500; color: var(--ink); cursor: pointer; }
 .depth .opt.on, .quiz-questions .opt.on { border-color: var(--packet); background: var(--packet); color: var(--packet-text); }
 /* A filled chip alone can read as a style choice; the check says "chosen" without relying on colour. */
-.depth .opt.on::before, .quiz-questions .opt.on::before { content: "✓ "; }
+/* The empty alternative text keeps the check out of the chip's name ("Code", not "✓ Code"). */
+.depth .opt.on::before, .quiz-questions .opt.on::before { content: "✓ " / ""; }
 .depth .opt:focus-within, .quiz-questions .opt:focus-within { outline: var(--border-bold) solid var(--focus); outline-offset: var(--space-025); }
 .depth input, .quiz-questions input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
 .goal-box input { flex: 1; min-width: 0; height: 100%; border: none; background: transparent; font: var(--type-heading-small); outline: none; }
@@ -120,6 +121,7 @@
 /* A draft is listed like a course, but dashed: it isn't one yet. */
 button.pick.draft { border-style: dashed; border-color: var(--garden-muted); }
 .nav.draft { border: var(--border) dashed var(--garden-muted); }
+.pick.draft .tag { border-color: var(--primary-edge); background: var(--primary); color: var(--on-primary); }
 .draft-note { margin: 0; padding: var(--space-150) var(--space-200); border-radius: var(--radius-card); background: var(--note); color: var(--note-ink); font: var(--type-body); }
 .draft-note .draft-link { height: auto; padding: 0; display: inline; border: none; background: transparent; color: var(--note-ink); font: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: var(--space-025); }
 

@@ -47,10 +47,11 @@ export function Courses({ slim = false }: { slim?: boolean }) {
   return (
     <div className={slim ? 'courses slim-courses' : 'courses'}>
       {draft && (
-        <button type="button" className={slim ? 'nav draft' : 'pick draft'} aria-label={`${draft.title} (draft)`} onClick={() => go({ to: 'course', roadmap: draft })}>
+        <button type="button" className={slim ? 'nav draft' : 'pick draft'} aria-label={slim ? `${draft.title} (draft)` : undefined} onClick={() => go({ to: 'course', roadmap: draft })}>
           <span className="badge" style={{ background: hueColor(draft.track) }} aria-hidden="true">{initialOf(draft.title)}</span>
           {!slim && <span className="goal">{draft.title}</span>}
-          {!slim && <span className="tag">Draft</span>}
+          {/* Read as "React (draft)"; the tag shows it. */}
+          {!slim && <><span className="tag" aria-hidden="true">Draft</span><span className="sr-only"> (draft)</span></>}
         </button>
       )}
       {noCourse ? (

@@ -154,9 +154,9 @@ for (const scheme of ['light', 'dark'] as const) {
     await button(page, 'Learn').click();
     await expect(heading(page, 'React complete')).toBeVisible();
     await button(page, 'Learn something new').click();
-    await expect(button(page, 'Resume roadmap')).toBeVisible();
+    await expect(button(page, 'Open the draft')).toBeVisible();
     await audit(page, 'goal, with a roadmap to resume');
-    await button(page, 'Resume roadmap').click();
+    await button(page, 'Open the draft').click();
     await expect(heading(page, 'Vue')).toBeVisible();
     await app.close();
   });
