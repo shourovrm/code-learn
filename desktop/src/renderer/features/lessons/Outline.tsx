@@ -54,7 +54,7 @@ export function Outline({ topic, current, next, onHide }: { topic: TopicView; cu
             <Growth stage="seed" size={20} />
             <span className="fill">Exercise</span>
           </span>
-          {topic.activity === 'locked' && <span className="locked">Opens after you finish the lessons</span>}
+          {topic.activity === 'locked' && <span className="locked">{topic.waitsFor ? `Opens after you practise ${topic.waitsFor.title}` : 'Opens after you finish the lessons'}</span>}
         </>
       ))}
       {next && (

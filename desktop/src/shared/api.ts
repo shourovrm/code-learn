@@ -213,6 +213,8 @@ export interface TopicView {
   review?: 'due' | 'writing';
   /** Whole days until a mastered topic's next review, when one is scheduled and not yet due. */
   reviewIn?: number;
+  /** A locked topic ahead of the current one: the current topic to practise first. */
+  waitsFor?: { id: string; title: string };
 }
 
 export interface CourseView {

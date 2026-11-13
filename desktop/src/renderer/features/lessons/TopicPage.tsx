@@ -87,6 +87,7 @@ function Items({ topic, onRetry }: { topic: TopicView; onRetry: () => void }) {
   const api = useApi();
   const { go, fail } = useRouter();
   const open = topic.activity === 'open' || topic.activity === 'passed';
+  const waitsFor = topic.waitsFor;
   // Try again runs once: a double click starts the lesson once.
   const retrying = useBusy();
   const retry = () =>
@@ -132,6 +133,11 @@ function Items({ topic, onRetry }: { topic: TopicView; onRetry: () => void }) {
             kind="author" concept={topic.id} label={topic.review ? 'Writing the review' : 'Writing the exercise'}
             waiting={topic.lessons.some((l) => l.state === 'writing') ? 'Waiting for the lesson' : undefined}
           />
+        ) : waitsFor ? (
+          <>
+            <span className="locked"><Icon name="lock" color="var(--faint)" size={16} />{`Opens after you practise ${waitsFor.title}`}</span>
+            <Button variant="ghost" onClick={() => go({ to: 'topic', topicId: waitsFor.id })}>{`Go to ${waitsFor.title}`}</Button>
+          </>
         ) : (
           <span className="locked"><Icon name="lock" color="var(--faint)" size={16} />Opens after you finish the lessons</span>
         )}

@@ -129,6 +129,7 @@ function Reader({ lesson, course, topic, contents, onHideContents, onSaved, onNo
   const nextTopic = course.topics[course.topics.findIndex((t) => t.id === topic.id) + 1];
   const waiting = topic.lessons.at(-1)?.id === lesson.id && topic.activity === 'writing' && course.setup === 'ready' && !course.stalled;
   const writing = topic.review ? 'review' : 'activity';
+  const read = topic.lessons.find((l) => l.id === lesson.id)?.state === 'read';
 
   async function save(text: string) {
     try {
@@ -212,6 +213,7 @@ function Reader({ lesson, course, topic, contents, onHideContents, onSaved, onNo
         <div className="actions a-up" style={stagger(6)}>
           <Button variant="ghost" size="lg" onClick={() => go(prev)}>Previous</Button>
           <Button size="lg" disabled={moving.busy} onClick={onNext}>Next</Button>
+          {!read && <span className="quiet-text">Next marks this lesson read.</span>}
           {waiting && <span className="quiet-text">{`Your ${writing} is almost ready`}</span>}
         </div>
       </main>

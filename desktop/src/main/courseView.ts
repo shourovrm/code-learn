@@ -35,6 +35,7 @@ export function courseView(
   const next = progress.next;
   const activities = progress.style !== 'none';
   const current = currentConcept(progress);
+  const currentTopic = progress.concepts.find((c) => c.id === current);
   const topics = progress.concepts.map((c): TopicView => {
     const own: TopicView['lessons'] = lessons.filter((l) => l.concept === c.id).map((l) => ({ id: l.id, title: l.title, state: l.read ? 'read' : 'ready' }));
     // A lesson job writes a topic's first lesson (core next_step): once that is saved, the job is ending, not writing another.
@@ -64,6 +65,8 @@ export function courseView(
       // Before its first check a topic has only core's starting estimate, not mastery the learner showed.
       id: c.id, title: c.title, state: c.mastered ? 'mastered' : isCurrent ? 'now' : 'later', requires: c.requires, mastery: c.attempts > 0 ? c.mastery : 0, checks: c.attempts, stuck: c.stuck, lessons: own, activity,
       ...(review ? { review } : {}), ...(reviewIn ? { reviewIn } : {}),
+      // A locked topic behind an earlier one names the topic to practise first (not its own unread lesson).
+      ...(activity === 'locked' && !isCurrent && currentTopic ? { waitsFor: { id: currentTopic.id, title: currentTopic.title } } : {}),
     };
   });
   return {
