@@ -375,9 +375,30 @@ export function exampleRefs(text: string): number[] {
 }
 
 /** A lesson as the agent saves it: static Markdown for one roadmap concept, and optional runnable examples. */
+/**
+ * A `##` heading named after its role in the lesson, not its subject: the parts a fixed outline once required. Such a
+ * heading tells a learner scanning the page nothing, and brings the old recipe back under its own names.
+ */
+const ROLE_HEADING = /^(introduction|overview|summary|recap|examples?|worked examples?|steps?|common mistakes?|mistakes?|pitfalls?)\s*(:|$)/i;
+
+/** The first `##` heading in the Markdown that names a role, if any. */
+function roleHeading(text: string): string | undefined {
+  const tokens = markdown.parse(text, {});
+  for (let i = 0; i < tokens.length - 1; i++) {
+    if (tokens[i].type !== "heading_open" || tokens[i].tag !== "h2") continue;
+    const heading = tokens[i + 1].content.trim();
+    if (ROLE_HEADING.test(heading)) return heading;
+  }
+  return undefined;
+}
+
 export function parseLesson(input: unknown): LessonInput {
   const parsed = LessonInput.safeParse(input);
   if (!parsed.success) throw new CodeLearnError(`Invalid lesson: ${describe(parsed.error)}`);
+  const role = roleHeading(parsed.data.markdown);
+  if (role !== undefined) {
+    throw new CodeLearnError(`Invalid lesson: the heading "${role}" names a part of the lesson, not its subject. Name it after what that part teaches, or merge the part into the one it belongs to.`);
+  }
   const count = parsed.data.examples?.length ?? 0;
   const refs = exampleRefs(parsed.data.markdown);
   const missing = refs.find((n) => n < 1 || n > count);

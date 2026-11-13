@@ -362,6 +362,14 @@ describe("lesson parts", () => {
     expect(parseLesson(lesson({ markdown: "## When the rules and the Act disagree\n\nThe Act wins." })).id).toBe("l");
   });
 
+  // A heading named after its role brings the old recipe back under its own names, and tells a scanning learner nothing.
+  it("refuses a ## heading named after its role in the lesson", () => {
+    for (const heading of ["Examples", "Common mistakes", "Pitfall: over-specifying steps", "Worked example", "Steps", "Summary"]) {
+      expect(() => parseLesson(lesson({ markdown: `## ${heading}\n\nText.` }))).toThrow(/names a part of the lesson/);
+    }
+    expect(parseLesson(lesson({ markdown: "## Finding the keys, step by step\n\nText.\n\n## Why the sample data misleads you\n\nText." })).id).toBe("l");
+  });
+
   it("needs a goal and one to three self-check questions, each with an answer", () => {
     expect(() => parseLesson(lesson({ goal: undefined }))).toThrow(/goal/);
     expect(() => parseLesson(lesson({ selfCheck: [] }))).toThrow(/selfCheck/);
