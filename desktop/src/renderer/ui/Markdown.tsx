@@ -20,6 +20,47 @@ md.renderer.rules.link_open = (tokens, i, options, _env, self) => {
   return self.renderToken(tokens, i, options);
 };
 
+const FENCE_CODE = /(<code[^>]*>)([\s\S]*?)(<\/code>)/;
+const TAG = /<[^>]*>/g;
+const defaultFence = md.renderer.rules.fence!;
+// Each source line becomes its own element, so workspace.css can hang a wrapped line under its own indentation.
+md.renderer.rules.fence = (tokens, i, options, env, self) =>
+  defaultFence(tokens, i, options, env, self).replace(FENCE_CODE, (_match, open: string, body: string, close: string) => open + codeLines(body) + close);
+
+/** The columns before a line's first character: a space is one, a tab is four (`tab-size` in workspace.css). */
+function indentOf(text: string): number {
+  let columns = 0;
+  for (const char of text) {
+    if (char === ' ') columns += 1;
+    else if (char === '\t') columns += 4;
+    else return columns;
+  }
+  return columns;
+}
+
+/**
+ * A fence's highlighted code as one `<span class="line">` per source line. A colored span that runs across lines is
+ * closed at each line's end and reopened at the next line's start, so every line is balanced HTML on its own.
+ */
+function codeLines(body: string): string {
+  const segments = body.split('\n');
+  const open: string[] = [];
+  const lines: string[] = [];
+  segments.forEach((segment, i) => {
+    const text = segment.replace(TAG, '');
+    // The text after the last newline is no line: a fence's code ends with one.
+    if (i === segments.length - 1 && text === '') return;
+    const reopen = open.join('');
+    for (const tag of segment.match(TAG) ?? []) {
+      if (tag.startsWith('</')) open.pop();
+      else open.push(tag);
+    }
+    const newline = i < segments.length - 1 ? '\n' : '';
+    lines.push(`<span class="line" style="--indent: ${indentOf(text)}">${reopen}${segment}${newline}${'</span>'.repeat(open.length)}</span>`);
+  });
+  return lines.join('');
+}
+
 type Tokens = ReturnType<typeof md.parse>;
 /** Whether the tokens hold a fence with an info string, which highlight.js may know (§4.3). */
 const named = (tokens: Tokens) => tokens.some((t) => t.type === 'fence' && t.info.trim() !== '');

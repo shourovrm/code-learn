@@ -47,7 +47,9 @@
 .depth { display: flex; align-items: center; gap: var(--space-100); }
 .depth-q { margin-right: var(--space-075); font: var(--type-body); font-weight: 600; color: var(--muted); }
 .depth .opt, .quiz-questions .opt { position: relative; padding: var(--space-075) var(--space-200); border-radius: var(--radius-ctl); border: var(--border) solid var(--ctl); background: var(--card); font: var(--type-body); font-weight: 500; color: var(--ink); cursor: pointer; }
-.depth .opt.on, .quiz-questions .opt.on { border-color: var(--packet); box-shadow: inset 0 0 0 var(--border) var(--packet); color: var(--green-ink); }
+.depth .opt.on, .quiz-questions .opt.on { border-color: var(--packet); background: var(--packet); color: var(--packet-text); }
+/* A filled chip alone can read as a style choice; the check says "chosen" without relying on colour. */
+.depth .opt.on::before, .quiz-questions .opt.on::before { content: "✓ "; }
 .depth .opt:focus-within, .quiz-questions .opt:focus-within { outline: var(--border-bold) solid var(--focus); outline-offset: var(--space-025); }
 .depth input, .quiz-questions input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
 .goal-box input { flex: 1; min-width: 0; height: 100%; border: none; background: transparent; font: var(--type-heading-small); outline: none; }

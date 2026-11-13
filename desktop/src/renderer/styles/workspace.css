@@ -7,8 +7,7 @@
   --example-max-h: 320px;
   --lnum-w: 48px;
   --code-min-w: 480px;
-  /* A lesson reads in a narrower column with roomier lines than other text (about 65 characters a line). */
-  --reading-measure: 66ch;
+  /* A lesson's lines are roomier than other text. */
   --reading-leading: 1.75;
 }
 
@@ -94,19 +93,21 @@
 .reader { min-width: 0; padding: var(--space-500) var(--space-600); display: flex; flex-direction: column; gap: var(--space-250); background: var(--card); overflow: auto; }
 .reader .head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-200); }
 .reader .h1 { font: var(--type-heading-xlarge); letter-spacing: var(--heading-track); }
-.reader .sub { font: var(--type-body-large); max-width: var(--measure); }
-.reader .md { max-width: var(--reading-measure); font: var(--type-body-large); line-height: var(--reading-leading); }
-.reader .answers { max-width: var(--reading-measure); }
+.reader .sub { font: var(--type-body-large); }
+.reader .md { font: var(--type-body-large); line-height: var(--reading-leading); }
 .reader .answers summary { cursor: pointer; font: var(--type-heading-small); }
 .reader .goal { margin-bottom: var(--space-200); }
-.reader .self-check { max-width: var(--reading-measure); margin-top: var(--space-300); font: var(--type-body-large); line-height: var(--reading-leading); }
+.reader .self-check { margin-top: var(--space-300); font: var(--type-body-large); line-height: var(--reading-leading); }
 .reader .self-check ol { display: flex; flex-direction: column; gap: var(--space-150); padding-left: var(--space-200); }
 .reader .self-check .md { font: inherit; }
 .reader .md :is(h1, h2, h3) { letter-spacing: var(--heading-track); }
 .reader .md h1 { font: var(--type-heading-xlarge); }
 .reader .md :is(h2, h3) { font: var(--type-heading-medium); }
+.md pre { tab-size: 4; }
+/* A wrapped code line continues 4 columns right of its own indentation, so it can't be read as a new line. */
+.md pre code .line { display: block; white-space: pre-wrap; overflow-wrap: anywhere; padding-left: calc((var(--indent) + 4) * 1ch); text-indent: calc((var(--indent) + 4) * -1ch); }
 .pre { margin: 0; padding: var(--space-200) var(--space-250); border-radius: var(--radius-card); background: var(--soft); font: var(--type-code); font-variant-ligatures: none; white-space: pre; overflow-x: auto; }
-.my-note { display: flex; gap: var(--space-150); align-items: center; max-width: var(--measure); padding: var(--space-150) var(--space-200); border-radius: var(--radius-card); background: var(--note); color: var(--note-ink); font: var(--type-body); }
+.my-note { display: flex; gap: var(--space-150); align-items: center; padding: var(--space-150) var(--space-200); border-radius: var(--radius-card); background: var(--note); color: var(--note-ink); font: var(--type-body); }
 .my-note span { min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .reader .actions { margin-top: auto; }
 
