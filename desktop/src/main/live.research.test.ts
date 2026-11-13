@@ -142,6 +142,39 @@ describe('live CodeLearnApi: research, roadmaps and drafts (§4.2, §4.9)', () =
     expect(t.c.bound.at(-1)).toBe(draft);
   });
 
+  it('discards the draft on request, keeping the approved course on screen', async () => {
+    const t = live();
+    await practising(t);
+    const approved = t.c.roadmap!.course;
+    await settle(() => t.api.research({ topic: 'Vue', known: '', depth: 'standard', practice: 'code' }), (x) => x.state !== 'running', 'Research');
+    const draft = t.c.roadmap!.course;
+    await t.api.discardDraft();
+    expect(t.c.courses.has(draft)).toBe(false);
+    expect(await t.api.draft()).toBeNull();
+    expect(await t.api.course()).toMatchObject({ topics: [{ id: 'values' }, {}] });
+    expect(t.c.courses.has(approved)).toBe(true);
+    await expect(t.api.discardDraft()).rejects.toThrow('No draft to discard.');
+  });
+
+  it('replaces the earlier draft when a new course is researched', async () => {
+    const t = live();
+    await t.api.connect('claude');
+    await settle(() => t.api.research({ topic: 'Vue', known: '', depth: 'standard', practice: 'code' }), (x) => x.state !== 'running', 'Research');
+    const vue = t.c.roadmap!.course;
+    await settle(() => t.api.research({ topic: 'Svelte', known: '', depth: 'standard', practice: 'code' }), (x) => x.state !== 'running', 'Research');
+    expect(t.c.courses.has(vue)).toBe(false);
+    expect(await t.api.draft()).toMatchObject({ goal: 'Svelte' });
+  });
+
+  it("shows the agent's practice note, and keeps it through the learner's edits", async () => {
+    const t = live({ research: (_job, usual) => (usual(), (t.c.roadmap!.practice_note = 'A quiz judges prompts better.'), {}) });
+    await t.api.connect('claude');
+    const r = await settle(() => t.api.research({ topic: 'Prompts', known: '', depth: 'standard', practice: 'code' }), (x) => x.state !== 'running', 'Research');
+    expect(r.roadmap).toMatchObject({ practiceNote: 'A quiz judges prompts better.' });
+    await t.api.saveDraft(r.roadmap!.concepts);
+    expect(await t.api.draft()).toMatchObject({ practiceNote: 'A quiz judges prompts better.' });
+  });
+
   it('has no draft to resume once the roadmap is approved', async () => {
     const t = live();
     expect(await t.api.draft()).toBeNull();

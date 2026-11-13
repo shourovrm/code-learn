@@ -112,6 +112,7 @@ describe('the learner-safe boundary (D4)', () => {
       rebuildTopics: [['values'], true],
       writeLesson: ['values'],
       saveDraft: [concepts],
+      discardDraft: [],
       approve: [concepts],
       research: [{ topic: 'React', known: '', depth: 'standard', practice: 'code' }],
     };

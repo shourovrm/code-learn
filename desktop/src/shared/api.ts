@@ -151,6 +151,8 @@ export interface Roadmap {
   concepts: Concept[];
   /** The roadmaps and docs the agent used. Opened only in the system browser (§2.1). */
   sources: { title: string; url: string }[];
+  /** The agent's note when Code was chosen but code exercises may not fit the subject (§4.2). */
+  practiceNote?: string;
 }
 
 export type JobState = 'running' | 'done' | 'failed';
@@ -479,6 +481,8 @@ export interface CodeLearnApi {
   draft(): Promise<Roadmap | null>;
   /** Saves the learner's edits to the draft as they happen. */
   saveDraft(concepts: Concept[]): Promise<void>;
+  /** Deletes the roadmap not approved yet. Refused while a job works on it. */
+  discardDraft(): Promise<void>;
 
   course(): Promise<CourseView | null>;
   /** The learner's courses, oldest first, with the one on screen marked (§4.13). */

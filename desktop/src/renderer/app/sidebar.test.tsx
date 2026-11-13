@@ -331,3 +331,21 @@ describe('text size in the sidebar', () => {
     await screen.findAllByRole('button', { name: 'Larger text' });
   });
 });
+
+describe('a draft in the sidebar', () => {
+  it('lists the draft under the courses, marked Draft, and opens it from any page', async () => {
+    const user = userEvent.setup();
+    const { api } = await mockWithRoadmap();
+    renderApp({ to: 'tracks' }, api);
+    await user.click(await within(sidebar()).findByRole('button', { name: 'React (draft)' }));
+    expect(await screen.findByRole('button', { name: 'Approve' })).toBeInTheDocument();
+  });
+
+  it('lists no draft once the roadmap is approved', async () => {
+    const { api } = await mockWithCourse();
+    renderApp({ to: 'tracks' }, api);
+    await screen.findByRole('heading', { name: 'Toolchains' });
+    await new Promise((r) => setTimeout(r, 20));
+    expect(within(sidebar()).queryByRole('button', { name: /\(draft\)/ })).not.toBeInTheDocument();
+  });
+});

@@ -175,6 +175,19 @@ describe("roadmap title", () => {
   });
 });
 
+describe("roadmap practice note", () => {
+  const base = "goal: G\ntrack: c@1\nstyle: io\nconcepts:\n  - { id: a, title: A, requires: [] }\n";
+
+  it("accepts a short note on why code practice may not fit, and none at all", () => {
+    expect(parseRoadmapYaml(base).practice_note).toBeUndefined();
+    expect(parseRoadmapYaml(`${base}practice_note: A quiz judges prompts better.\n`).practice_note).toBe("A quiz judges prompts better.");
+  });
+
+  it("rejects a note over 300 characters", () => {
+    expect(() => parseRoadmapYaml(`${base}practice_note: ${"n".repeat(301)}\n`)).toThrow(/practice_note/);
+  });
+});
+
 describe("roadmap sources", () => {
   const base = "goal: G\ntrack: c@1\nstyle: io\nconcepts:\n  - { id: a, title: A, requires: [] }\n";
   const withSources = (items: string) => `${base}sources:\n${items}`;

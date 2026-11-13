@@ -20,6 +20,7 @@ const GOOD: Record<Exclude<keyof CodeLearnApi, 'onCheckProgress' | 'onJobProgres
   approve: [concepts],
   draft: [],
   saveDraft: [concepts],
+  discardDraft: [],
   course: [],
   courses: [],
   switchCourse: ['react-1'],

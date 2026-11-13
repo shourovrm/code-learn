@@ -196,3 +196,12 @@ it('adds the learner instructions to the research brief only when they are given
   expect(briefs.research('course', 'Shell', '', 'standard', 'code', '')).not.toContain('instructions');
   expect(briefs.research('course', 'Shell', '', 'standard')).not.toContain('instructions');
 });
+
+it('asks for a practice note only when code was chosen, and says the learner sees the toolchain first', () => {
+  for (const practice of ['code', 'both'] as const) {
+    const brief = briefs.research('course', 'Prompt engineering', '', 'standard', practice);
+    expect(brief).toContain('practice_note');
+    expect(brief).toContain('The learner sees the track you name before anything is set up');
+  }
+  for (const practice of ['quiz', 'none'] as const) expect(briefs.research('course', 'History', '', 'standard', practice)).not.toContain('practice_note');
+});

@@ -157,7 +157,8 @@ describe('resuming a roadmap', () => {
     const { api, roadmap } = await mockWithRoadmap();
     await api.saveDraft([...roadmap.concepts.slice(0, -2), ...roadmap.concepts.slice(-2).reverse()]);
     renderApp({ to: 'goal' }, api);
-    await user.click(await screen.findByRole('button', { name: 'Resume roadmap' }));
+    expect(await screen.findByText(/Starting a new course replaces your draft/)).toHaveTextContent('Starting a new course replaces your draft React.');
+    await user.click(screen.getByRole('button', { name: 'Open the draft' }));
     expect(await screen.findByRole('button', { name: 'Approve' })).toBeInTheDocument();
     const topics = within(screen.getByRole('list')).getAllByRole('listitem').map((li) => li.getAttribute('aria-label'));
     expect(topics.slice(-2)).toEqual(['Forms', 'Lists and keys']);
@@ -168,7 +169,7 @@ describe('resuming a roadmap', () => {
     renderApp({ to: 'goal' }, api);
     await screen.findByRole('textbox', { name: 'What do you want to learn?' });
     await new Promise((r) => setTimeout(r, 20));
-    expect(screen.queryByRole('button', { name: 'Resume roadmap' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Open the draft' })).not.toBeInTheDocument();
   });
 });
 

@@ -296,3 +296,75 @@ describe('a long roadmap', () => {
     sheet.remove();
   });
 });
+
+describe('discarding a draft', () => {
+  it('asks first, then deletes the draft and goes to the New course page', async () => {
+    const { api, user } = await open();
+    await user.click(screen.getByRole('button', { name: 'Discard draft' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Discard this draft?' });
+    await user.click(within(dialog).getByRole('button', { name: 'Discard draft' }));
+    expect(await screen.findByRole('textbox', { name: 'What do you want to learn?' })).toBeInTheDocument();
+    expect(await api.draft()).toBeNull();
+  });
+
+  it('keeps the draft when the learner says Keep it', async () => {
+    const { api, user } = await open();
+    await user.click(screen.getByRole('button', { name: 'Discard draft' }));
+    await user.click(within(await screen.findByRole('dialog', { name: 'Discard this draft?' })).getByRole('button', { name: 'Keep it' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(await api.draft()).not.toBeNull();
+  });
+});
+
+/** Opens the editor on `roadmap` with every roadmap-change request recorded. */
+async function withRequests(change: (roadmap: Roadmap) => Roadmap) {
+  const { api, roadmap } = await mockWithRoadmap();
+  const requests: string[] = [];
+  const revise = api.reviseRoadmap.bind(api);
+  api.reviseRoadmap = async (concepts, request) => (requests.push(request), revise(concepts, request));
+  const shown = change(roadmap);
+  renderApp({ to: 'course', roadmap: shown }, api);
+  await screen.findByRole('heading', { name: 'React' });
+  return { roadmap: shown, requests, user: userEvent.setup() };
+}
+
+describe('the toolchain a draft practises with', () => {
+  it('names it, and Use it keeps it', async () => {
+    const { roadmap, requests, user } = await withRequests((r) => r);
+    const card = screen.getByRole('region', { name: `Practise with: ${roadmap.track}` });
+    await user.click(within(card).getByRole('button', { name: `Use ${roadmap.track}` }));
+    expect(within(card).queryByRole('textbox')).not.toBeInTheDocument();
+    expect(requests).toEqual([]);
+  });
+
+  it("asks the agent for the learner's own choice", async () => {
+    const { roadmap, requests, user } = await withRequests((r) => r);
+    const card = screen.getByRole('region', { name: `Practise with: ${roadmap.track}` });
+    await user.type(within(card).getByRole('textbox', { name: "Or tell the agent what you'd like instead" }), 'use Vite with TypeScript');
+    await user.click(within(card).getByRole('button', { name: 'Suggest' }));
+    await waitFor(() => expect(requests).toHaveLength(1));
+    expect(requests[0]).toContain('use Vite with TypeScript');
+  });
+
+  it('shows no toolchain for a course without code practice', async () => {
+    await withRequests((r) => ({ ...r, track: '' }));
+    expect(screen.queryByRole('region', { name: /Practise with/ })).not.toBeInTheDocument();
+  });
+
+  it('says when code practice may not fit, switches to Quiz through the agent, or keeps code', async () => {
+    const { requests, user } = await withRequests((r) => ({ ...r, practiceNote: 'A quiz judges this better.' }));
+    const card = screen.getByRole('region', { name: 'Code practice may not fit this subject' });
+    expect(card).toHaveTextContent('A quiz judges this better.');
+    await user.click(within(card).getByRole('button', { name: 'Switch to Quiz' }));
+    await waitFor(() => expect(requests).toHaveLength(1));
+    expect(requests[0]).toMatch(/quiz/i);
+  });
+
+  it('Keep code hides the note and keeps the toolchain', async () => {
+    const { roadmap, requests, user } = await withRequests((r) => ({ ...r, practiceNote: 'A quiz judges this better.' }));
+    await user.click(screen.getByRole('button', { name: `Keep code, with ${roadmap.track}` }));
+    expect(screen.queryByRole('region', { name: 'Code practice may not fit this subject' })).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: `Practise with: ${roadmap.track}` })).toBeInTheDocument();
+    expect(requests).toEqual([]);
+  });
+});
