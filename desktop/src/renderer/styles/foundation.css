@@ -61,11 +61,18 @@ button.pick:not([aria-current]) { border-color: transparent; color: var(--garden
 /* A new version in the slim sidebar (§7.2): one word at its foot. */
 .slim .slim-update { margin-top: auto; display: flex; flex-direction: column; align-items: center; }
 .slim .slim-update a, .slim .slim-update .btn { padding: var(--space-075) var(--space-050); font: var(--type-body-small); font-weight: 600; color: var(--primary); }
-/* The text size buttons (app/TextSizeControls.tsx): A− and A+ with the percentage; in the slim rail they stack. */
-.text-size { display: flex; align-items: center; gap: var(--space-050); padding: var(--space-050) var(--space-150); color: var(--garden-text); font: var(--type-body-small); }
-.text-size button { min-width: var(--control-h-compact); height: var(--control-h-compact); padding: 0 var(--space-050); border: none; border-radius: var(--radius-ctl); background: transparent; color: inherit; font: var(--type-body); font-weight: 600; cursor: pointer; }
-.text-size button:hover { background: color-mix(in srgb, var(--garden-text) 10%, transparent); }
-.slim .text-size { flex-direction: column; padding: var(--space-050) 0; }
+/* The Text size button (app/TextSizeControls.tsx), and the bar it opens beside the sidebar, pointing at it. */
+.text-size-toggle .aa { font: var(--type-heading-small); letter-spacing: var(--heading-track); }
+.text-size-toggle .aa small { font-size: 0.75em; }
+.side .text-size-toggle { align-self: stretch; }
+.text-size-toggle[aria-expanded="true"] { background: var(--garden-2); color: var(--primary); }
+.text-size-bar { position: fixed; z-index: 20; display: flex; align-items: center; gap: var(--space-050); margin-left: var(--space-150); padding: var(--space-075); transform: translateY(-50%); border: var(--border) solid var(--line); border-radius: var(--radius-card); background: var(--card); box-shadow: 0 var(--space-100) var(--space-300) var(--shadow-strong); color: var(--ink); }
+.text-size-bar::before { content: ""; position: absolute; left: calc(-1 * var(--space-075)); top: 50%; width: var(--space-150); height: var(--space-150); transform: translateY(-50%) rotate(45deg); border-left: var(--border) solid var(--line); border-bottom: var(--border) solid var(--line); background: var(--card); }
+.text-size-bar button { min-width: var(--control-h); height: var(--control-h); padding: 0 var(--space-100); border: none; border-radius: var(--radius-ctl); background: transparent; color: inherit; font: var(--type-body); font-weight: 700; cursor: pointer; }
+.text-size-bar button:hover { background: var(--soft); }
+.text-size-bar .reset { font-weight: 500; color: var(--muted); }
+.text-size-bar .pct { min-width: var(--space-600); text-align: center; font: var(--type-body); font-weight: 600; }
+.text-size-bar .sep { width: var(--border); height: var(--space-250); margin: 0 var(--space-050); background: var(--line); }
 
 /* ---------- Type and controls ---------- */
 .h1 { margin: 0; font: var(--type-heading-xlarge); letter-spacing: var(--heading-track); text-wrap: balance; }

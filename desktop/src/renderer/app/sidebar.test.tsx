@@ -321,14 +321,17 @@ describe('back', () => {
 });
 
 describe('text size in the sidebar', () => {
-  it('offers smaller and larger text on every page, the slim sidebar too', async () => {
+  it('offers smaller and larger text from one button on every page, the slim sidebar too', async () => {
+    const user = userEvent.setup();
     renderApp({ to: 'tracks' }, createMock({ connected: 'claude' }));
     await screen.findByRole('heading', { name: 'Toolchains' });
-    expect(within(sidebar()).getByRole('button', { name: 'Smaller text' })).toBeInTheDocument();
-    expect(within(sidebar()).getByRole('button', { name: 'Larger text' })).toBeInTheDocument();
+    expect(within(sidebar()).queryByRole('button', { name: 'Larger text' })).not.toBeInTheDocument();
+    await user.click(within(sidebar()).getByRole('button', { name: 'Text size' }));
+    expect(screen.getByRole('button', { name: 'Smaller text' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Larger text' })).toBeInTheDocument();
     const { api, course } = await mockWithCourse();
     renderApp({ to: 'lesson', lessonId: course.topics[0].lessons[0].id }, api);
-    await screen.findAllByRole('button', { name: 'Larger text' });
+    await screen.findAllByRole('button', { name: 'Text size' });
   });
 });
 

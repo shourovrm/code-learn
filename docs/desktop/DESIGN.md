@@ -558,7 +558,7 @@ A learner can keep several courses and switch between them in one code-learn. Wi
 - **Agent:** the connected agent, and **Change agent**, which opens the connect screen. Continue there comes back to Settings.
 - **Sync with GitHub:** described below.
 - **Theme:** System, Light or Dark.
-- **Text size:** the starting size, 90% to 150%. A− / A+ in the sidebar and Ctrl+= / Ctrl+- change it for the session on any page, and Ctrl+0 goes back to the starting size. It scales the type tokens only (`--text-scale`), not the layout, and lives in local storage like the theme.
+- **Text size:** the starting size, 90% to 150%. The Text size button in the sidebar opens a bar beside it (A−, the size, A+ and Reset; Escape, a click outside or the button again closes it), and with Ctrl+= / Ctrl+- it changes the size for the session on any page, and Ctrl+0 goes back to the starting size. It scales the type tokens only (`--text-scale`), not the layout, and lives in local storage like the theme.
 
 Settings is not a Back target, so Back from it returns to the screen it was opened from.
 

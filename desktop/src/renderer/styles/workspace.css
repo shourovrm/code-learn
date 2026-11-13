@@ -94,7 +94,8 @@
 .reader .head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-200); }
 .reader .h1 { font: var(--type-heading-xlarge); letter-spacing: var(--heading-track); }
 .reader .sub { font: var(--type-body-large); }
-.reader .md { font: var(--type-body-large); line-height: var(--reading-leading); }
+/* A lesson fills its reading pane at the learner's request (design-system.md), unlike other text's 72ch. */
+.reader .md { max-width: none; font: var(--type-body-large); line-height: var(--reading-leading); }
 .reader .answers summary { cursor: pointer; font: var(--type-heading-small); }
 .reader .goal { margin-bottom: var(--space-200); }
 .reader .self-check { margin-top: var(--space-300); font: var(--type-body-large); line-height: var(--reading-leading); }

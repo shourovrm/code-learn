@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { TextSizeButtons, TextSizeSwitch } from './TextSizeControls';
+import { TextSizeMenu, TextSizeSwitch } from './TextSizeControls';
 import { initTextSize, useTextSizeShortcuts } from './textSize';
 
 /** This test environment has no localStorage, so each test gets a fresh one kept in memory. */
@@ -21,7 +21,7 @@ const scale = () => document.documentElement.style.getPropertyValue('--text-scal
 
 function Shortcuts() {
   useTextSizeShortcuts();
-  return <TextSizeButtons />;
+  return <TextSizeMenu />;
 }
 
 beforeEach(() => Object.defineProperty(window, 'localStorage', { value: memoryStorage(), configurable: true }));
@@ -52,9 +52,41 @@ describe('the text size', () => {
     expect(scale()).toBe('1.15');
   });
 
+  it('opens a bar from one button, and closes it with Escape, a click outside or the button again', async () => {
+    initTextSize();
+    render(<><TextSizeMenu /><p>Outside</p></>);
+    const toggle = screen.getByRole('button', { name: 'Text size' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('button', { name: 'Larger text' })).not.toBeInTheDocument();
+    await userEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('button', { name: 'Larger text' })).toBeInTheDocument();
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('button', { name: 'Larger text' })).not.toBeInTheDocument();
+    expect(toggle).toHaveFocus();
+    await userEvent.click(toggle);
+    await userEvent.click(screen.getByText('Outside'));
+    expect(screen.queryByRole('button', { name: 'Larger text' })).not.toBeInTheDocument();
+    await userEvent.click(toggle);
+    await userEvent.click(toggle);
+    expect(screen.queryByRole('button', { name: 'Larger text' })).not.toBeInTheDocument();
+  });
+
+  it('Reset in the bar goes back to the starting size', async () => {
+    window.localStorage.setItem('code-learn.text-size', '115');
+    initTextSize();
+    render(<TextSizeMenu />);
+    await userEvent.click(screen.getByRole('button', { name: 'Text size' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Larger text' }));
+    expect(scale()).toBe('1.3');
+    await userEvent.click(screen.getByRole('button', { name: 'Reset' }));
+    expect(scale()).toBe('1.15');
+  });
+
   it('steps with A− and A+ for this session only, and stops at the ends', async () => {
     initTextSize();
-    render(<TextSizeButtons />);
+    render(<TextSizeMenu />);
+    await userEvent.click(screen.getByRole('button', { name: 'Text size' }));
     await userEvent.click(screen.getByRole('button', { name: 'Larger text' }));
     expect(scale()).toBe('1.15');
     expect(screen.getByText('115%')).toBeInTheDocument();
