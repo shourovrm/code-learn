@@ -28,9 +28,9 @@ export const CHANGE_APPROACH =
 
 /** What a depth means for one lesson. Standard is the lesson rules as they stand, so it adds nothing. */
 const LESSON_DEPTH: Record<Depth, string | false> = {
-  overview: 'Depth: an overview. Teach only what the learner needs to use the idea: two or three steps and one mistake, in about a three-minute read. This length replaces the five-minute one above.',
+  overview: 'Depth: an overview. Teach only what the learner needs to use the idea, in about a three-minute read. This length replaces the five-minute one above.',
   standard: false,
-  'in-depth': 'Depth: in depth. Go past the essentials: add steps for the edge cases and for why it works, and show two mistakes corrected, in about an eight-minute read. This length replaces the five-minute one above, and a lesson this long does not mean the concept is too big.',
+  'in-depth': 'Depth: in depth. Go past the essentials: teach the edge cases the sources name and why the idea works, in about an eight-minute read. This length replaces the five-minute one above, and a lesson this long does not mean the concept is too big.',
 };
 
 /** What a depth means for one exercise or quiz. The difficulty still comes from code-learn. */
@@ -114,7 +114,7 @@ export function briefsFrom(base: Record<JobKind, string>, platform: NodeJS.Platf
       return brief(
         'lesson',
         `Concepts, one lesson each, in this order:\n${lines.join('\n')}`,
-        'Follow every step above for each concept. Save each one with `save_lesson` before you start the next, so a finished lesson is kept if a later one fails.',
+        'Work this way for each concept. Save each one with `save_lesson` before you start the next, so a finished lesson is kept if a later one fails.',
       );
     },
     author: (instructions = '', depth: Depth = 'standard') =>

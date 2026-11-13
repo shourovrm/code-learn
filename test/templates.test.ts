@@ -401,8 +401,8 @@ describe("research and teaching quality", () => {
   it("keeps the teaching moves, placed where the content needs them", () => {
     for (const text of [AGENTS_SECTION, JOB_BRIEFS.lesson]) {
       expect(text).toMatch(/It shows before it tells/);
-      expect(text).toMatch(/It works at least one complete example through, the way the learner will have to, and says why each step is taken/);
-      expect(text).toMatch(/It takes up each mistake from the concept's `pitfalls` at the point where the learner would make it/);
+      expect(text).toMatch(/Where the learner will have to carry something out, it shows it done once, completely, the way they will do it/);
+      expect(text).toMatch(/Where the learner would make a mistake from the concept's `pitfalls`, it takes the mistake up at that point, inside the part that teaches that idea/);
       expect(text).toMatch(/carry one example through the lesson, changing one thing at a time/);
       expect(text).toMatch(/Teach the idea with a different example from that task, so the task is still theirs to solve/);
       expect(text).toMatch(/one small task the learner can ask the tutor to review/);

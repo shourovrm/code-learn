@@ -74,6 +74,12 @@ describe('job briefs', () => {
   it('gives a lesson and an exercise their own lines for an overview and for in depth, and none for standard', () => {
     expect(briefs.lesson('values', 'Values', '', 'overview')).toMatch(/Depth: an overview\. .*about a three-minute read/);
     expect(briefs.lesson('values', 'Values', '', 'in-depth')).toMatch(/Depth: in depth\. .*about an eight-minute read/);
+    // The lesson has no fixed outline, so a depth names no parts of one.
+    for (const depth of ['overview', 'in-depth'] as const) {
+      const line = briefs.lesson('values', 'Values', '', depth).split('\n\n').find((part) => part.startsWith('Depth:'));
+      expect(line).not.toMatch(/steps|mistake/);
+    }
+    expect(briefs.lessons([{ concept: 'a', title: 'A' }, { concept: 'b', title: 'B' }])).toContain('Work this way for each concept.');
     expect(briefs.author('', 'overview')).toMatch(/Depth: an overview\. .*main use/);
     expect(briefs.author('', 'in-depth')).toMatch(/Depth: in depth\. .*edge cases/);
     for (const brief of [briefs.lesson('values', 'Values', '', 'standard'), briefs.lesson('values', 'Values'), briefs.author('', 'standard'), briefs.author()]) {

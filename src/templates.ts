@@ -65,14 +65,14 @@ A lesson teaches one concept and is about a five-minute read, unless the request
 
 #### How the lesson teaches
 
-Write the lesson the way a good textbook for this subject would. There is no fixed outline: give the lesson the order its idea needs. A procedure is best walked through once. A rule with exceptions starts from the plain case and then shows the case that breaks it. An idea learners often get wrong can start from that wrong idea and why it seems right.
+Write the lesson the way a good textbook for this subject would. There is no fixed outline: give the lesson the order its idea needs. A rule with exceptions starts from the plain case and then shows the case that breaks it. An idea learners often get wrong can start from that wrong idea and why it seems right.
 
 Whatever its order, a lesson does these things:
 
 - It starts from what the learner already has: a situation they will recognise, or what the topics this one \`requires\` taught, in a sentence or two.
 - It shows before it tells. A small, concrete example comes before the rule it shows, because a learner who has watched one case has something to attach the rule to. Where it fits, carry one example through the lesson, changing one thing at a time, so each change shows only the new idea.
-- It works at least one complete example through, the way the learner will have to, and says why each step is taken. In a programming course that is code. In another subject it is what the subject uses: a solved problem, a case, an annotated document, a calculation.
-- It takes up each mistake from the concept's \`pitfalls\` at the point where the learner would make it, and shows why it seems right and what fixes it. A mistake explained in place is remembered; a list of warnings at the end is not.
+- Where the learner will have to carry something out, it shows it done once, completely, the way they will do it, and says why each move is made. In a programming course that is code. In another subject it is what the subject uses: a solved problem, a case, an annotated document, a calculation.
+- Where the learner would make a mistake from the concept's \`pitfalls\`, it takes the mistake up at that point, inside the part that teaches that idea, and shows why it seems right and what fixes it. A mistake explained where it happens is remembered; a section of warnings is not.
 - It uses nothing from a later topic. If a later topic must be named, the lesson says which topic teaches it.
 - It stops when the idea is taught. A closing summary belongs only in a lesson long enough to lose the thread. The lesson may end with one small task the learner can ask the tutor to review.
 
@@ -273,7 +273,7 @@ Other agents do the rest of the work. A planner has researched the subject and w
 
 You are given one concept, or a list of concepts that each get a lesson of their own. A concept may come with a depth or with the learner's own instructions; follow them.
 
-### Steps
+### How you work
 
 1. Call \`get_roadmap\` to see where the concept sits. Its \`lessons\` lists the lessons the course has. Read the lesson of each concept this one \`requires\` with \`get_lesson\`, at most three, the nearest first. Use their words for the same things, build on their examples where it fits, and don't teach again what they taught.
 2. Write the lesson as "The lesson" below sets out.
