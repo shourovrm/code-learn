@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.7 (2026-11-13)
+
+- A roadmap draft is listed in the sidebar, marked Draft, and opens from any page. **Discard draft** deletes it after asking, and starting a new course replaces it, so no draft is left where you can't reach it.
+- When Code is on, the roadmap shows the toolchain the course will practise with: use it, or tell the agent what you'd like instead. When code exercises don't suit the subject, the agent says so and offers Quiz.
+- Text size on every page: A− and A+ in the sidebar, or Ctrl+= and Ctrl+-, with Ctrl+0 back to the starting size you choose in Settings. Only the text scales.
+- Lessons use the whole reading pane. A long code line wraps under its own indentation, so it never looks like a new line.
+- A locked exercise says what it waits for: the earlier topic to practise first, with Go to, or the lesson to finish. A lesson says that Next marks it read.
+- A chosen "How deep" or "How to practise" option is filled and checked.
+
 ## 0.2.6 (2026-11-11)
 
 - New lesson instructions. The lesson writer is told who the learner is, what the lesson must let them do, how to teach it, which form fits which content (a table for a comparison, a numbered list for steps, paragraphs for reasoning), and to leave out any figure, date or rule number it isn't sure of. A lesson's goal now completes "You will be able to:".
