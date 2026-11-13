@@ -6,6 +6,7 @@ import { cacheFor, lessonCache } from '../../app/cache';
 import { useJob } from '../../app/useJob';
 import { useRouter } from '../../app/router';
 import { Button } from '../../ui/Button';
+import { Dialog } from '../../ui/Dialog';
 import { Field } from '../../ui/Field';
 import { Icon } from '../../ui/Icon';
 import { JobBar } from '../../ui/JobBar';
@@ -30,6 +31,13 @@ export function CourseEditor({ roadmap }: { roadmap: Roadmap }) {
   const [reply, setReply] = useState('');
   const [request, setRequest] = useState('');
   const [asking, setAsking] = useState(false);
+  const [discarding, setDiscarding] = useState(false);
+  /** The learner's own toolchain request, sent with Suggest. */
+  const [suggestion, setSuggestion] = useState('');
+  /** Accepted with Use: the toolchain card then shows only what it is. */
+  const [toolchainKept, setToolchainKept] = useState(false);
+  /** Kept with Keep code: the agent's practice note goes, and the toolchain card shows. */
+  const [codeKept, setCodeKept] = useState(false);
   const dragFrom = useRef<string>(undefined);
   // "Ask code-learn for changes" and Go deeper run a roadmap-change job (§4.11).
   const job = useJob((p) => p.kind === 'roadmap', []);
@@ -112,6 +120,22 @@ export function CourseEditor({ roadmap }: { roadmap: Roadmap }) {
     }
   }
 
+  async function suggest(e: FormEvent) {
+    e.preventDefault();
+    if (!suggestion.trim()) return;
+    await change(`Practise with a different toolchain: ${suggestion.trim()}`);
+    setSuggestion('');
+  }
+
+  async function discard() {
+    try {
+      await api.discardDraft();
+      go({ to: 'goal' });
+    } catch (err) {
+      fail(err);
+    }
+  }
+
   async function approve() {
     try {
       await api.approve(concepts);
@@ -129,7 +153,10 @@ export function CourseEditor({ roadmap }: { roadmap: Roadmap }) {
     <main className="main editor">
       <div className="editor-body">
         <div className="stack editor-col">
-          <h1 className="h2 a-up">{roadmap.title}</h1>
+          <div className="editor-head a-up">
+            <h1 className="h2">{roadmap.title}</h1>
+            <Button variant="ghost" onClick={() => setDiscarding(true)}>Discard draft</Button>
+          </div>
           {roadmap.goal !== roadmap.title && <p className="sub a-up">{roadmap.goal}</p>}
           {sources.length > 0 && (
             <section className="sources a-up" style={stagger(0, 100)} aria-labelledby="sources-t">
@@ -140,6 +167,34 @@ export function CourseEditor({ roadmap }: { roadmap: Roadmap }) {
                 ))}
               </ul>
             </section>
+          )}
+          {roadmap.practiceNote && !codeKept ? (
+            <section className="card practice-card note" aria-labelledby="fit-t">
+              <h2 id="fit-t">Code practice may not fit this subject</h2>
+              <p>{roadmap.practiceNote}</p>
+              <div className="practice-actions">
+                <Button variant="ghost" disabled={working} onClick={() => void change('Switch this course to quiz practice only, with no track.')}>Switch to Quiz</Button>
+                <Button variant="ghost" onClick={() => setCodeKept(true)}>Keep code, with {roadmap.track}</Button>
+              </div>
+            </section>
+          ) : (
+            roadmap.track !== '' && (
+              <section className="card practice-card" aria-labelledby="toolchain-t">
+                <h2 id="toolchain-t">Practise with: {roadmap.track}</h2>
+                <p>Exercises are built and tested with this toolchain. Nothing is installed until you approve the course.</p>
+                {!toolchainKept && (
+                  <>
+                    <div className="practice-actions">
+                      <Button variant="primary" onClick={() => setToolchainKept(true)}>Use {roadmap.track}</Button>
+                    </div>
+                    <form className="practice-actions" onSubmit={suggest}>
+                      <Field aria-label="Or tell the agent what you'd like instead" value={suggestion} maxLength={LIMITS.words} disabled={working} onChange={(e) => setSuggestion(e.target.value)} />
+                      <Button type="submit" variant="ghost" disabled={!suggestion.trim() || working}>Suggest</Button>
+                    </form>
+                  </>
+                )}
+              </section>
+            )
           )}
           <ol className="topics" aria-label="Roadmap">
             {concepts.map((c, i) => (
@@ -191,6 +246,12 @@ export function CourseEditor({ roadmap }: { roadmap: Roadmap }) {
           <Limit value={request} max={LIMITS.words} />
         </div>
       </footer>
+      {discarding && (
+        <Dialog title="Discard this draft?" text={`“${roadmap.title}” and its roadmap are deleted. This can't be undone.`} onClose={() => setDiscarding(false)}>
+          <Button variant="ghost" size="lg" onClick={() => setDiscarding(false)}>Keep it</Button>
+          <Button size="lg" onClick={() => void discard()}>Discard draft</Button>
+        </Dialog>
+      )}
     </main>
   );
 }

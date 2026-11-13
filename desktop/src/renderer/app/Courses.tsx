@@ -20,10 +20,12 @@ export function Courses({ slim = false }: { slim?: boolean }) {
   const api = useApi();
   const { route, go, fail } = useRouter();
   const { data: courses } = useLoad(() => api.courses(), [route]);
+  const { data: draft } = useLoad(() => api.draft(), [route]);
   if (!courses) return null;
   // The first course's research or roadmap is on screen: it isn't a course yet, but "No course yet" would deny it.
   const drafting = route.to === 'research' || route.to === 'course';
-  if (courses.length === 0 && (slim || !drafting)) return slim ? null : <div className="pick none">No course yet</div>;
+  const noCourse = courses.length === 0 && !drafting;
+  if (noCourse && !draft) return slim ? null : <div className="pick none">No course yet</div>;
 
   async function open(course: CourseSummary) {
     try {
@@ -44,16 +46,29 @@ export function Courses({ slim = false }: { slim?: boolean }) {
   const badge = (c: CourseSummary) => <span className="badge" style={{ background: hueColor(c.track) }} aria-hidden="true">{initialOf(c.title)}</span>;
   return (
     <div className={slim ? 'courses slim-courses' : 'courses'}>
-      {courses.map((c) => (
-        <button key={c.id} type="button" className={slim ? 'nav' : 'pick'} aria-current={c.current ? 'true' : undefined} aria-label={slim ? name(c) : undefined} onClick={() => void open(c)}>
-          {badge(c)}
-          {!slim && <span className="goal">{name(c)}</span>}
+      {draft && (
+        <button type="button" className={slim ? 'nav draft' : 'pick draft'} aria-label={`${draft.title} (draft)`} onClick={() => go({ to: 'course', roadmap: draft })}>
+          <span className="badge" style={{ background: hueColor(draft.track) }} aria-hidden="true">{initialOf(draft.title)}</span>
+          {!slim && <span className="goal">{draft.title}</span>}
+          {!slim && <span className="tag">Draft</span>}
         </button>
-      ))}
-      <button type="button" className="nav" aria-label={slim ? 'New course' : undefined} onClick={() => go({ to: 'goal' })}>
-        <Icon name="plus" color="var(--garden-text)" size={slim ? 18 : 16} />
-        {!slim && 'New course'}
-      </button>
+      )}
+      {noCourse ? (
+        !slim && <div className="pick none">No course yet</div>
+      ) : (
+        <>
+          {courses.map((c) => (
+            <button key={c.id} type="button" className={slim ? 'nav' : 'pick'} aria-current={c.current ? 'true' : undefined} aria-label={slim ? name(c) : undefined} onClick={() => void open(c)}>
+              {badge(c)}
+              {!slim && <span className="goal">{name(c)}</span>}
+            </button>
+          ))}
+          <button type="button" className="nav" aria-label={slim ? 'New course' : undefined} onClick={() => go({ to: 'goal' })}>
+            <Icon name="plus" color="var(--garden-text)" size={slim ? 18 : 16} />
+            {!slim && 'New course'}
+          </button>
+        </>
+      )}
     </div>
   );
 }

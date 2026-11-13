@@ -88,6 +88,15 @@
 .menu .btn { justify-content: flex-start; }
 .add { height: var(--control-h); border: var(--border-bold) dashed var(--ctl); border-radius: var(--radius-card); background: transparent; display: flex; align-items: center; justify-content: center; gap: var(--space-100); font: var(--type-body); font-weight: 600; cursor: pointer; }
 .add:disabled { opacity: .55; cursor: default; }
+.editor-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-150); }
+/* Practice cards: the toolchain, and the agent's note when code may not fit. */
+.practice-card { padding: var(--space-200) var(--space-250); display: flex; flex-direction: column; gap: var(--space-100); border-left: var(--border-bold) solid var(--primary-edge); }
+.practice-card h2 { margin: 0; font: var(--type-heading-small); letter-spacing: var(--heading-track); }
+.practice-card p { margin: 0; font: var(--type-body); color: var(--muted); }
+.practice-card.note { background: var(--note); border-left-color: var(--note-ink); }
+.practice-card.note :is(h2, p) { color: var(--note-ink); }
+.practice-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-100); margin: 0; }
+.practice-actions .field { flex: 1 1 var(--composer-min-w); }
 
 /* ---------- Tracks ---------- */
 .track-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(var(--track-min-w), 100%), 1fr)); gap: var(--space-200); max-width: var(--page-max); }
@@ -106,6 +115,13 @@
 .course .edit { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: var(--space-100); }
 .course .edit .field { flex: 1; min-width: var(--menu-w); }
 .course [role="status"] { flex-basis: 100%; margin: 0; }
+
+/* ---------- Roadmap drafts ---------- */
+/* A draft is listed like a course, but dashed: it isn't one yet. */
+button.pick.draft { border-style: dashed; border-color: var(--garden-muted); }
+.nav.draft { border: var(--border) dashed var(--garden-muted); }
+.draft-note { margin: 0; padding: var(--space-150) var(--space-200); border-radius: var(--radius-card); background: var(--note); color: var(--note-ink); font: var(--type-body); }
+.draft-note .draft-link { height: auto; padding: 0; display: inline; border: none; background: transparent; color: var(--note-ink); font: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: var(--space-025); }
 
 /* ---------- Check this computer ---------- */
 .plain { list-style: none; margin: 0; padding: 0; }

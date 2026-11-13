@@ -813,6 +813,12 @@ export function createMock(options: MockOptions = {}): CodeLearnApi {
       roadmap = { ...roadmap, concepts: structuredClone(edited) };
     },
 
+    async discardDraft() {
+      if (!drafting || !roadmap) throw new Error('No draft to discard.');
+      roadmap = null;
+      drafting = false;
+    },
+
     async course() {
       if (!course) return null;
       tick(course);

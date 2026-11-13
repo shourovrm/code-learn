@@ -84,9 +84,10 @@ export function Goal() {
         </div>
         <p className="quiet-text a-up" style={stagger(5)}>Pick any, or none to read lessons only.</p>
         {draft && (
-          <Banner style={stagger(5)} action={<Button variant="ghost" onClick={() => go({ to: 'course', roadmap: draft })}>Resume roadmap</Button>}>
-            <b>{draft.title}</b>
-          </Banner>
+          <p className="draft-note a-up" style={stagger(5)}>
+            Starting a new course replaces your draft <b>{draft.title}</b>.{' '}
+            <Button variant="text" className="draft-link" onClick={() => go({ to: 'course', roadmap: draft })}>Open the draft</Button>
+          </p>
         )}
         {isNew && code && (
           <Banner art={<Sprig mood="look" width={56} />}><b>{shown} isn't set up yet.</b> code-learn will set it up.</Banner>
