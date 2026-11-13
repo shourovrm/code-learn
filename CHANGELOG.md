@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.8 (2026-11-13)
+
+- Text size is one **Aa** button in the sidebar. It opens a small bar beside the sidebar with A−, the size, A+ and Reset; Escape, a click outside or the button again closes it. Ctrl+= and Ctrl+- still work anywhere.
+- A lesson's text now really fills the reading pane.
+
 ## 0.2.7 (2026-11-13)
 
 - A roadmap draft is listed in the sidebar, marked Draft, and opens from any page. **Discard draft** deletes it after asking, and starting a new course replaces it, so no draft is left where you can't reach it.
