@@ -48,6 +48,10 @@ const STYLE: Record<Practice, string | false> = {
   both: 'Save style: both and a track.',
 };
 
+/** Added for code and both: a course whose practice is a poor fit says so in the roadmap, and the learner sees the track first. */
+const PRACTICE_NOTE =
+  'The learner sees the track you name before anything is set up, and can ask for another. If code exercises are a poor fit for this subject, still save the style asked for, and add `practice_note` (at most 300 characters): why, and the practice that fits better, such as a quiz.';
+
 /** A topic of a lesson run: its concept, and what the learner asked for when rebuilding it, if anything. */
 export interface LessonTopic {
   concept: string;
@@ -76,6 +80,7 @@ export function briefsFrom(base: Record<JobKind, string>, platform: NodeJS.Platf
         known ? `They already know: ${known}` : 'They know nothing about it yet.',
         `Depth: ${DEPTH[depth]}. Each topic is one skill.`,
         STYLE[practice],
+        (practice === 'code' || practice === 'both') && PRACTICE_NOTE,
         (practice === 'quiz' || practice === 'none') && NOT_PROGRAMMING,
         instructions && `The learner's instructions for the course: ${instructions}`,
       ),

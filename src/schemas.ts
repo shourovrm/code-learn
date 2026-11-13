@@ -140,6 +140,8 @@ const RoadmapBase = z
       .min(1, "add at least one concept")
       .max(200),
     sources: z.array(Source).max(10, "list at most 10 sources").optional(),
+    /** Why code practice fits this subject poorly, and the practice that fits better (optional: set by the research agent). */
+    practice_note: z.string().trim().min(1).max(300).optional(),
   })
   .strict();
 const TrackRef = z.string().regex(/^[a-z0-9][a-z0-9._-]{0,63}@[1-9][0-9]{0,8}$/, "track must be pinned as id@version");

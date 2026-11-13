@@ -41,6 +41,8 @@ export interface CoreRoadmap {
   concepts: { id: string; title: string; requires: string[]; practice?: string; pitfalls?: string[]; refs?: number[] }[];
   /** The roadmaps and docs the research job used (core §5): https links only. */
   sources?: { title: string; url: string }[];
+  /** Why code practice fits this subject poorly, and the practice that fits better (research agent's note). */
+  practice_note?: string;
 }
 
 export type CoreNextStep =

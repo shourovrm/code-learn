@@ -257,7 +257,8 @@ export function createLive(d: LiveDeps): Live {
   const roadmapShown = (r: CoreRoadmap): Roadmap => {
     const view = roadmapView(r, Boolean(r.track && installed(r.track)), nameOf(r));
     const filter = hidden();
-    return { ...view, sources: view.sources.filter((s) => shown(s.title, filter) === s.title && shown(s.url, filter) === s.url) };
+    const practiceNote = r.practice_note ? { practiceNote: r.practice_note } : {};
+    return { ...view, ...practiceNote, sources: view.sources.filter((s) => shown(s.title, filter) === s.title && shown(s.url, filter) === s.url) };
   };
   /**
    * The hidden lines of every exercise in a course (the approved one by default), to check agent text against (§2.2).
@@ -289,19 +290,30 @@ export function createLive(d: LiveDeps): Live {
     return roadmap && !reviewing.has(roadmap.course) && !coursesOf(d.state.read()).includes(roadmap.course) ? roadmap : null;
   }
 
+  /** Whether a job is working on a course now. */
+  const workedOn = (course: string) => [...running.values()].some((job) => job.course === course);
+
+  /** Deletes a course. A job still working on it could save it again, so it is deleted only once that work ends. */
+  async function removeCourse(course: string) {
+    if (workedOn(course)) throw new SafeError('code-learn is working on this course. Delete it when that finishes.');
+    log('course-delete', {});
+    await core.deleteCourse(ws, course);
+    d.state.update((s) => withoutCourse(s, course));
+  }
+
   /** Saves the learner's edits to the active roadmap (the draft, if there is one) through core's roadmap rules (§4.2). JSON is YAML. */
   async function saveConcepts(concepts: Concept[]) {
     const current = core.getRoadmap(ws);
     // The review's own save would replace the learner's edits.
     if (reviewing.has(current.course)) throw new SafeError('The roadmap is still being checked. Try again in a moment.');
-    const { title, goal, track, style, sources } = current;
+    const { title, goal, track, style, sources, practice_note } = current;
     const byId = new Map(current.concepts.map((c) => [c.id, c]));
     const merged = concepts.map(({ id, title, requires }) => {
       const { practice, pitfalls, refs } = byId.get(id) ?? {};
       return { id, title, requires, practice, pitfalls, refs };
     });
     // JSON leaves out optional fields that are undefined.
-    await core.saveRoadmap(ws, current.course, JSON.stringify({ title, goal, track, style, concepts: merged, ...(sources ? { sources } : {}) }), current.course);
+    await core.saveRoadmap(ws, current.course, JSON.stringify({ title, goal, track, style, concepts: merged, ...(sources ? { sources } : {}), practice_note }), current.course);
   }
 
   // Every job's progress goes to whoever listens (main sends it to the app window): stages, steps and time (§4.11).
@@ -765,6 +777,9 @@ export function createLive(d: LiveDeps): Live {
         const onSource = (source: { title: string; url: string }) => {
           if (safe(source.url)) reads.push({ title: source.title.slice(0, 120), url: source.url });
         };
+        // The new course replaces the draft it was researched over, so drafts don't pile up. A draft a job still works on stays.
+        const old = draft();
+        if (old && !workedOn(old.course)) await removeCourse(old.course);
         // Research counts as running until its sources save and its review ends, so a poll starts no second agent.
         finishing.add(key);
         d.state.update((st) => ({ ...st, courseDepths: { ...st.courseDepths, [course]: goal.depth } }));
@@ -827,6 +842,12 @@ export function createLive(d: LiveDeps): Live {
       await saveConcepts(concepts);
     },
 
+    async discardDraft() {
+      const roadmap = draft();
+      if (!roadmap) throw new SafeError('No draft to discard.');
+      await removeCourse(roadmap.course);
+    },
+
     /** A read: it starts nothing (D9). */
     async course() {
       const course = approved();
@@ -872,11 +893,7 @@ export function createLive(d: LiveDeps): Live {
     },
 
     async deleteCourse(course) {
-      // A job still working on the course could save it again, so it is deleted only once that work ends.
-      if ([...running.values()].some((job) => job.course === course)) throw new SafeError('code-learn is working on this course. Delete it when that finishes.');
-      log('course-delete', {});
-      await core.deleteCourse(ws, course);
-      d.state.update((s) => withoutCourse(s, course));
+      await removeCourse(course);
     },
 
     async setActivities(on) {

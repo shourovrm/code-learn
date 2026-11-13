@@ -15,7 +15,7 @@ import { tempDir } from './temp';
 
 export const CANARY = 'printf("CANARY-SOLUTION-LINE %d", count + 1);';
 
-type FakeRoadmap = { course: string; title?: string; goal: string; track?: string; style: string; concepts: { id: string; title: string; requires: string[] }[]; sources?: { title: string; url: string }[] };
+type FakeRoadmap = { course: string; title?: string; goal: string; track?: string; style: string; concepts: { id: string; title: string; requires: string[] }[]; sources?: { title: string; url: string }[]; practice_note?: string };
 
 const SANDBOX_DOWN = "The systemd user session isn't reachable. code-learn needs a systemd user session for its sandbox limits.";
 

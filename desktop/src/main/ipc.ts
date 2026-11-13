@@ -63,6 +63,7 @@ const ARGS: { [K in Exclude<keyof CodeLearnApi, 'onCheckProgress' | 'onJobProgre
   approve: [concepts],
   draft: [],
   saveDraft: [concepts],
+  discardDraft: [],
   course: [],
   courses: [],
   switchCourse: [id],
