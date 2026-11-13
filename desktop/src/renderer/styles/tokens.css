@@ -21,19 +21,22 @@
   --space-800: 64px;
   --space-1000: 80px;
 
-  /* Type: weight size/line-height family. */
-  --type-heading-xxlarge: 700 32px/36px var(--display);
-  --type-heading-xlarge: 700 28px/32px var(--display);
-  --type-heading-large: 700 24px/28px var(--display);
-  --type-heading-medium: 700 20px/24px var(--display);
-  --type-heading-small: 700 16px/20px var(--display);
-  --type-heading-xsmall: 700 14px/20px var(--display);
-  --type-heading-xxsmall: 700 12px/16px var(--display);
-  --type-body-large: 400 16px/24px var(--sans);
-  --type-body: 400 14px/20px var(--sans);
-  --type-body-small: 400 12px/16px var(--sans);
-  --type-code: 400 14px/24px var(--mono);
-  --type-code-small: 400 12px/16px var(--mono);
+  /* Text size: the learner's scale (app/textSize.ts). Only the type below follows it, never the layout. */
+  --text-scale: 1;
+
+  /* Type: weight size/line-height family. Sizes and line heights scale with --text-scale. */
+  --type-heading-xxlarge: 700 calc(32px * var(--text-scale))/calc(36px * var(--text-scale)) var(--display);
+  --type-heading-xlarge: 700 calc(28px * var(--text-scale))/calc(32px * var(--text-scale)) var(--display);
+  --type-heading-large: 700 calc(24px * var(--text-scale))/calc(28px * var(--text-scale)) var(--display);
+  --type-heading-medium: 700 calc(20px * var(--text-scale))/calc(24px * var(--text-scale)) var(--display);
+  --type-heading-small: 700 calc(16px * var(--text-scale))/calc(20px * var(--text-scale)) var(--display);
+  --type-heading-xsmall: 700 calc(14px * var(--text-scale))/calc(20px * var(--text-scale)) var(--display);
+  --type-heading-xxsmall: 700 calc(12px * var(--text-scale))/calc(16px * var(--text-scale)) var(--display);
+  --type-body-large: 400 calc(16px * var(--text-scale))/calc(24px * var(--text-scale)) var(--sans);
+  --type-body: 400 calc(14px * var(--text-scale))/calc(20px * var(--text-scale)) var(--sans);
+  --type-body-small: 400 calc(12px * var(--text-scale))/calc(16px * var(--text-scale)) var(--sans);
+  --type-code: 400 calc(14px * var(--text-scale))/calc(24px * var(--text-scale)) var(--mono);
+  --type-code-small: 400 calc(12px * var(--text-scale))/calc(16px * var(--text-scale)) var(--mono);
   --heading-track: -0.02em;
 
   /* Controls. */

@@ -21,6 +21,7 @@ import { CloseGuard } from './CloseGuard';
 import { problemOf, sayOf } from './errors';
 import { historyAfterGo, RouterContext, type Route, type Router } from './router';
 import { useRouteFocus } from './useRouteFocus';
+import { useTextSizeShortcuts } from './textSize';
 import { WithSide } from './Sidebar';
 
 /** `visit` counts navigations, so going to the screen already shown can open it fresh. */
@@ -98,6 +99,7 @@ export function App({ api, start = { to: 'welcome' } }: { api: CodeLearnApi; sta
     [route, history],
   );
   useBackShortcuts(router.back);
+  useTextSizeShortcuts();
   return (
     <ApiContext.Provider value={api}>
       <RouterContext.Provider value={router}>

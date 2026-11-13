@@ -5,6 +5,7 @@ import { useApi } from '../../app/api';
 import { noteSync } from '../../app/CloseGuard';
 import { problemOf, sayOf } from '../../app/errors';
 import { useRouter } from '../../app/router';
+import { TextSizeSwitch } from '../../app/TextSizeControls';
 import { ThemeSwitch } from '../../app/ThemeSwitch';
 import { useLoad } from '../../app/useLoad';
 import { Button } from '../../ui/Button';
@@ -21,6 +22,11 @@ export function Settings() {
       <section className="card settings-card" aria-labelledby="theme-title">
         <h2 className="h3" id="theme-title">Theme</h2>
         <ThemeSwitch />
+      </section>
+      <section className="card settings-card" aria-labelledby="text-size-title">
+        <h2 className="h3" id="text-size-title">Text size</h2>
+        <p className="quiet-text">Starting size. Ctrl+= / Ctrl+- or A− / A+ change it; Ctrl+0 resets.</p>
+        <TextSizeSwitch />
       </section>
     </main>
   );

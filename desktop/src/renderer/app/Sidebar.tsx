@@ -13,6 +13,7 @@ import { Courses } from './Courses';
 import { ExternalLink } from '../ui/ExternalLink';
 import { WorkNow } from './WorkNow';
 import { SlimTooltip } from './SlimTooltip';
+import { TextSizeButtons } from './TextSizeControls';
 
 type Section = 'learn' | 'practice' | 'courses' | 'tracks' | 'settings';
 
@@ -94,6 +95,7 @@ export function Sidebar({ slim: slimHere = false, children }: { slim?: boolean; 
         {children}
         <WorkNow course={course} slim />
         <UpdateNotice slim />
+        <TextSizeButtons />
         <Courses slim />
         {/* The icons carry no words: each is named beside it on hover and focus. */}
         <SlimTooltip nav={slimNav} />
@@ -109,6 +111,7 @@ export function Sidebar({ slim: slimHere = false, children }: { slim?: boolean; 
       <WorkNow course={course} />
       <div className="foot">
         <UpdateNotice />
+        <TextSizeButtons />
         <Courses />
       </div>
     </nav>
