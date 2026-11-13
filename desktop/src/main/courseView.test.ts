@@ -84,6 +84,14 @@ describe('course view', () => {
     expect(view).toMatchObject({ setup: 'failed', setupProblem: 'sandbox', proposal });
   });
 
+  it('names the current topic as what a locked topic ahead waits for, and nothing when its own lesson is the wait', () => {
+    const ahead = courseView(progress({ kind: 'practice', exercise: 'e', concept: 'state' }), [{ id: 'forms-1', concept: 'forms', title: 'Forms', read: true }], ready, new Set());
+    expect(ahead.topics[2]).toMatchObject({ activity: 'locked', waitsFor: { id: 'state', title: 'State' } });
+    const unread = courseView(progress({ kind: 'practice', exercise: 'e', concept: 'state', lesson: 'state-1' }), [{ id: 'state-1', concept: 'state', title: 'S', read: false }], ready, new Set());
+    expect(unread.topics[1].activity).toBe('locked');
+    expect(unread.topics[1].waitsFor).toBeUndefined();
+  });
+
   it('keeps a stuck activity open', () => {
     expect(courseView(progress({ kind: 'stuck', concept: 'state' }), [], ready, new Set()).topics[1]).toMatchObject({ state: 'now', activity: 'open' });
   });

@@ -152,6 +152,25 @@ describe("agent text's code (§2.1)", () => {
     expect(html(text).innerHTML).toBe(`<div class="md">${(plain as { html: string }).html}</div>`);
   });
 
+  it('puts each code line in its own element with its indentation, so a wrapped line hangs under itself', () => {
+    const code = 'int main(void) {\n    long x;\n\tint y;\n}\n';
+    const c = html('```\n' + code + '```');
+    const lines = [...c.querySelectorAll<HTMLElement>('pre > code > .line')];
+    expect(lines.map((l) => l.style.getPropertyValue('--indent'))).toEqual(['0', '4', '4', '0']);
+    expect(c.querySelector('pre > code')!.textContent).toBe(code);
+  });
+
+  it('keeps each line of colored code whole, a comment across lines included', async () => {
+    const code = '/* one\n   two */\nint a;\n';
+    const c = html('```c\n' + code + '```');
+    await waitFor(() => expect(c.querySelector('pre > code .hljs-comment')).not.toBeNull());
+    const lines = [...c.querySelectorAll<HTMLElement>('pre > code > .line')];
+    expect(lines).toHaveLength(3);
+    expect(lines[1].querySelector('.hljs-comment')).toHaveTextContent('two */');
+    expect(lines[1].style.getPropertyValue('--indent')).toBe('3');
+    expect(c.querySelector('pre > code')!.textContent).toBe(code);
+  });
+
   it('renders its text again only when the text changes, not on each render around it', () => {
     const parse = vi.spyOn(MarkdownIt.prototype, 'parse');
     try {

@@ -20,6 +20,11 @@ describe('Settings', () => {
     expect(within(section('Theme')).getByRole('radiogroup', { name: 'Theme' })).toBeInTheDocument();
   });
 
+  it('sets the text size code-learn starts with', async () => {
+    renderApp({ to: 'settings' }, createMock({ connected: 'claude' }));
+    expect(await screen.findByRole('radiogroup', { name: 'Text size' })).toBeInTheDocument();
+  });
+
   it('offers a model for each kind of job from the connected agent\'s list, saved at once', async () => {
     const user = userEvent.setup();
     const api = createMock({ connected: 'claude' });

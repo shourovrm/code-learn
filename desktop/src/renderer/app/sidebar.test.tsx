@@ -319,3 +319,15 @@ describe('back', () => {
     expect(within(sidebar()).queryByRole('button', { name: 'Back' })).not.toBeInTheDocument();
   });
 });
+
+describe('text size in the sidebar', () => {
+  it('offers smaller and larger text on every page, the slim sidebar too', async () => {
+    renderApp({ to: 'tracks' }, createMock({ connected: 'claude' }));
+    await screen.findByRole('heading', { name: 'Toolchains' });
+    expect(within(sidebar()).getByRole('button', { name: 'Smaller text' })).toBeInTheDocument();
+    expect(within(sidebar()).getByRole('button', { name: 'Larger text' })).toBeInTheDocument();
+    const { api, course } = await mockWithCourse();
+    renderApp({ to: 'lesson', lessonId: course.topics[0].lessons[0].id }, api);
+    await screen.findAllByRole('button', { name: 'Larger text' });
+  });
+});

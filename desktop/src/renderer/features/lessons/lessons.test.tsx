@@ -738,6 +738,35 @@ describe('a locked activity', () => {
   });
 });
 
+describe('a locked activity behind an earlier topic', () => {
+  it('names the topic to practise first and goes to it', async () => {
+    const { api, course } = await mockWithCourse({ read: true });
+    const [first, second] = course.topics;
+    const ahead = { ...course, topics: course.topics.map((t, i) => (i === 1 ? { ...t, activity: 'locked' as const, waitsFor: { id: first.id, title: first.title } } : t)) };
+    api.course = async () => ahead;
+    renderApp({ to: 'topic', topicId: second.id }, api);
+    expect(await screen.findByText(`Opens after you practise ${first.title}`)).toBeInTheDocument();
+    expect(screen.queryByText('Opens after you finish the lessons')).not.toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole('button', { name: `Go to ${first.title}` }));
+    expect(await screen.findByRole('heading', { name: first.title, level: 1 })).toBeInTheDocument();
+  });
+});
+
+describe('the end of a lesson', () => {
+  it('says that Next marks an unread lesson read', async () => {
+    const { api, course } = await mockWithCourse();
+    renderApp({ to: 'lesson', lessonId: course.topics[0].lessons[0].id }, api);
+    expect(await screen.findByText('Next marks this lesson read.')).toBeInTheDocument();
+  });
+
+  it('says nothing about marking once the lesson is read', async () => {
+    const { api, course } = await mockWithCourse({ read: true });
+    renderApp({ to: 'lesson', lessonId: course.topics[0].lessons[0].id }, api);
+    await screen.findByRole('button', { name: 'Next' });
+    expect(screen.queryByText('Next marks this lesson read.')).not.toBeInTheDocument();
+  });
+});
+
 describe('the activity while the agent writes it', () => {
   it('shows it being written, not locked, once every lesson is read', async () => {
     const { api, course } = await mockWithCourse({ read: true });
