@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.9 (2026-11-14)
+
+- Lessons no longer follow the old fixed outline. The brief asks for a worked example and the common mistakes only where the idea needs them, and inside the part that teaches it, not as sections of their own. Overview and In-depth set a length, not a number of steps and mistakes.
+- `save_lesson` refuses a `##` heading named after its role (Examples, Summary, Steps, Common mistakes, Pitfall: …), so each heading names what its part teaches.
+
 ## 0.2.8 (2026-11-13)
 
 - Text size is one **Aa** button in the sidebar. It opens a small bar beside the sidebar with A−, the size, A+ and Reset; Escape, a click outside or the button again closes it. Ctrl+= and Ctrl+- still work anywhere.
